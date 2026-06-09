@@ -1,0 +1,9 @@
+RewriteEngine On
+
+# Servir archivos estáticos del backend (uploads) directamente sin reescribir
+RewriteRule ^backend/uploads/(.*)$ backend/uploads/$1 [L]
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+RewriteRule ^ index.php [QSA,L]

@@ -1,0 +1,25 @@
+# Desactivar buffering de Apache para stream.php (SSE)
+<Files "stream.php">
+    SetEnv no-gzip 1
+    SetEnv dont-vary 1
+    Header set X-Accel-Buffering "no"
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+</Files>
+
+# CORS para peticiones del frontend React (localhost:5173)
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "http://localhost:5173"
+    Header always set Access-Control-Allow-Credentials "true"
+    Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Cache-Control"
+</IfModule>
+
+# Responder OPTIONS (preflight) directamente sin pasar a PHP
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^ - [R=200,L]
+
+# Enrutar todas las peticiones al router index.php (excepto archivos reales y stream)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php/$1 [QSA,L]
