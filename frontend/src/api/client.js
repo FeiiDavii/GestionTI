@@ -114,6 +114,7 @@ export const auxAPI = {
   marcas: () => api.get('/aux/marcas'),
   tipos: () => api.get('/aux/tipos'),
   configuraciones: () => api.get('/aux/configuraciones'),
+  hardwareConfigs: () => api.get('/aux/hardware-configs'),
   funcionarios: () => api.get('/aux/funcionarios'),
   users: () => api.get('/aux/users'),
   saveUser: (data) => api.post('/aux/users/save', data),

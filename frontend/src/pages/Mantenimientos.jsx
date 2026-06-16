@@ -15,6 +15,8 @@ export default function Mantenimientos() {
   // Listing Data State
   const [loading, setLoading] = useState(true);
   const [equipos, setEquipos] = useState([]);
+  const [equiposBaja, setEquiposBaja] = useState([]);
+  const [listaTab, setListaTab] = useState('activos'); // 'activos' | 'baja'
   
   // Lists for Dropdowns
   const [tipos, setTipos] = useState([]);
@@ -65,6 +67,7 @@ export default function Mantenimientos() {
       ]);
       if (mainRes.data.success) {
         setEquipos(mainRes.data.data.equipos || []);
+        setEquiposBaja(mainRes.data.data.equipos_baja || []);
       }
       if (listsRes.data.success) {
         const l = listsRes.data.data || {};
@@ -365,10 +368,27 @@ export default function Mantenimientos() {
     );
   });
 
-  // Pagination bounds
+  // Filter baja list
+  const filteredEquiposBaja = equiposBaja.filter(e => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      (e.nombre_equipo || '').toLowerCase().includes(query) ||
+      (e.serial || '').toLowerCase().includes(query) ||
+      (e.nombre_area || '').toLowerCase().includes(query) ||
+      (e.modelo || '').toLowerCase().includes(query) ||
+      (e.nombre_marca || '').toLowerCase().includes(query)
+    );
+  });
+
+  // Pagination bounds — activos
   const totalPages = Math.ceil(filteredEquipos.length / pageSize);
   const startIdx = (page - 1) * pageSize;
   const paginatedEquipos = filteredEquipos.slice(startIdx, startIdx + pageSize);
+
+  // Pagination bounds — baja
+  const totalPagesBaja = Math.ceil(filteredEquiposBaja.length / pageSize);
+  const paginatedEquiposBaja = filteredEquiposBaja.slice(startIdx, startIdx + pageSize);
 
   // Reset pagination on search
   useEffect(() => {
@@ -427,13 +447,39 @@ export default function Mantenimientos() {
         <div className="text-center p-5"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-[#4a6cf7]"></i></div>
       ) : (
         <div className="table-wrapper">
+          {/* Tabs activos / de baja */}
+          <div className="inventory-tabs" style={{ marginBottom: 0, borderBottom: '1px solid var(--border-color)' }}>
+            <button
+              className={`inv-tab ${listaTab === 'activos' ? 'active' : ''}`}
+              onClick={() => { setListaTab('activos'); setPage(1); }}
+            >
+              <i className="fa-solid fa-desktop"></i> En Servicio
+              <span style={{
+                marginLeft: '6px', background: 'rgba(74,108,247,0.12)', color: 'var(--primary-color)',
+                borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 700
+              }}>{equipos.length}</span>
+            </button>
+            <button
+              className={`inv-tab ${listaTab === 'baja' ? 'active' : ''}`}
+              onClick={() => { setListaTab('baja'); setPage(1); }}
+            >
+              <i className="fa-solid fa-skull-crossbones"></i> Dados de Baja
+              {equiposBaja.length > 0 && (
+                <span style={{
+                  marginLeft: '6px', background: 'rgba(220,53,69,0.12)', color: '#dc3545',
+                  borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 700
+                }}>{equiposBaja.length}</span>
+              )}
+            </button>
+          </div>
+
           <DataTableControls
             pageSize={pageSize}
             setPageSize={setPageSize}
             searchTerm={searchQuery}
             setSearchTerm={setSearchQuery}
-            totalItems={equipos.length}
-            filteredItemsCount={filteredEquipos.length}
+            totalItems={listaTab === 'activos' ? equipos.length : equiposBaja.length}
+            filteredItemsCount={listaTab === 'activos' ? filteredEquipos.length : filteredEquiposBaja.length}
             hideSearch={true}
           />
           <div className="table-scroll">
@@ -444,41 +490,90 @@ export default function Mantenimientos() {
                   <th>Marca/Modelo</th>
                   <th>Serial</th>
                   <th>Área</th>
-                  <th>Responsable</th>
-                  <th className="text-center">Acciones</th>
+                  {listaTab === 'activos'
+                    ? <th>Responsable</th>
+                    : <th>Fecha de Baja</th>
+                  }
+                  <th className="text-center">Hoja de Vida</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedEquipos.map(eq => (
-                  <tr key={eq.id}>
-                    <td>
-                      <strong>{eq.nombre_equipo || '-'}</strong>
-                      <br />
-                      <small className="text-gray-text">{eq.modelo || ''}</small>
-                    </td>
-                    <td>{eq.nombre_marca || eq.marca || '-'}</td>
-                    <td>{eq.serial || '-'}</td>
-                    <td>{eq.nombre_area || eq.area || '-'}</td>
-                    <td style={{ color: 'var(--primary-color)', fontWeight: 500 }}>
-                      {eq.responsable || eq.funcionario || 'Sin asignar'}
-                    </td>
-                    <td className="text-center">
-                      <button className="action-btn" title="Ver Hoja de Vida" onClick={() => openHVModal(eq)}>
-                        <i className="fa-solid fa-eye"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {paginatedEquipos.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center p-4 text-[var(--gray-text)]">No se encontraron equipos</td>
-                  </tr>
+                {listaTab === 'activos' ? (
+                  <>
+                    {paginatedEquipos.map(eq => (
+                      <tr key={eq.id}>
+                        <td>
+                          <strong>{eq.nombre_equipo || '-'}</strong>
+                          <br />
+                          <small className="text-gray-text">{eq.modelo || ''}</small>
+                        </td>
+                        <td>{eq.nombre_marca || eq.marca || '-'}</td>
+                        <td>{eq.serial || '-'}</td>
+                        <td>{eq.nombre_area || eq.area || '-'}</td>
+                        <td style={{ color: 'var(--primary-color)', fontWeight: 500 }}>
+                          {eq.responsable || 'Sin asignar'}
+                        </td>
+                        <td className="text-center">
+                          <button className="action-btn" title="Ver Hoja de Vida" onClick={() => openHVModal(eq)}>
+                            <i className="fa-solid fa-eye"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {paginatedEquipos.length === 0 && (
+                      <tr><td colSpan={6} className="text-center p-4" style={{ color: 'var(--gray-text)' }}>No se encontraron equipos</td></tr>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {paginatedEquiposBaja.map(eq => (
+                      <tr key={eq.id} style={{ opacity: 0.85 }}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                            <i className="fa-solid fa-skull-crossbones" style={{ color: '#dc3545', fontSize: '11px' }}></i>
+                            <div>
+                              <strong>{eq.nombre_equipo || '-'}</strong>
+                              <br />
+                              <small style={{ color: 'var(--gray-text)' }}>{eq.modelo || ''}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{eq.nombre_marca || '-'}</td>
+                        <td>{eq.serial || '-'}</td>
+                        <td>{eq.nombre_area || '-'}</td>
+                        <td style={{ color: '#dc3545', fontSize: '12px' }}>
+                          {eq.fecha_baja ? new Date(eq.fecha_baja).toLocaleDateString('es-CO') : '-'}
+                        </td>
+                        <td className="text-center">
+                          <button
+                            className="action-btn"
+                            title="Ver Hoja de Vida (solo lectura)"
+                            onClick={() => openHVModal(eq)}
+                            style={{ color: '#dc3545' }}
+                          >
+                            <i className="fa-solid fa-file-lines"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {paginatedEquiposBaja.length === 0 && (
+                      <tr><td colSpan={6} className="text-center p-4" style={{ color: 'var(--gray-text)' }}>
+                        <i className="fa-solid fa-skull-crossbones" style={{ marginRight: '6px', opacity: 0.4 }}></i>
+                        No hay equipos dados de baja
+                      </td></tr>
+                    )}
+                  </>
                 )}
               </tbody>
             </table>
           </div>
 
-          <Pagination page={page} setPage={setPage} totalPages={totalPages} totalItems={filteredEquipos.length} pageSize={pageSize} />
+          <Pagination
+            page={page} setPage={setPage}
+            totalPages={listaTab === 'activos' ? totalPages : totalPagesBaja}
+            totalItems={listaTab === 'activos' ? filteredEquipos.length : filteredEquiposBaja.length}
+            pageSize={pageSize}
+          />
         </div>
       )}
 
@@ -489,6 +584,24 @@ export default function Mantenimientos() {
         }}>
           <div className="modal-content" style={{ width: '1200px', maxWidth: '98%', height: '90vh', padding: 0 }}>
             <div className="hv-card">
+
+              {/* Banner de equipo de baja */}
+              {selectedEquipoDetails?.equipo?.estado === 'De baja' && (
+                <div style={{
+                  background: 'rgba(220,53,69,0.1)', borderBottom: '2px solid #dc3545',
+                  padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px',
+                  fontSize: '13px', color: '#dc3545', fontWeight: 600
+                }}>
+                  <i className="fa-solid fa-skull-crossbones"></i>
+                  Este equipo está dado de baja
+                  {selectedEquipoDetails.equipo.fecha_baja && (
+                    <span style={{ fontWeight: 400, marginLeft: '4px' }}>
+                      el {new Date(selectedEquipoDetails.equipo.fecha_baja).toLocaleDateString('es-CO')}
+                    </span>
+                  )}
+                  — La hoja de vida es de solo lectura. No se pueden registrar nuevos mantenimientos.
+                </div>
+              )}
               
               {/* Modal Header */}
               <div className="hv-header">
@@ -730,7 +843,7 @@ export default function Mantenimientos() {
                       <div className={`act-tab ${activeTab === 'historial' ? 'active' : ''}`} onClick={() => setActiveTab('historial')}>
                         Ver Historial
                       </div>
-                      {canEdit && (
+                      {canEdit && selectedEquipoDetails?.equipo?.estado !== 'De baja' && (
                         <>
                           <div className={`act-tab ${activeTab === 'preventivo' ? 'active' : ''}`} onClick={() => setActiveTab('preventivo')}>
                             + Preventivo

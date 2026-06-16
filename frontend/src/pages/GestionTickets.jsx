@@ -197,6 +197,7 @@ export default function GestionTickets() {
   const puedeResponder = hasPermission('tk_responder');
   const puedeReasignar = hasPermission('tk_asignar_otros');
   const puedeVerGlobal = hasPermission('tk_ver_global');
+  const puedeCrear = hasPermission('tk_crear');
 
   // ── State ────────────────────────────────────────────────────────────────
   const [tickets, setTickets] = useState([]);
@@ -291,17 +292,18 @@ export default function GestionTickets() {
 
   // ── Load initial data ────────────────────────────────────────────────────
   useEffect(() => {
-    if (!puedeVerGlobal && !puedeResponder) return;
+    // Cargar tickets si tiene permiso para ver global, responder, o asignar a otros
+    if (!puedeVerGlobal && !puedeResponder && !puedeReasignar) return;
     cargarTickets();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── SSE bus ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!puedeVerGlobal && !puedeResponder) return;
+    if (!puedeVerGlobal && !puedeResponder && !puedeReasignar) return;
     const handleTicketsUpdate = () => cargarTickets();
     window.addEventListener('rt:tickets_update', handleTicketsUpdate);
     return () => window.removeEventListener('rt:tickets_update', handleTicketsUpdate);
-  }, [puedeVerGlobal, puedeResponder, cargarTickets]);
+  }, [puedeVerGlobal, puedeResponder, puedeReasignar, cargarTickets]);
 
   // ── Open from URL (?ticket_id=X) ─────────────────────────────────────────
   useEffect(() => {
@@ -478,10 +480,11 @@ export default function GestionTickets() {
         cerrarModal();
         await cargarTickets();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al guardar los cambios del ticket', 'error');
       }
-    } catch {
-      showToast('Error de conexión', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al guardar los cambios';
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -505,10 +508,11 @@ export default function GestionTickets() {
         await cargarHistorial(currentTicket.id);
         if (chatInputRef.current) chatInputRef.current.focus();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al enviar el mensaje', 'error');
       }
-    } catch {
-      showToast('Error de conexión', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al enviar el mensaje';
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -536,10 +540,11 @@ export default function GestionTickets() {
           setFormTecnicoId(String(currentUserId));
           showToast('Asignado exitosamente', 'success');
         } else {
-          showToast('Error de conexión', 'error');
+          showToast(res.data?.message || 'Error al asignarse el ticket', 'error');
         }
-      } catch {
-        showToast('Error de conexión', 'error');
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al asignarse el ticket';
+        showToast(errorMessage, 'error');
       }
     });
   };
@@ -569,11 +574,15 @@ export default function GestionTickets() {
       showToast('No puedes escalar a ti mismo', 'warning');
       return;
     }
+    if (!escalarMotivo || escalarMotivo.trim().length < 5) {
+      showToast('El motivo es obligatorio y debe tener al menos 5 caracteres', 'warning');
+      return;
+    }
     try {
       const res = await ticketAPI.escalate({
         ticket_id: escalarTicketId,
         tecnico_id: escalarTecnico,
-        motivo: escalarMotivo
+        motivo: escalarMotivo.trim()
       });
       if (res.data?.success) {
         cerrarModalEscalar();
@@ -581,15 +590,29 @@ export default function GestionTickets() {
         await cargarTickets();
         showToast('Ticket escalado exitosamente', 'success');
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al escalar el ticket', 'error');
       }
-    } catch {
-      showToast('Error de conexión', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al escalar el ticket';
+      showToast(errorMessage, 'error');
     }
   };
 
   // ── NUEVO TICKET ─────────────────────────────────────────────────────────
+  const tieneTicketAbierto = tickets.find(t => 
+    t.usuario_id == currentUserId && t.estado !== 'Cerrado'
+  );
+
   const abrirNuevoModal = () => {
+    if (!puedeCrear) {
+      showToast('No tienes permisos para crear tickets.', 'warning');
+      return;
+    }
+    // Verificar si el usuario ya tiene un ticket abierto
+    if (tieneTicketAbierto) {
+      showToast('Ya tienes un ticket en curso. Debes cerrarlo antes de crear otro.', 'warning');
+      return;
+    }
     setNuevoDesc('');
     setNuevoFile(null);
     setNuevoFileName('Ningún archivo seleccionado');
@@ -621,8 +644,9 @@ export default function GestionTickets() {
       } else {
         showToast(res.data?.message || 'Error al crear el ticket', 'error');
       }
-    } catch {
-      showToast('Error de conexión', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al crear el ticket';
+      showToast(errorMessage, 'error');
     } finally {
       setCreating(false);
     }
@@ -656,7 +680,7 @@ export default function GestionTickets() {
   const ticketCerrado = t?.estado === 'Cerrado';
 
   // ── RENDER ───────────────────────────────────────────────────────────────
-  if (!puedeVerGlobal && !puedeResponder) {
+  if (!puedeVerGlobal && !puedeResponder && !puedeReasignar) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', color: 'var(--text-color)' }}>
         <FaHeadset style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: 20 }} />
@@ -686,19 +710,26 @@ export default function GestionTickets() {
                 style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', color: 'var(--text-color)' }}
               />
             </div>
-            <button
-              onClick={abrirNuevoModal}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'var(--primary-color)', color: '#fff',
-                border: 'none', padding: '10px 20px', borderRadius: 25,
-                cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
-                boxShadow: '0 4px 10px rgba(78,115,223,0.3)', transition: 'all .2s',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <FaPlus /> Nuevo Ticket
-            </button>
+            {puedeCrear && (
+              <button
+                onClick={abrirNuevoModal}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: tieneTicketAbierto ? '#888' : 'var(--primary-color)',
+                  color: '#fff',
+                  border: 'none', padding: '10px 20px', borderRadius: 25,
+                  cursor: tieneTicketAbierto ? 'not-allowed' : 'pointer',
+                  fontWeight: 600, fontSize: '0.9rem',
+                  boxShadow: tieneTicketAbierto ? 'none' : '0 4px 10px rgba(78,115,223,0.3)',
+                  transition: 'all .2s',
+                  whiteSpace: 'nowrap',
+                  opacity: tieneTicketAbierto ? 0.5 : 1
+                }}
+                title={tieneTicketAbierto ? 'Ya tienes un ticket en curso' : 'Crear Nuevo Ticket'}
+              >
+                <FaPlus /> Nuevo Ticket
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -897,9 +928,30 @@ export default function GestionTickets() {
                       ))}
                     </select>
 
-                    {!ticketCerrado && puedeResponder && !t.tecnico_id && (
-                      <div className="assign-me" onClick={asignarAMi} style={{ display: 'flex', marginTop: 10, marginBottom: 0 }}>
-                        <FaHandPointUp /> Tomar este caso
+                    {!ticketCerrado && puedeResponder && (
+                      <div 
+                        className="assign-me" 
+                        onClick={t.tecnico_id != currentUserId ? asignarAMi : undefined}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          padding: '10px 16px',
+                          marginTop: 10,
+                          marginBottom: 0,
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                          cursor: t.tecnico_id == currentUserId ? 'default' : 'pointer',
+                          opacity: t.tecnico_id == currentUserId ? 0.6 : 1,
+                          background: t.tecnico_id == currentUserId ? 'rgba(78,115,223,0.1)' : 'linear-gradient(135deg,#4e73df,#36b9cc)',
+                          color: t.tecnico_id == currentUserId ? '#4e73df' : '#fff',
+                          border: t.tecnico_id == currentUserId ? '1px solid #4e73df' : 'none',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <FaHandPointUp /> {t.tecnico_id == currentUserId ? 'Ya tienes este caso asignado' : 'Tomar este caso'}
                       </div>
                     )}
 
@@ -909,11 +961,21 @@ export default function GestionTickets() {
                         id="btnEscalar"
                         onClick={abrirModalEscalar}
                         style={{
-                          display: 'flex', width: '100%', padding: 10, border: 'none',
-                          borderRadius: 8, fontWeight: 600, fontSize: '0.9rem', transition: 'all 0.2s',
-                          background: 'rgba(246,194,62,0.1)', color: '#f6c23e',
-                          borderWidth: '1px', borderStyle: 'solid', borderColor: '#f6c23e',
-                          marginTop: 10, cursor: 'pointer', alignItems: 'center', justifyContent: 'center', gap: 8
+                          display: 'flex',
+                          width: '100%',
+                          padding: '10px 16px',
+                          border: '1px solid #f6c23e',
+                          borderRadius: 8,
+                          fontWeight: 600,
+                          fontSize: '0.9rem',
+                          transition: 'all 0.2s',
+                          background: 'rgba(246,194,62,0.1)',
+                          color: '#f6c23e',
+                          marginTop: 10,
+                          cursor: 'pointer',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8
                         }}
                       >
                         <FaArrowUp /> Escalar Ticket
@@ -922,7 +984,23 @@ export default function GestionTickets() {
                   </div>
 
                   {!ticketCerrado && (
-                    <button type="submit" className="btn-save-modern" id="btnGuardarCambios">
+                    <button 
+                      type="submit" 
+                      className="btn-save-modern" 
+                      id="btnGuardarCambios"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        width: '100%',
+                        padding: '10px 16px',
+                        marginTop: 10,
+                        borderRadius: 8,
+                        fontWeight: 600,
+                        fontSize: '0.9rem'
+                      }}
+                    >
                       <FaSave /> Guardar Cambios
                     </button>
                   )}
@@ -1137,7 +1215,7 @@ export default function GestionTickets() {
                   />
                 </div>
                 <div className="form-group mb-3" style={{ marginTop: 16 }}>
-                  <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block', fontSize: '13.5px' }}>Motivo <span style={{ fontSize: '11px', color: 'var(--gray-text)' }}>(Opcional)</span></label>
+                  <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block', fontSize: '13.5px' }}>Motivo <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <textarea
                     style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-color)', fontSize: '14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
                     rows={3}

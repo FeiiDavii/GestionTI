@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { auxAPI, permissionAPI } from '../api/client';
 import Swal from 'sweetalert2';
@@ -113,7 +114,32 @@ const ITEMS_PER_PAGE = 10; // Rows per page for usuarios
 
 export default function Configuracion() {
   const { user, permisos, hasPermission, logout } = useAuth();
-  const [tabActivo, setTabActivo] = useState('apariencia');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Persistir tab activo en sessionStorage para que sobreviva un refresh
+  const [tabActivo, setTabActivo] = useState(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam) {
+      sessionStorage.setItem('config_tab', tabParam);
+      return tabParam;
+    }
+    return sessionStorage.getItem('config_tab') || 'apariencia';
+  });
+
+  // Escuchar cambios en los parámetros de búsqueda de la URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && tabParam !== tabActivo) {
+      setTabActivo(tabParam);
+      sessionStorage.setItem('config_tab', tabParam);
+    }
+  }, [searchParams, tabActivo]);
+
+  const cambiarTab = (id) => {
+    setTabActivo(id);
+    sessionStorage.setItem('config_tab', id);
+    setSearchParams({ tab: id });
+  };
   const [loading, setLoading] = useState(false);
 
   // --- Apariencia ---
@@ -240,6 +266,57 @@ export default function Configuracion() {
   useEffect(() => {
     cargarTodo();
   }, [cargarTodo]);
+
+  // ─── Recargas individuales (sin necesidad de reload completo) ───────────────
+  const recargarUsuarios = useCallback(async () => {
+    try {
+      const r = await auxAPI.users();
+      if (r.data.success) {
+        setUsuarios(r.data.data?.users || []);
+        setFuncionarios(r.data.data?.funcionarios || []);
+        setRolesSimple(r.data.data?.roles || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const recargarRoles = useCallback(async () => {
+    try {
+      // Recarga roles completos (con permisos) Y rolesSimple (para el selector del modal de usuario)
+      const [rolesRes, usersRes] = await Promise.allSettled([
+        permissionAPI.roles(),
+        auxAPI.users(),
+      ]);
+      if (rolesRes.status === 'fulfilled' && rolesRes.value.data.success) {
+        setRoles(rolesRes.value.data.data || []);
+      }
+      if (usersRes.status === 'fulfilled' && usersRes.value.data.success) {
+        setRolesSimple(usersRes.value.data.data?.roles || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const recargarSLA = useCallback(async () => {
+    try {
+      const r = await permissionAPI.configSLA();
+      if (r.data.success) {
+        const mapped = (r.data.data || []).map(s => ({
+          ...s,
+          prioridad: s.prioridad_ticket || s.prioridad || '',
+          respuesta: s.respuesta ?? (s.tiempo_respuesta_minutos ? Math.round(s.tiempo_respuesta_minutos / 60) : 0),
+          resolucion: s.resolucion ?? (s.tiempo_resolucion_minutos ? Math.round(s.tiempo_resolucion_minutos / 60) : 0),
+        }));
+        setSlaConfig(mapped);
+        setSlaOriginal(JSON.parse(JSON.stringify(mapped)));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  const recargarKeywords = useCallback(async () => {
+    try {
+      const r = await permissionAPI.keywords();
+      if (r.data.success) setKeywords(r.data.data || []);
+    } catch { /* ignore */ }
+  }, []);
 
   // ============================================================
   // SISTEMA
@@ -424,8 +501,7 @@ export default function Configuracion() {
       if (res.data.success) {
         showToast(editandoUsuario ? 'Usuario actualizado' : 'Usuario creado', 'success');
         setShowModalUsuario(false);
-        const usersRes = await auxAPI.users();
-        if (usersRes.data.success) setUsuarios(usersRes.data.data?.users || []);
+        await recargarUsuarios();
       } else {
         showToast('Error', 'error');
       }
@@ -462,8 +538,7 @@ export default function Configuracion() {
       const res = await auxAPI.toggleStatus({ id: usuario.id || usuario.user_id, activo: nuevoEstado ? 1 : 0 });
       if (res.data.success) {
         showToast('Estado del usuario actualizado', 'success');
-        const usersRes = await auxAPI.users();
-        if (usersRes.data.success) setUsuarios(usersRes.data.data?.users || []);
+        await recargarUsuarios();
       } else {
         showToast('Error', 'error');
       }
@@ -552,8 +627,7 @@ export default function Configuracion() {
         if (editandoRol && res.data.forceLogout) {
           showToast(`Sesiones cerradas para usuarios del rol "${formRol.nombre}"`, 'info');
         }
-        const rolesRes = await permissionAPI.roles();
-        if (rolesRes.data.success) setRoles(rolesRes.data.data || []);
+        await recargarRoles();
       } else {
         showToast('Error', 'error');
       }
@@ -586,8 +660,7 @@ export default function Configuracion() {
       const res = await permissionAPI.deleteRole(rol.id || rol.rol_id);
       if (res.data.success) {
         showToast('Rol eliminado correctamente', 'success');
-        const rolesRes = await permissionAPI.roles();
-        if (rolesRes.data.success) setRoles(rolesRes.data.data || []);
+        await recargarRoles();
       } else {
         showToast('Error', 'error');
       }
@@ -637,17 +710,7 @@ export default function Configuracion() {
       if (res.data.success) {
         showToast(editandoSLA ? 'SLA actualizado' : 'SLA creado', 'success');
         setShowModalSLA(false);
-        const slaRes = await permissionAPI.configSLA();
-        if (slaRes.data.success) {
-          const mapped = (slaRes.data.data || []).map(s => ({
-            ...s,
-            prioridad: s.prioridad_ticket || s.prioridad || '',
-            respuesta: s.respuesta ?? (s.tiempo_respuesta_minutos ? Math.round(s.tiempo_respuesta_minutos / 60) : 0),
-            resolucion: s.resolucion ?? (s.tiempo_resolucion_minutos ? Math.round(s.tiempo_resolucion_minutos / 60) : 0)
-          }));
-          setSlaConfig(mapped);
-          setSlaOriginal(JSON.parse(JSON.stringify(mapped)));
-        }
+        await recargarSLA();
       } else {
         showToast(res.data.message || 'Error al guardar el SLA', 'error');
       }
@@ -671,16 +734,7 @@ export default function Configuracion() {
       const res = await permissionAPI.deleteSLA(sla.id);
       if (res.data.success) {
         showToast('SLA eliminado correctamente', 'success');
-        const slaRes = await permissionAPI.configSLA();
-        if (slaRes.data.success) {
-          const mapped = (slaRes.data.data || []).map(s => ({
-            ...s,
-            prioridad: s.prioridad_ticket || s.prioridad || '',
-            respuesta: s.respuesta ?? (s.tiempo_respuesta_minutos ? Math.round(s.tiempo_respuesta_minutos / 60) : 0),
-            resolucion: s.resolucion ?? (s.tiempo_resolucion_minutos ? Math.round(s.tiempo_resolucion_minutos / 60) : 0)
-          }));
-          setSlaConfig(mapped);
-        }
+        await recargarSLA();
       } else {
         showToast(res.data.message || 'No se pudo eliminar el SLA', 'error');
       }
@@ -709,8 +763,7 @@ export default function Configuracion() {
       if (res.data.success) {
         setNuevaKeyword('');
         setNuevaKeywordPrioridad('Baja');
-        const kwRes = await permissionAPI.keywords();
-        if (kwRes.data.success) setKeywords(kwRes.data.data || []);
+        await recargarKeywords();
         showToast(`"${keyword}" registrada como keyword`, 'success');
       } else {
         showToast('Error', 'error');
@@ -736,8 +789,7 @@ export default function Configuracion() {
     try {
       const res = await permissionAPI.deleteKeyword(kw.id);
       if (res.data.success) {
-        const kwRes = await permissionAPI.keywords();
-        if (kwRes.data.success) setKeywords(kwRes.data.data || []);
+        await recargarKeywords();
         showToast('Palabra clave eliminada', 'success');
       } else {
         showToast('Error', 'error');
@@ -769,8 +821,7 @@ export default function Configuracion() {
           } catch { /* continuar */ }
         }
       }
-      const kwRes = await permissionAPI.keywords();
-      if (kwRes.data.success) setKeywords(kwRes.data.data || []);
+      await recargarKeywords();
       showToast('Palabras clave predefinidas agregadas exitosamente', 'success');
     } catch {
       showToast('Error al agregar palabras clave predefinidas', 'error');
@@ -813,7 +864,7 @@ export default function Configuracion() {
   useEffect(() => {
     if (!puedeVerTab(tabActivo)) {
       const permitido = TABS.find(t => puedeVerTab(t.id));
-      if (permitido) setTabActivo(permitido.id);
+      if (permitido) cambiarTab(permitido.id);
     }
   }, [tabActivo, permisos]);
 
@@ -854,7 +905,7 @@ export default function Configuracion() {
           <button
             key={tab.id}
             className={`settings-tab ${tabActivo === tab.id ? 'active' : ''}`}
-            onClick={() => setTabActivo(tab.id)}
+            onClick={() => cambiarTab(tab.id)}
           >
             <i className={`fa-solid ${tab.icon}`}></i>
             <span>{tab.label}</span>

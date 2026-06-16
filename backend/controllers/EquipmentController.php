@@ -6,7 +6,7 @@ class EquipmentController {
     public function list() {
         Auth::requireLogin();
         $permisos = Auth::getPermissions($this->pdo);
-        if (empty($permisos['inv_ver'])) json_error('Acceso denegado', 403);
+        if (empty($permisos['inv_ver'])) json_error('No tienes permisos para ver el inventario. Contacte al administrador del sistema.', 403);
 
         $data = $this->pdo->query("SELECT e.*, m.nombre_marca, a.nombre_area, t.tipo, c.ram_rom, 
             CONCAT(f.nombre, ' ', f.apellido) as nombre_usuario, uc.nombre_completo as creador_nombre
@@ -40,6 +40,8 @@ class EquipmentController {
     public function get() {
         Auth::requireLogin();
         $id = $_GET['id'] ?? 0;
+        if (empty($id) || !is_numeric($id)) json_error('ID de equipo inválido. Por favor proporcione un ID válido.', 400);
+        
         $stmt = $this->pdo->prepare("SELECT e.*, m.nombre_marca, a.nombre_area, t.tipo, c.ram_rom,
             CONCAT(f.nombre, ' ', f.apellido) as nombre_usuario, uc.nombre_completo as creador_nombre
             FROM equipos_de_computo e 
@@ -51,7 +53,9 @@ class EquipmentController {
             LEFT JOIN usuarios uc ON e.creado_por=uc.id 
             WHERE e.id = ?");
         $stmt->execute([$id]);
-        json_success($stmt->fetch());
+        $equipo = $stmt->fetch();
+        if (!$equipo) json_error('El equipo solicitado no existe o fue eliminado del sistema.', 404);
+        json_success($equipo);
     }
 
     public function listas() {
@@ -99,7 +103,7 @@ class EquipmentController {
                 'funcionarios' => 'funcionarios', 'areas' => 'areas', 'marcas' => 'marcas',
                 'tipos' => 'tipos', 'configuraciones' => 'configuraciones'
             ];
-            if (!isset($sqlMap[$table])) json_error('Tabla no válida');
+            if (!isset($sqlMap[$table])) json_error('Tipo de tabla no válido: ' . htmlspecialchars($table) . '. Por favor seleccione una opción válida.');
             $dbTable = $sqlMap[$table];
 
             // Validate duplicates
@@ -171,7 +175,27 @@ class EquipmentController {
                 if ($table === 'otros') { $data['id_tipo'] = !empty($input['id_tipo']) ? (int)$input['id_tipo'] : null; $data['id_area'] = !empty($input['id_area']) ? (int)$input['id_area'] : null; }
                 crud_save_pdo($this->pdo, $dbTable, $data, $id);
             }
-            json_success(null, 'Registro guardado exitosamente');
+            $nombre_legible = ['equipos' => 'Equipo', 'impresoras' => 'Impresora/Escáner', 'monitores' => 'Monitor', 'telefonos' => 'Teléfono', 'otros' => 'Artículo', 'funcionarios' => 'Funcionario', 'areas' => 'Área', 'marcas' => 'Marca', 'tipos' => 'Tipo', 'configuraciones' => 'Configuración'];
+            $tipo = $nombre_legible[$table] ?? 'Registro';
+
+            // Registrar log de auditoría
+            $logTable = $table;
+            $logMsg = "";
+            if ($table === 'equipos') {
+                $nombre_equipo = sanitize_input($input['nombre_equipo'] ?? '', 'string', 100);
+                $serial_equipo = sanitize_input($input['serial'] ?? '', 'serial', 100);
+                $logMsg = ($isUpdate ? "Equipo actualizado: " : "Equipo creado: ") . "$nombre_equipo (Serial: $serial_equipo)";
+            } else {
+                $identificador = $input['nombre'] ?? $input['nombre_area'] ?? $input['nombre_marca'] ?? $input['tipo'] ?? $input['ram_rom'] ?? $input['serial'] ?? $input['modelo'] ?? 'ID ' . ($id ?? '');
+                if ($table === 'funcionarios' && isset($input['apellido'])) {
+                    $identificador .= ' ' . ($input['apellido'] ?? '');
+                }
+                $logMsg = "$tipo " . ($isUpdate ? "actualizado: " : "creado: ") . $identificador;
+            }
+            registrar_log($this->pdo, $_SESSION['user_id'], $logTable, $logMsg);
+
+            $accion = $isUpdate ? 'actualizado' : 'guardado';
+            json_success(null, "$tipo $accion exitosamente en el sistema.");
         } catch (Exception $e) {
             json_error(get_friendly_error($e));
         }
@@ -184,12 +208,102 @@ class EquipmentController {
         $id = $input['id'] ?? 0;
         $table = $input['table_target'] ?? 'equipos';
         $sqlMap = ['equipos' => 'equipos_de_computo', 'impresoras' => 'impresoras_escaneres', 'monitores' => 'monitores', 'otros' => 'otros', 'telefonos' => 'telefonos', 'funcionarios' => 'funcionarios', 'areas' => 'areas', 'marcas' => 'marcas', 'tipos' => 'tipos', 'configuraciones' => 'configuraciones'];
-        if (!isset($sqlMap[$table])) json_error('Tabla no válida');
+        if (!isset($sqlMap[$table])) json_error('Tipo de tabla no válido: ' . htmlspecialchars($table) . '. Por favor seleccione una opción válida.');
+
+        $nombre_legible = ['equipos' => 'Equipo', 'impresoras' => 'Impresora/Escáner', 'monitores' => 'Monitor', 'telefonos' => 'Teléfono', 'otros' => 'Artículo', 'funcionarios' => 'Funcionario', 'areas' => 'Área', 'marcas' => 'Marca', 'tipos' => 'Tipo', 'configuraciones' => 'Configuración'];
+        $tipo = $nombre_legible[$table] ?? 'Registro';
+
         try {
+            // Los equipos de cómputo NO se eliminan físicamente — se marcan como De baja
+            // para preservar la hoja de vida y el historial. Usar el módulo de Bajas
+            // para registrar la baja formal con motivo.
+            if ($table === 'equipos') {
+                $this->pdo->beginTransaction();
+
+                // Obtener datos del equipo antes de la baja para el log
+                $eqStmt = $this->pdo->prepare("SELECT nombre_equipo, serial FROM equipos_de_computo WHERE id = ?");
+                $eqStmt->execute([$id]);
+                $eqInfo = $eqStmt->fetch();
+                $nombre_eq = $eqInfo ? $eqInfo['nombre_equipo'] : 'ID ' . $id;
+                $serial_eq = $eqInfo ? $eqInfo['serial'] : 'Desconocido';
+
+                // Soft-delete: marcar como De baja y desvincular funcionario
+                $this->pdo->prepare(
+                    "UPDATE equipos_de_computo SET estado='De baja', fecha_baja=CURDATE(), id_usuario=NULL WHERE id=?"
+                )->execute([$id]);
+
+                // Desvincular periféricos
+                $this->pdo->prepare("UPDATE monitores SET id_equipo=NULL WHERE id_equipo=?")->execute([$id]);
+                $this->pdo->prepare("UPDATE impresoras_escaneres SET id_equipo=NULL WHERE id_equipo=?")->execute([$id]);
+
+                // Liberar insumos asignados al equipo
+                $asignaciones = $this->pdo->prepare("SELECT id, id_articulo FROM asignaciones WHERE id_equipo=?");
+                $asignaciones->execute([$id]);
+                foreach ($asignaciones->fetchAll() as $asig) {
+                    $this->pdo->prepare(
+                        "UPDATE articulos SET cantidad_asignada = GREATEST(0, cantidad_asignada - 1),
+                                              cantidad_disponible = cantidad_disponible + 1
+                         WHERE id=?"
+                    )->execute([$asig['id_articulo']]);
+                }
+                $this->pdo->prepare("DELETE FROM asignaciones WHERE id_equipo=?")->execute([$id]);
+
+                // Registrar en historial_equipos
+                $this->pdo->prepare(
+                    "INSERT INTO historial_equipos (id_equipo, tipo_accion, fecha, usuario_id, observaciones)
+                     VALUES (?, 'Actualizacion de Datos', CURDATE(), ?, 'Equipo eliminado desde el inventario y dado de baja del sistema.')"
+                )->execute([$id, $_SESSION['user_id']]);
+
+                // Registrar log de auditoría
+                registrar_log($this->pdo, $_SESSION['user_id'], 'equipos', "Equipo dado de baja (Eliminado): $nombre_eq (Serial: $serial_eq)");
+
+                $this->pdo->commit();
+                json_success(null, 'Equipo dado de baja correctamente. La hoja de vida se conserva en el módulo de Mantenimientos para auditoría.');
+            }
+
+            // Para el resto de tablas: obtener info del registro antes de eliminar
+            $identificador = 'ID ' . $id;
+            try {
+                $dbTable = $sqlMap[$table];
+                $stmtDelInfo = $this->pdo->prepare("SELECT * FROM $dbTable WHERE id = ?");
+                $stmtDelInfo->execute([$id]);
+                $delInfo = $stmtDelInfo->fetch();
+                if ($delInfo) {
+                    if (isset($delInfo['nombre_equipo'])) {
+                        $identificador = $delInfo['nombre_equipo'] . " (Serial: " . ($delInfo['serial'] ?? '') . ")";
+                    } elseif (isset($delInfo['serial'])) {
+                        $identificador = "Serial: " . $delInfo['serial'];
+                    } elseif (isset($delInfo['nombre_area'])) {
+                        $identificador = $delInfo['nombre_area'];
+                    } elseif (isset($delInfo['nombre_marca'])) {
+                        $identificador = $delInfo['nombre_marca'];
+                    } elseif (isset($delInfo['tipo'])) {
+                        $identificador = $delInfo['tipo'];
+                    } elseif (isset($delInfo['ram_rom'])) {
+                        $identificador = $delInfo['ram_rom'];
+                    } elseif (isset($delInfo['nombre']) && isset($delInfo['apellido'])) {
+                        $identificador = $delInfo['nombre'] . ' ' . $delInfo['apellido'];
+                    } elseif (isset($delInfo['nombre'])) {
+                        $identificador = $delInfo['nombre'];
+                    }
+                }
+            } catch (Exception $e) {
+                // fall back to default
+            }
+
+            // Para el resto de tablas: eliminación física normal
             $this->pdo->prepare("DELETE FROM {$sqlMap[$table]} WHERE id = ?")->execute([$id]);
-            json_success(null, 'Registro eliminado correctamente');
+
+            // Registrar log de auditoría
+            registrar_log($this->pdo, $_SESSION['user_id'], $table, "$tipo eliminado: $identificador");
+
+            json_success(null, 'Registro eliminado correctamente del sistema.');
         } catch (PDOException $e) {
-            if ($e->getCode() == '23000') json_error('No se puede eliminar: Este registro está en uso en otros módulos.');
+            if (isset($this->pdo) && $this->pdo->inTransaction()) $this->pdo->rollBack();
+            if ($e->getCode() == '23000') json_error('No se puede eliminar este registro porque está siendo utilizado en otros módulos del sistema. Elimine o modifique los registros relacionados primero.');
+            json_error(get_friendly_error($e));
+        } catch (Exception $e) {
+            if (isset($this->pdo) && $this->pdo->inTransaction()) $this->pdo->rollBack();
             json_error(get_friendly_error($e));
         }
     }
@@ -202,14 +316,14 @@ class EquipmentController {
                 $params = [$serial];
                 if ($id) { $sql .= " AND id != ?"; $params[] = $id; }
                 $stmt = $this->pdo->prepare($sql); $stmt->execute($params);
-                if ($stmt->fetch()) throw new Exception("El serial '$serial' ya se encuentra registrado.");
+                if ($stmt->fetch()) throw new Exception("El número de serial '$serial' ya está registrado en el sistema. Por favor verifique el serial e intente con uno diferente.");
             }
         } elseif ($table === 'funcionarios') {
             $sql = "SELECT id FROM $dbTable WHERE nombre = ? AND apellido = ?";
             $params = [sanitize_input($input['nombre'] ?? '', 'string', 100), sanitize_input($input['apellido'] ?? '', 'string', 100)];
             if ($id) { $sql .= " AND id != ?"; $params[] = $id; }
             $stmt = $this->pdo->prepare($sql); $stmt->execute($params);
-            if ($stmt->fetch()) throw new Exception("El funcionario ya se encuentra registrado.");
+            if ($stmt->fetch()) throw new Exception("El funcionario con nombre '{$input['nombre']} {$input['apellido']}' ya está registrado en el sistema.");
         }
     }
 }

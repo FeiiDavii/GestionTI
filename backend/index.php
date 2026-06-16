@@ -153,6 +153,7 @@ $routes = [
     '/aux/marcas'             => ['AuxiliaryController', 'marcas'],
     '/aux/tipos'              => ['AuxiliaryController', 'tipos'],
     '/aux/configuraciones'    => ['AuxiliaryController', 'configuraciones'],
+    '/aux/hardware-configs'   => ['AuxiliaryController', 'hardwareConfigs'],
     '/aux/funcionarios'       => ['AuxiliaryController', 'funcionarios'],
     '/aux/save'               => ['AuxiliaryController', 'save'],
     '/aux/users'              => ['AuxiliaryController', 'users'],

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { ticketAPI, notificationAPI } from '../api/client';
 import Swal from 'sweetalert2';
 import { showToast } from '../core/toast';
-import { FaEye, FaStar, FaRegStar, FaPaperPlane, FaSearch, FaPlus, FaTimes, FaHeadset, FaUserTie, FaCheck, FaUndo, FaComments, FaHistory, FaPaperclip, FaFileAlt, FaCheckCircle, FaInfoCircle, FaCloudUploadAlt, FaSpinner, FaUserCheck, FaUser } from 'react-icons/fa';
+import { FaEye, FaStar, FaRegStar, FaPaperPlane, FaSearch, FaPlus, FaTimes, FaHeadset, FaUserTie, FaCheck, FaUndo, FaComments, FaHistory, FaPaperclip, FaFileAlt, FaCheckCircle, FaInfoCircle, FaCloudUploadAlt, FaSpinner, FaUserCheck, FaUser, FaDownload, FaFileWord, FaFileExcel, FaFilePdf, FaFile, FaMusic } from 'react-icons/fa';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -108,9 +108,14 @@ function PaginationBar({ currentPage, totalPages, total, pageSize, onPageChange 
 const STARS = [1, 2, 3, 4, 5];
 
 export default function Tickets() {
-  const { user, permisos } = useAuth();
+  const { user, permisos, hasPermission } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const isTech = !!permisos?.tk_responder;
+  const canCreate = hasPermission('tk_crear');
+  const canReply = hasPermission('tk_responder');
+  const canClose = hasPermission('tk_close');
+  const canEscalate = hasPermission('tk_escalate');
+  const canViewGlobal = hasPermission('tk_ver_global');
 
   // State
   const [tickets, setTickets] = useState([]);
@@ -130,7 +135,7 @@ export default function Tickets() {
   const [createFileName, setCreateFileName] = useState('Ningún archivo seleccionado');
   const [autoAsignar, setAutoAsignar] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [canCreate, setCanCreate] = useState(true);
+  const [canCreateTicket, setCanCreateTicket] = useState(true);
   const [blockReason, setBlockReason] = useState('');
 
   // View modal
@@ -184,7 +189,7 @@ export default function Tickets() {
             break;
           }
         }
-        setCanCreate(!block);
+        setCanCreateTicket(!block && canCreate);
         setBlockReason(reason);
       } else {
         setTickets([]);
@@ -274,6 +279,10 @@ export default function Tickets() {
 
   const openCreateModal = () => {
     if (!canCreate) {
+      showToast('No tienes permisos para crear tickets.', 'warning');
+      return;
+    }
+    if (!canCreateTicket) {
       showToast(`No puedes crear un nuevo ticket. ${blockReason}.`, 'warning');
       return;
     }
@@ -305,12 +314,13 @@ export default function Tickets() {
       if (res.data?.success) {
         setShowCreateModal(false);
         await loadTickets();
-        showToast('Ticket creado exitosamente', 'success');
+        showToast(res.data.message || 'Ticket creado exitosamente', 'success');
       } else {
         showToast(res.data?.message || 'Error al crear el ticket', 'error');
       }
     } catch (err) {
-      showToast('Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al crear el ticket';
+      showToast(errorMessage, 'error');
     } finally {
       setCreating(false);
     }
@@ -356,12 +366,13 @@ export default function Tickets() {
           setShowWizard(false);
         }
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al cargar el ticket', 'error');
         setShowViewModal(false);
       }
     } catch (err) {
       console.error('Error viewing ticket:', err);
-      showToast('Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al cargar el ticket';
+      showToast(errorMessage, 'error');
       setShowViewModal(false);
     } finally {
       setLoadingDetail(false);
@@ -390,11 +401,13 @@ export default function Tickets() {
           setChatHistory(detailRes.data.history || []);
           setTimelineData(detailRes.data.timeline || []);
         }
+        showToast(res.data.message || 'Mensaje enviado exitosamente', 'success');
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al enviar el mensaje', 'error');
       }
     } catch (err) {
-      showToast('Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al enviar el mensaje';
+      showToast(errorMessage, 'error');
     } finally {
       setSendingReply(false);
     }
@@ -433,14 +446,15 @@ export default function Tickets() {
         feedback: rateFeedback,
       });
       if (res.data?.success) {
-        showToast('¡Gracias por tu calificación!', 'success');
+        showToast(res.data.message || '¡Gracias por tu calificación!', 'success');
         await viewTicketDetail(viewTicket.id);
         await loadTickets();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al enviar la calificación', 'error');
       }
     } catch (err) {
-      showToast('Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al enviar la calificación';
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -459,14 +473,15 @@ export default function Tickets() {
         motivo: reopenReason.trim(),
       });
       if (res.data?.success) {
-        showToast('Ticket reabierto exitosamente', 'success');
+        showToast(res.data.message || 'Ticket reabierto exitosamente', 'success');
         await viewTicketDetail(viewTicket.id);
         await loadTickets();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al reabrir el ticket', 'error');
       }
     } catch (err) {
-      showToast('Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al reabrir el ticket';
+      showToast(errorMessage, 'error');
     }
   };
 
@@ -547,29 +562,31 @@ export default function Tickets() {
                 }}
               />
             </div>
-            <button
-              className="btn-main"
-              onClick={openCreateModal}
-              style={{
-                background: canCreate ? 'var(--primary-color)' : 'var(--primary-color)',
-                color: 'white',
-                padding: '10px 25px',
-                borderRadius: '25px',
-                border: 'none',
-                cursor: canCreate ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                fontWeight: 600,
-                fontSize: '0.9rem',
-                transition: '0.2s',
-                boxShadow: '0 4px 10px rgba(78, 115, 223, 0.3)',
-                opacity: canCreate ? 1 : 0.5,
-              }}
-              title={!canCreate ? `Bloqueado: ${blockReason}` : 'Crear Nuevo Ticket'}
-            >
-              <FaPlus /> Nuevo Ticket
-            </button>
+            {canCreate && (
+              <button
+                className="btn-main"
+                onClick={openCreateModal}
+                style={{
+                  background: canCreateTicket ? 'var(--primary-color)' : '#888',
+                  color: 'white',
+                  padding: '10px 25px',
+                  borderRadius: '25px',
+                  border: 'none',
+                  cursor: canCreateTicket ? 'pointer' : 'not-allowed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  transition: '0.2s',
+                  boxShadow: '0 4px 10px rgba(78, 115, 223, 0.3)',
+                  opacity: canCreateTicket ? 1 : 0.5,
+                }}
+                title={!canCreateTicket ? `Bloqueado: ${blockReason}` : 'Crear Nuevo Ticket'}
+              >
+                <FaPlus /> Nuevo Ticket
+              </button>
+            )}
           </div>
         </div>
 
@@ -578,79 +595,52 @@ export default function Tickets() {
           <table className="data-table" style={{
             width: '100%',
             borderCollapse: 'collapse',
+            tableLayout: 'fixed',
           }}>
             <thead>
               <tr>
+                {/* ID — 5% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '5%',
                 }}>ID</th>
+                {/* Asunto — 32% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '32%',
                 }}>Asunto</th>
+                {/* Prioridad — 10% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '10%',
                 }}>Prioridad</th>
+                {/* Estado — 11% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '11%',
                 }}>Estado</th>
+                {/* Técnico — 22% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '22%',
                 }}>Técnico</th>
+                {/* Fecha — 14% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'left',
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'left', width: '14%',
                 }}>Fecha</th>
+                {/* Ver — 6% */}
                 <th style={{
-                  background: 'var(--input-bg)',
-                  color: 'var(--gray-text)',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  fontSize: '0.75rem',
-                  padding: '15px 25px',
-                  borderBottom: '2px solid var(--border-color)',
-                  textAlign: 'center',
-                }} className="text-center">Ver</th>
+                  background: 'var(--input-bg)', color: 'var(--gray-text)', fontWeight: 700,
+                  textTransform: 'uppercase', fontSize: '0.75rem', padding: '12px 16px',
+                  borderBottom: '2px solid var(--border-color)', textAlign: 'center', width: '6%',
+                }}>Ver</th>
               </tr>
             </thead>
             <tbody id="ticketsTableBody">
@@ -697,29 +687,69 @@ export default function Tickets() {
                     onMouseEnter={(e) => e.currentTarget.style.background = 'var(--hover-bg)'}
                     onMouseLeave={(e) => e.currentTarget.style.background = ''}
                   >
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', fontWeight: 700, color: 'var(--primary-color)' }}>
+                    {/* ID */}
+                    <td style={{ padding: '13px 16px', borderBottom: '1px solid var(--border-color)', fontWeight: 700, color: 'var(--primary-color)', fontSize: '0.9rem' }}>
                       #{t.id}
                     </td>
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', fontWeight: 500, color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                    {/* Asunto — truncado con tooltip */}
+                    <td style={{
+                      padding: '13px 16px',
+                      borderBottom: '1px solid var(--border-color)',
+                      fontWeight: 500,
+                      color: 'var(--text-color)',
+                      fontSize: '0.9rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }} title={t.titulo}>
                       {t.titulo}
                     </td>
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', fontSize: '0.9rem', ...priorityStyle }}>
+                    {/* Prioridad */}
+                    <td style={{
+                      padding: '13px 16px',
+                      borderBottom: '1px solid var(--border-color)',
+                      fontSize: '0.9rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      ...priorityStyle
+                    }}>
                       {t.prioridad}
                     </td>
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                    {/* Estado */}
+                    <td style={{ padding: '13px 16px', borderBottom: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
                       <span className={`status-badge ${badgeClass}`}>{t.estado}</span>
                     </td>
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', color: 'var(--text-color)', fontSize: '0.9rem' }}>
+                    {/* Técnico — truncado con tooltip */}
+                    <td style={{
+                      padding: '13px 16px',
+                      borderBottom: '1px solid var(--border-color)',
+                      fontSize: '0.9rem',
+                      color: 'var(--text-color)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }} title={t.tecnico_nombre || 'Pendiente'}>
                       {t.tecnico_nombre ? (
-                        <><FaUserTie style={{ color: '#4e73df', marginRight: '5px' }} /> {t.tecnico_nombre}</>
+                        <><FaUserTie style={{ color: '#4e73df', marginRight: '5px', flexShrink: 0 }} />{t.tecnico_nombre}</>
                       ) : (
                         <span style={{ color: '#ccc', fontStyle: 'italic' }}>Pendiente</span>
                       )}
                     </td>
-                    <td style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', color: '#777' }}>
+                    {/* Fecha */}
+                    <td style={{
+                      padding: '13px 16px',
+                      borderBottom: '1px solid var(--border-color)',
+                      fontSize: '0.82rem',
+                      color: 'var(--gray-text)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
                       {formatDate(t.fecha_creacion)}
                     </td>
-                    <td className="text-center" style={{ padding: '15px 25px', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
+                    {/* Ver */}
+                    <td style={{ padding: '13px 16px', borderBottom: '1px solid var(--border-color)', textAlign: 'center' }}>
                       <button
                         className="btn-icon-action"
                         style={{
@@ -879,7 +909,7 @@ export default function Tickets() {
               </div>
             </div>
 
-            {isTech && (
+            {canReply && (
               <div className="form-group" style={{ marginTop: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <label className="switch" style={{ margin: 0 }}>
@@ -896,7 +926,7 @@ export default function Tickets() {
                   </label>
                 </div>
                 <small style={{ color: 'var(--gray-text)', marginTop: '5px', display: 'block' }}>
-                  <FaInfoCircle style={{ marginRight: '4px' }} /> Si activas esta option, el ticket será asignado automáticamente a ti.
+                  <FaInfoCircle style={{ marginRight: '4px' }} /> Si activas esta opción, el ticket será asignado automáticamente a ti.
                 </small>
               </div>
             )}
@@ -1469,7 +1499,7 @@ export default function Tickets() {
                       </div>
 
                       {/* Chat Input */}
-                      {!showWizard && !existingRating && (
+                      {!showWizard && !existingRating && canReply && (canViewGlobal || viewTicket?.tecnico_id == user?.id) && (
                         <div id="chatInputWrapper" style={{
                           padding: '15px 20px',
                           borderTop: '1px solid var(--border-color)',
@@ -1651,141 +1681,161 @@ export default function Tickets() {
       </div>
 
       {/* ─── PREVIEW MODAL ────────────────────────────────────────────── */}
-      {showPreviewModal && previewFile && (
-        <div
-          className="modal-overlay active"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.85)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 30000,
-            backdropFilter: 'blur(5px)',
-          }}
-          onClick={() => setShowPreviewModal(false)}
-        >
+      {showPreviewModal && previewFile && (() => {
+        const fileUrl = `/api/uploads/tickets/${previewFile}`;
+        const ext = (previewFile.split('.').pop() || '').toLowerCase();
+        const isImage = /^(jpg|jpeg|png|gif|webp|svg|bmp|ico)$/.test(ext);
+        const isPdf   = ext === 'pdf';
+        const isText  = /^(txt|csv|json|xml|html|htm|md|log|yaml|yml|ini|cfg|sh|bat|py|js|ts|jsx|tsx|css|scss|sql)$/.test(ext);
+        const isVideo = /^(mp4|webm|ogg|mov|avi|mkv)$/.test(ext);
+        const isAudio = /^(mp3|wav|ogg|aac|flac|m4a)$/.test(ext);
+        const isDoc   = /^(doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)$/.test(ext);
+
+        const fileIconMap = {
+          docx: <FaFileWord style={{ fontSize: 48, color: '#2b579a' }} />,
+          doc:  <FaFileWord style={{ fontSize: 48, color: '#2b579a' }} />,
+          xlsx: <FaFileExcel style={{ fontSize: 48, color: '#217346' }} />,
+          xls:  <FaFileExcel style={{ fontSize: 48, color: '#217346' }} />,
+          pdf:  <FaFilePdf   style={{ fontSize: 48, color: '#e74c3c' }} />,
+        };
+        const FileIcon = fileIconMap[ext] || <FaFile style={{ fontSize: 48, color: 'var(--primary-color)' }} />;
+
+        return (
           <div
-            className="modal-content"
+            className="modal-overlay active"
             style={{
-              width: '800px',
-              maxWidth: '90vw',
-              height: '80vh',
-              background: 'var(--card-bg)',
-              borderRadius: '15px',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: 0,
+              position: 'fixed', top: 0, left: 0,
+              width: '100%', height: '100%',
+              background: 'rgba(0,0,0,0.85)',
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              zIndex: 30000, backdropFilter: 'blur(5px)',
             }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setShowPreviewModal(false)}
           >
-            {/* Header */}
             <div
+              className="modal-content"
               style={{
-                padding: '15px 25px',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--card-bg)',
+                width: '820px', maxWidth: '92vw', height: '88vh',
+                background: 'var(--card-bg)', borderRadius: '15px',
+                overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                padding: 0, boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FaEye style={{ color: 'var(--primary-color)' }} /> Vista Previa de Evidencia
-              </h3>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <a
-                  href={`/api/uploads/tickets/${previewFile}`}
-                  download
-                  className="btn-main"
-                  style={{
-                    padding: '6px 15px',
-                    borderRadius: '20px',
-                    background: 'var(--primary-color)',
-                    color: 'white',
-                    textDecoration: 'none',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <FaCloudUploadAlt /> Descargar
-                </a>
-                <button
-                  className="action-btn"
-                  onClick={() => setShowPreviewModal(false)}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: 'var(--input-bg)',
-                    color: 'var(--text-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <FaTimes />
-                </button>
+              {/* Header */}
+              <div style={{
+                padding: '15px 25px', borderBottom: '1px solid var(--border-color)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: 'var(--card-bg)', flexShrink: 0,
+              }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FaEye style={{ color: 'var(--primary-color)' }} /> Vista Previa
+                  <span style={{ fontSize: '0.8rem', color: 'var(--gray-text)', fontWeight: 400, marginLeft: 4 }}>
+                    — {previewFile}
+                  </span>
+                </h3>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <a
+                    href={fileUrl}
+                    download
+                    style={{
+                      padding: '7px 16px', borderRadius: 20,
+                      background: 'var(--primary-color)', color: 'white',
+                      textDecoration: 'none', fontSize: '0.82rem', fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <FaDownload /> Descargar
+                  </a>
+                  <button
+                    onClick={() => setShowPreviewModal(false)}
+                    style={{
+                      width: 32, height: 32, borderRadius: 8, border: 'none',
+                      cursor: 'pointer', background: 'var(--input-bg)',
+                      color: 'var(--text-color)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{
+                flexGrow: 1, display: 'flex', justifyContent: 'center',
+                alignItems: isImage || isVideo || isAudio ? 'center' : 'stretch',
+                background: isImage ? '#111' : 'var(--bg-color)',
+                overflow: 'hidden',
+              }}>
+                {isImage && (
+                  <img
+                    src={fileUrl} alt="Evidencia"
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.4)' }}
+                  />
+                )}
+                {(isPdf || isText) && (
+                  <iframe src={fileUrl} title="Vista previa" style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }} />
+                )}
+                {isVideo && (
+                  <video src={fileUrl} controls style={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 8 }} />
+                )}
+                {isAudio && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: 40 }}>
+                    <FaMusic style={{ fontSize: 64, color: 'var(--primary-color)', opacity: 0.7 }} />
+                    <p style={{ color: 'var(--text-color)', fontWeight: 600 }}>{previewFile}</p>
+                    <audio src={fileUrl} controls style={{ width: '100%', maxWidth: 400 }} />
+                  </div>
+                )}
+                {isDoc && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 20, padding: 40, textAlign: 'center' }}>
+                    {FileIcon}
+                    <div>
+                      <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-color)', margin: '0 0 8px' }}>{previewFile}</p>
+                      <p style={{ color: 'var(--gray-text)', fontSize: '0.88rem', margin: '0 0 20px' }}>
+                        Este tipo de archivo no puede previsualizarse directamente en el navegador.
+                      </p>
+                      <a
+                        href={fileUrl} download
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
+                          background: 'var(--primary-color)', color: '#fff',
+                          padding: '10px 24px', borderRadius: 25,
+                          textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
+                          boxShadow: '0 4px 12px rgba(78,115,223,0.35)',
+                        }}
+                      >
+                        <FaDownload /> Descargar archivo
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {!isImage && !isPdf && !isText && !isVideo && !isAudio && !isDoc && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40, textAlign: 'center' }}>
+                    <FaFileAlt style={{ fontSize: 56, color: 'var(--primary-color)', opacity: 0.7 }} />
+                    <p style={{ fontWeight: 700, color: 'var(--text-color)', margin: 0 }}>{previewFile}</p>
+                    <p style={{ color: 'var(--gray-text)', fontSize: '0.88rem', margin: 0 }}>
+                      Vista previa no disponible para este tipo de archivo.
+                    </p>
+                    <a
+                      href={fileUrl} download
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        background: 'var(--primary-color)', color: '#fff',
+                        padding: '10px 24px', borderRadius: 25,
+                        textDecoration: 'none', fontWeight: 600,
+                        boxShadow: '0 4px 12px rgba(78,115,223,0.35)',
+                      }}
+                    >
+                      <FaDownload /> Descargar
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Body */}
-            <div
-              style={{
-                flexGrow: 1,
-                padding: '25px',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                background: 'var(--bg-color)',
-                overflow: 'auto',
-              }}
-            >
-              {/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(previewFile) ? (
-                <img
-                  src={`/api/uploads/tickets/${previewFile}`}
-                  alt="Evidencia"
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                  }}
-                />
-              ) : /\.pdf$/i.test(previewFile) ? (
-                <iframe
-                  src={`/api/uploads/tickets/${previewFile}`}
-                  title="PDF Evidencia"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    border: 'none',
-                    borderRadius: '8px',
-                    background: 'white',
-                  }}
-                />
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-color)' }}>
-                  <FaFileAlt style={{ fontSize: '4rem', color: 'var(--gray-text)', marginBottom: '15px' }} />
-                  <p style={{ fontSize: '1rem', fontWeight: 600 }}>Este archivo no se puede previsualizar en el navegador</p>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--gray-text)' }}>Por favor, descárgalo usando el botón superior.</p>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 }

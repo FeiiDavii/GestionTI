@@ -51,9 +51,11 @@ class LicenseController {
             if ($id) {
                 $this->pdo->prepare("UPDATE licencias SET nombre_software=?, tipo_edicion=?, serial_key=?, id_area=?, id_equipo=? WHERE id=?")
                     ->execute([$software, $edicion, $serial, $area, $equipo, $id]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'licencias', "Licencia actualizada: $software $edicion (Serial: $serial)");
             } else {
                 $this->pdo->prepare("INSERT INTO licencias (nombre_software, tipo_edicion, serial_key, id_area, id_equipo) VALUES (?,?,?,?,?)")
                     ->execute([$software, $edicion, $serial, $area, $equipo]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'licencias', "Licencia creada: $software $edicion (Serial: $serial)");
             }
             json_success(null, 'Licencia guardada correctamente');
         } catch (Exception $e) {
@@ -65,7 +67,16 @@ class LicenseController {
         Auth::requireLogin();
         Permission::require('inv_eliminar');
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-        $this->pdo->prepare("DELETE FROM licencias WHERE id = ?")->execute([$input['id'] ?? 0]);
+        $id = $input['id'] ?? 0;
+
+        $licStmt = $this->pdo->prepare("SELECT nombre_software, serial_key FROM licencias WHERE id = ?");
+        $licStmt->execute([$id]);
+        $licInfo = $licStmt->fetch();
+        $licLabel = $licInfo ? $licInfo['nombre_software'] . " (Serial: " . $licInfo['serial_key'] . ")" : "ID " . $id;
+
+        $this->pdo->prepare("DELETE FROM licencias WHERE id = ?")->execute([$id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'licencias', "Licencia eliminada: $licLabel");
+
         json_success(null, 'Licencia eliminada');
     }
 }

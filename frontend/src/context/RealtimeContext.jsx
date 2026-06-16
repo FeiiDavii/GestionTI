@@ -135,7 +135,7 @@ export function RealtimeProvider({ children }) {
 
     // 6. Cierre de sesión forzado
     if (data.force_logout === true) {
-      logoutRef.current();
+      logoutRef.current(data.force_logout_reason || 1);
     }
   }, [playSound]); // logout via ref — no necesita ser dependencia
 

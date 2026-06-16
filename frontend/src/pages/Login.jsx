@@ -18,6 +18,43 @@ export default function Login() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   React.useEffect(() => {
+    // Mapeo de códigos de motivo a mensajes de alerta
+    const REASON_MESSAGES = {
+      1: {
+        title: 'Sesión Finalizada',
+        text: 'El administrador ha cerrado tu sesión de forma remota.',
+        icon: 'warning',
+        iconColor: '#f6c23e',
+      },
+      2: {
+        title: 'Cuenta Desactivada',
+        text: 'Tu cuenta ha sido desactivada por un administrador. Comunícate con el soporte si crees que es un error.',
+        icon: 'error',
+        iconColor: '#e74a3b',
+      },
+      3: {
+        title: 'Permisos Actualizados',
+        text: 'Tus permisos o rol han sido modificados. Por favor, inicia sesión nuevamente para aplicar los cambios.',
+        icon: 'info',
+        iconColor: '#4a6cf7',
+      },
+    };
+
+    const reasonCode = parseInt(searchParams.get('reason'), 10);
+    if (reasonCode && REASON_MESSAGES[reasonCode]) {
+      const { title, text, icon, iconColor } = REASON_MESSAGES[reasonCode];
+      Swal.fire({
+        icon,
+        iconColor,
+        title,
+        text,
+        confirmButtonColor: '#4a6cf7',
+        confirmButtonText: 'Entendido',
+      });
+      return;
+    }
+
+    // Compatibilidad con parámetro legacy ?error=
     const error = searchParams.get('error');
     if (error) {
       let msg = 'Credenciales incorrectas';
@@ -44,7 +81,8 @@ export default function Login() {
         navigate(res.redirect || '/dashboard');
       }
     } catch (err) {
-      showToast(err.message || 'Credenciales incorrectas', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error al intentar iniciar sesión';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }
@@ -56,14 +94,15 @@ export default function Login() {
     try {
       const res = await authAPI.recovery(recoveryUsername);
       if (res.data.success) {
-        showToast(res.data.message || 'Revisa tu correo', 'success');
+        showToast(res.data.message || 'Solicitud enviada correctamente', 'success');
         setShowRecovery(false);
         setRecoveryUsername('');
       } else {
-        showToast(res.data.message || 'No se pudo procesar', 'warning');
+        showToast(res.data.message || 'No se pudo procesar la solicitud', 'warning');
       }
-    } catch {
-      showToast('Error de conexión', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al servidor';
+      showToast(errorMessage, 'error');
     } finally {
       setRecoveryLoading(false);
     }
@@ -102,9 +141,6 @@ export default function Login() {
             </div>
 
             <div className="form-actions">
-              <label className="flex items-center gap-1.5">
-                <input type="checkbox" /> Recordarme
-              </label>
               <a href="#" className="forgot-pass"
                 onClick={(e) => { e.preventDefault(); setShowRecovery(true); }}>
                 ¿Olvidaste tu contraseña?
@@ -148,28 +184,31 @@ export default function Login() {
 
       {showRecovery && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowRecovery(false)}>
-          <div className="modal-content" style={{ width: '450px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px' }}>
+          <div className="modal-content" style={{ width: '480px' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-key" style={{ color: 'var(--primary-color)' }}></i> Recuperar Acceso
               </h3>
               <button className="action-btn" onClick={() => setShowRecovery(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '20px', lineHeight: 1.5 }}>
-              Ingresa tu nombre de usuario. El sistema enviará una notificación automática a los administradores.
-            </p>
             <form onSubmit={handleRecovery}>
-              <div className="form-group">
-                <label>Nombre de Usuario</label>
-                <input type="text" className="form-control" value={recoveryUsername}
-                  onChange={(e) => setRecoveryUsername(e.target.value)}
-                  placeholder="Ej: jperez" required minLength={3} />
+              <div className="modal-body">
+                <p style={{ fontSize: '13px', color: 'var(--gray-text)', marginBottom: '20px', lineHeight: 1.5 }}>
+                  Ingresa tu nombre de usuario. El sistema enviará una notificación automática a los administradores.
+                </p>
+                <div className="form-group">
+                  <label>Nombre de Usuario</label>
+                  <input type="text" className="form-control" value={recoveryUsername}
+                    onChange={(e) => setRecoveryUsername(e.target.value)}
+                    placeholder="Ej: jperez" required minLength={3} />
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <button type="button" className="action-btn" onClick={() => setShowRecovery(false)}
-                  style={{ marginRight: '5px' }}>Cancelar</button>
+              <div className="modal-footer">
+                <button type="button" className="action-btn" onClick={() => setShowRecovery(false)}>
+                  Cancelar
+                </button>
                 <button type="submit" className="btn-save" disabled={recoveryLoading}>
                   <i className="fa-solid fa-paper-plane"></i> {recoveryLoading ? 'Enviando...' : 'Notificar'}
                 </button>

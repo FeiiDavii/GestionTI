@@ -61,7 +61,7 @@ class ReportController {
                             LEFT JOIN tipos tp       ON e.id_tipo  = tp.id
                             LEFT JOIN configuraciones c ON e.id_configuracion = c.id
                             LEFT JOIN funcionarios f ON e.id_usuario = f.id
-                            WHERE 1=1";
+                            WHERE e.estado != 'De baja'";
                     $params = [];
 
                     if (!empty($filters['search'])) {
@@ -82,7 +82,7 @@ class ReportController {
                         $sql .= " AND e.nivel_clasificacion = ?"; $params[] = $filters['clasificacion'];
                     }
 
-                    $total = $this->doCount("SELECT COUNT(*) FROM equipos_de_computo e WHERE 1=1", $filters, 'equipos');
+                    $total = $this->doCount("SELECT COUNT(*) FROM equipos_de_computo e WHERE e.estado != 'De baja'", $filters, 'equipos');
                     $sql .= " ORDER BY e.id DESC LIMIT $limit OFFSET $offset";
                     $stmt = $this->pdo->prepare($sql); $stmt->execute($params); $data = $stmt->fetchAll();
                     break;

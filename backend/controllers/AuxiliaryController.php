@@ -34,6 +34,11 @@ class AuxiliaryController {
             'backupSize'    => '—',
         ]);
     }
+
+    public function hardwareConfigs() {
+        Auth::requireLogin();
+        json_success($this->pdo->query("SELECT * FROM configuraciones ORDER BY ram_rom")->fetchAll());
+    }
     public function funcionarios() {
         Auth::requireLogin();
         json_success($this->pdo->query("SELECT f.id, f.nombre, f.apellido, f.celular, f.id_area, a.nombre_area FROM funcionarios f LEFT JOIN areas a ON f.id_area=a.id ORDER BY f.nombre")->fetchAll());
@@ -93,14 +98,16 @@ class AuxiliaryController {
                         ->execute([$nombre, $username, $rol, $id_funcionario, $user_id]);
                 }
                 if (isset($old_rol) && $old_rol != $rol) {
-                    $this->pdo->prepare("UPDATE usuarios SET force_logout=1 WHERE id=?")->execute([$user_id]);
+                    $this->pdo->prepare("UPDATE usuarios SET force_logout=3 WHERE id=?")->execute([$user_id]);
                 }
+                registrar_log($this->pdo, $_SESSION['user_id'], 'usuarios', "Usuario actualizado: $username ($nombre, Rol ID: $rol, ID: $user_id)");
                 json_success(null, 'Usuario actualizado exitosamente');
             } else {
                 if (!$password || strlen($password) < 6) json_error('La contraseña debe tener al menos 6 caracteres.');
                 $hash = password_hash($password, PASSWORD_DEFAULT);
                 $this->pdo->prepare("INSERT INTO usuarios (nombre_completo, username, password, id_rol, id_funcionario, estado) VALUES (?,?,?,?,?,1)")
                     ->execute([$nombre, $username, $hash, $rol, $id_funcionario]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'usuarios', "Usuario creado: $username ($nombre, Rol ID: $rol)");
                 json_success(null, 'Usuario creado exitosamente');
             }
         } catch (Exception $e) {
@@ -122,11 +129,10 @@ class AuxiliaryController {
             $stmt->execute([$id]);
             $nuevo = $stmt->fetchColumn() ? 0 : 1;
         }
-        $this->pdo->prepare("UPDATE usuarios SET estado=? WHERE id=?")->execute([$nuevo, $id]);
-        // Si se desactiva, forzar cierre de sesión inmediato
-        if (!$nuevo) {
-            $this->pdo->prepare("UPDATE usuarios SET force_logout=1 WHERE id=?")->execute([$id]);
-        }
+        $uName = $this->pdo->query("SELECT username FROM usuarios WHERE id = " . (int)$id)->fetchColumn();
+        $force_logout = !$nuevo ? 2 : 0; // 2 = cuenta desactivada
+        $this->pdo->prepare("UPDATE usuarios SET estado = ?, force_logout = ? WHERE id = ?")->execute([$nuevo, $force_logout, $id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'usuarios', "Estado del usuario $uName (ID: $id) cambiado a: " . ($nuevo ? 'Activo' : 'Inactivo'));
         json_success(['estado' => $nuevo], $nuevo ? 'Usuario activado' : 'Usuario desactivado');
     }
 
@@ -135,7 +141,9 @@ class AuxiliaryController {
         Permission::require('usr_gestionar');
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
         $id = $input['id'] ?? 0;
+        $uName = $this->pdo->query("SELECT username FROM usuarios WHERE id = " . (int)$id)->fetchColumn();
         $this->pdo->prepare("UPDATE usuarios SET force_logout=1 WHERE id=?")->execute([$id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'usuarios', "Forzado cierre de sesión para el usuario: $uName (ID: $id)");
         json_success(null, 'Sesión forzada a cerrar');
     }
 
@@ -210,32 +218,37 @@ class AuxiliaryController {
                     if ($dup->fetch()) json_error("La marca '$nombre' ya existe.");
                     $this->pdo->prepare("INSERT INTO marcas (nombre_marca) VALUES (?)")->execute([$nombre]);
                     $id = $this->pdo->lastInsertId();
+                    registrar_log($this->pdo, $_SESSION['user_id'], 'marcas', "Marca creada: $nombre");
                     json_success(['id' => $id, 'name' => $nombre], 'Marca creada');
                     break;
                 case 'area':
                     $codigo = sanitize_input($input['codigo_area'] ?? '', 'string', 50);
                     $this->pdo->prepare("INSERT INTO areas (nombre_area, codigo_area) VALUES (?,?)")->execute([$nombre, $codigo]);
                     $id = $this->pdo->lastInsertId();
+                    registrar_log($this->pdo, $_SESSION['user_id'], 'areas', "Área creada: $nombre ($codigo)");
                     json_success(['id' => $id, 'name' => $nombre], 'Área creada');
                     break;
                 case 'tipo':
                     $this->pdo->prepare("INSERT INTO tipos (tipo) VALUES (?)")->execute([$nombre]);
                     $id = $this->pdo->lastInsertId();
+                    registrar_log($this->pdo, $_SESSION['user_id'], 'tipos', "Tipo de equipo creado: $nombre");
                     json_success(['id' => $id, 'name' => $nombre], 'Tipo creado');
                     break;
                 case 'configuracion':
                     $desc = sanitize_input($input['descripcion'] ?? '', 'string', 255);
                     $this->pdo->prepare("INSERT INTO configuraciones (ram_rom, descripcion) VALUES (?,?)")->execute([$nombre, $desc]);
                     $id = $this->pdo->lastInsertId();
+                    registrar_log($this->pdo, $_SESSION['user_id'], 'configuraciones', "Configuración de hardware creada: $nombre ($desc)");
                     json_success(['id' => $id, 'name' => $nombre], 'Configuración creada');
                     break;
                 case 'funcionario':
                     $apellido = sanitize_input($input['apellido'] ?? '', 'string', 100);
                     $celular = sanitize_input($input['celular'] ?? '', 'string', 50);
                     $id_area = !empty($input['id_area']) ? (int)$input['id_area'] : null;
-                    $this->pdo->prepare("INSERT INTO funcionarios (nombre, apellido, celular, id_area) VALUES (?,?,?,?)")
+                    $this->pdo->prepare("INSERT INTO funcionarios (nombre, apellido, cellular, id_area) VALUES (?,?,?,?)")
                         ->execute([$nombre, $apellido, $celular, $id_area]);
                     $id = $this->pdo->lastInsertId();
+                    registrar_log($this->pdo, $_SESSION['user_id'], 'funcionarios', "Funcionario creado: $nombre $apellido");
                     json_success(['id' => $id, 'name' => "$nombre $apellido"], 'Funcionario creado');
                     break;
                 case 'backup_bd':

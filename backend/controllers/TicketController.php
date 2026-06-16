@@ -41,15 +41,31 @@ class TicketController {
     public function allTickets() {
         Auth::requireLogin();
         Auth::checkForceLogout($this->pdo);
-        Permission::requireAny(['tk_ver_global','tk_responder']);
+        Permission::requireAny(['tk_ver_global','tk_responder','tk_asignar_otros']);
         $this->actualizarSLAsVencidos();
-        $tickets = $this->pdo->query(
-            "SELECT t.*, u.nombre_completo as solicitante, tec.nombre_completo as tecnico_nombre
-             FROM tickets t
-             LEFT JOIN usuarios u ON t.usuario_id=u.id
-             LEFT JOIN usuarios tec ON t.tecnico_id=tec.id
-             ORDER BY t.id DESC"
-        )->fetchAll();
+        
+        // Si solo tiene permiso para asignar a otros, mostrar solo tickets asignados a él
+        if (!Permission::has('tk_ver_global') && !Permission::has('tk_responder') && Permission::has('tk_asignar_otros')) {
+            $tickets = $this->pdo->prepare(
+                "SELECT t.*, u.nombre_completo as solicitante, tec.nombre_completo as tecnico_nombre
+                 FROM tickets t
+                 LEFT JOIN usuarios u ON t.usuario_id=u.id
+                 LEFT JOIN usuarios tec ON t.tecnico_id=tec.id
+                 WHERE t.tecnico_id=? OR t.tecnico_id IS NULL
+                 ORDER BY t.id DESC"
+            );
+            $tickets->execute([$_SESSION['user_id']]);
+            $tickets = $tickets->fetchAll();
+        } else {
+            $tickets = $this->pdo->query(
+                "SELECT t.*, u.nombre_completo as solicitante, tec.nombre_completo as tecnico_nombre
+                 FROM tickets t
+                 LEFT JOIN usuarios u ON t.usuario_id=u.id
+                 LEFT JOIN usuarios tec ON t.tecnico_id=tec.id
+                 ORDER BY t.id DESC"
+            )->fetchAll();
+        }
+        
         $tecnicos = $this->pdo->query(
             "SELECT u.id, u.nombre_completo FROM usuarios u
              INNER JOIN roles r ON u.id_rol=r.id
@@ -63,6 +79,8 @@ class TicketController {
         Auth::requireLogin();
         $this->actualizarSLAsVencidos();
         $id = $_GET['id'] ?? 0;
+        if (empty($id) || !is_numeric($id)) json_error('ID de ticket inválido. Por favor proporcione un ID válido.', 400);
+        
         $stmt = $this->pdo->prepare(
             "SELECT t.*, u.nombre_completo as solicitante, tec.nombre_completo as tecnico_nombre
              FROM tickets t
@@ -72,10 +90,10 @@ class TicketController {
         );
         $stmt->execute([$id]);
         $ticket = $stmt->fetch();
-        if (!$ticket) json_error('Ticket no encontrado', 404);
+        if (!$ticket) json_error('El ticket solicitado no existe o fue eliminado del sistema.', 404);
 
         if (!Permission::has('tk_responder') && !Permission::has('tk_ver_global') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para ver este ticket', 403);
+            json_error('No tienes permiso para ver este ticket. Solo puedes ver tus propios tickets o necesitas permisos de administrador.', 403);
         }
 
         $chat = $this->pdo->prepare(
@@ -105,7 +123,8 @@ class TicketController {
 
         $input       = json_decode(file_get_contents('php://input'), true) ?: $_POST;
         $descripcion = trim($input['descripcion'] ?? '');
-        if (strlen($descripcion) < 10) json_error('La descripción debe tener al menos 10 caracteres');
+        if (empty($descripcion)) json_error('Por favor ingrese una descripción detallada del problema o solicitud.', 400);
+        if (strlen($descripcion) < 10) json_error('La descripción es muy corta. Por favor proporcione más detalles (mínimo 10 caracteres) para que podamos ayudarle mejor.', 400);
 
         $prioridad = $this->detectPriority($descripcion);
         $titulo    = mb_substr($descripcion, 0, 100);
@@ -122,20 +141,14 @@ class TicketController {
             }
         }
 
-        // Auto-asignar al técnico con menor carga
+        // Por defecto, los tickets se crean sin asignar
         $autoAsignar = !empty($input['auto_asignar']) ? (int)$input['auto_asignar'] : 0;
         $tecnico_id  = null;
+        // Solo se autoasigna si el usuario explícitamente marca la opción y tiene permiso
         if ($autoAsignar && Permission::has('tk_responder')) {
             $tecnico_id = $_SESSION['user_id'];
-        } else {
-            $tec = $this->pdo->query(
-                "SELECT u.id,
-                        (SELECT COUNT(*) FROM tickets WHERE tecnico_id=u.id AND estado IN ('Abierto','En Proceso')) as carga
-                 FROM usuarios u INNER JOIN roles r ON u.id_rol=r.id
-                 WHERE r.tk_responder=1 AND u.estado=1 ORDER BY carga ASC LIMIT 1"
-            )->fetch();
-            if ($tec) $tecnico_id = $tec['id'];
         }
+        // No se asigna automáticamente al técnico con menor carga por defecto
 
         try {
             $this->pdo->beginTransaction();
@@ -181,7 +194,7 @@ class TicketController {
             }
 
             $this->pdo->commit();
-            json_success(['id' => $ticketId], 'Ticket creado exitosamente');
+            json_success(['id' => $ticketId], 'Ticket #' . $ticketId . ' creado exitosamente. Un técnico será asignado y recibirá notificación de su solicitud.');
         } catch (Exception $e) {
             $this->pdo->rollBack();
             json_error(get_friendly_error($e));
@@ -195,17 +208,18 @@ class TicketController {
         $mensaje   = trim($input['mensaje'] ?? '');
         $esTecnico = !empty($input['es_tecnico']) ? 1 : 0;
 
-        if (strlen($mensaje) < 6) json_error('El mensaje debe tener al menos 6 caracteres');
+        if (empty($mensaje)) json_error('Por favor ingrese un mensaje para responder al ticket.', 400);
+        if (strlen($mensaje) < 6) json_error('El mensaje es muy corto. Por favor proporcione más detalles (mínimo 6 caracteres).', 400);
 
         $stmt = $this->pdo->prepare("SELECT estado, tecnico_id, usuario_id FROM tickets WHERE id=?");
         $stmt->execute([$ticket_id]);
         $ticket = $stmt->fetch();
-        if (!$ticket) json_error('Ticket no encontrado');
-        if ($ticket['estado'] === 'Cerrado') json_error('El ticket está cerrado');
+        if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
+        if ($ticket['estado'] === 'Cerrado') json_error('Este ticket está cerrado. No se pueden agregar más respuestas. Si necesita ayuda adicional, por favor abra un nuevo ticket.', 400);
 
         // Permitir si es técnico con permiso OR si es el creador del ticket
         if (!Permission::has('tk_responder') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para responder a este ticket', 403);
+            json_error('No tienes permiso para responder a este ticket. Solo el creador del ticket o técnicos autorizados pueden responder.', 403);
         }
 
         try {
@@ -277,7 +291,7 @@ class TicketController {
                 }
             }
 
-            json_success(null, 'Mensaje enviado');
+            json_success(null, 'Respuesta enviada exitosamente. Las partes involucradas recibirán notificación.');
         } catch (Exception $e) {
             json_error(get_friendly_error($e));
         }
@@ -300,7 +314,7 @@ class TicketController {
         $stmt = $this->pdo->prepare("SELECT estado, tecnico_id, usuario_id FROM tickets WHERE id=?");
         $stmt->execute([$ticket_id]);
         $actual = $stmt->fetch();
-        if (!$actual) json_error('Ticket no encontrado');
+        if (!$actual) json_error('El ticket no existe o fue eliminado del sistema.', 404);
 
         $updates = []; $params = [];
         if ($estado)    { $updates[] = 'estado=?';    $params[] = $estado; }
@@ -359,7 +373,7 @@ class TicketController {
             }
         }
 
-        json_success(null, 'Ticket actualizado');
+        json_success(null, 'Ticket actualizado exitosamente. Las partes involucradas recibirán notificación de los cambios.');
     }
 
     public function escalate() {
@@ -370,18 +384,19 @@ class TicketController {
         $tecnico_id = (int)($input['tecnico_id'] ?? 0);
         $motivo    = trim($input['motivo'] ?? '');
 
-        if (!$tecnico_id) json_error('Debe seleccionar un técnico');
-        if (strlen($motivo) < 5) json_error('El motivo debe ser más descriptivo');
+        if (!$tecnico_id) json_error('Por favor seleccione un técnico para escalar el ticket.', 400);
+        if (empty($motivo)) json_error('Por favor ingrese un motivo para el escalamiento del ticket.', 400);
+        if (strlen($motivo) < 5) json_error('El motivo es muy corto. Por favor proporcione más detalles sobre por qué necesita escalar este ticket (mínimo 5 caracteres).', 400);
 
         $stmt = $this->pdo->prepare("SELECT tecnico_id, usuario_id FROM tickets WHERE id=?");
         $stmt->execute([$ticket_id]);
         $ticket = $stmt->fetch();
-        if (!$ticket) json_error('Ticket no encontrado');
+        if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
 
         $nombreTec = $this->pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id=?");
         $nombreTec->execute([$tecnico_id]);
         $nombre = $nombreTec->fetchColumn();
-        if (!$nombre) json_error('Técnico no encontrado');
+        if (!$nombre) json_error('El técnico seleccionado no existe o no está disponible en el sistema.', 404);
 
         $this->pdo->prepare("UPDATE tickets SET tecnico_id=?, estado='En Proceso' WHERE id=?")->execute([$tecnico_id, $ticket_id]);
 
@@ -412,7 +427,7 @@ class TicketController {
             $ticket_id
         );
 
-        json_success(null, 'Ticket escalado exitosamente');
+        json_success(null, 'Ticket escalado exitosamente al técnico ' . htmlspecialchars($nombre) . '. Ambas partes recibirán notificación.');
     }
 
     public function rate() {
@@ -435,7 +450,7 @@ class TicketController {
             "INSERT INTO acciones (tabla, descripcion, usuario_id) VALUES ('tickets', ?, ?)"
         )->execute(["Calificó y cerró ticket #$ticket_id", $_SESSION['user_id']]);
 
-        json_success(null, 'Gracias por tu calificación');
+        json_success(null, 'Gracias por su calificación. El ticket ha sido cerrado automáticamente.');
     }
 
     public function reopen() {
@@ -444,12 +459,13 @@ class TicketController {
         $ticket_id = (int)($input['ticket_id'] ?? 0);
         $motivo    = trim($input['motivo'] ?? '');
 
-        if (strlen($motivo) < 10) json_error('El motivo debe tener al menos 10 caracteres');
+        if (empty($motivo)) json_error('Por favor ingrese un motivo para reabrir el ticket.', 400);
+        if (strlen($motivo) < 10) json_error('El motivo es muy corto. Por favor proporcione más detalles sobre por qué necesita reabrir este ticket (mínimo 10 caracteres).', 400);
 
         $stmt = $this->pdo->prepare("SELECT tecnico_id FROM tickets WHERE id=? AND usuario_id=?");
         $stmt->execute([$ticket_id, $_SESSION['user_id']]);
         $ticket = $stmt->fetch();
-        if (!$ticket) json_error('Ticket no encontrado');
+        if (!$ticket) json_error('El ticket no existe o no tienes permiso para reabrirlo. Solo el creador puede reabrir sus propios tickets.', 404);
 
         $this->pdo->prepare(
             "UPDATE tickets SET estado='Abierto', fecha_cierre=NULL WHERE id=? AND usuario_id=?"
@@ -479,7 +495,7 @@ class TicketController {
             );
         }
 
-        json_success(null, 'Ticket reabierto');
+        json_success(null, 'Ticket reabierto exitosamente. El técnico asignado recibirá notificación y podrá continuar con el caso.');
     }
 
     public function timeline() {
@@ -489,10 +505,10 @@ class TicketController {
         $stmt = $this->pdo->prepare("SELECT usuario_id FROM tickets WHERE id=?");
         $stmt->execute([$id]);
         $ticket = $stmt->fetch();
-        if (!$ticket) json_error('Ticket no encontrado', 404);
+        if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
 
         if (!Permission::has('tk_responder') && !Permission::has('tk_ver_global') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para ver este timeline', 403);
+            json_error('No tienes permiso para ver el historial de este ticket. Solo el creador o técnicos autorizados pueden verlo.', 403);
         }
 
         $stmt = $this->pdo->prepare(

@@ -21,9 +21,15 @@ export function AuthProvider({ children }) {
         setUser(null);
         setPermisos({});
       }
-    } catch {
+    } catch (err) {
       setUser(null);
       setPermisos({});
+      // Si el servidor respondió con un reason (ej: force_logout activo), redirigir con motivo
+      const reason = err?.response?.data?.reason;
+      if (reason && window.location.pathname !== '/login') {
+        window.location.href = `/login?reason=${reason}`;
+        return;
+      }
     } finally {
       setLoading(false);
     }
@@ -43,13 +49,17 @@ export function AuthProvider({ children }) {
     throw new Error(res.data.message || 'Credenciales incorrectas');
   };
 
-  const logout = async () => {
+  const logout = async (reason = null) => {
     try {
       await authAPI.logout();
     } catch { /* ignore */ }
     setUser(null);
     setPermisos({});
-    window.location.href = '/login';
+    if (reason) {
+      window.location.href = `/login?reason=${reason}`;
+    } else {
+      window.location.href = '/login';
+    }
   };
 
   const esAdministrativo = () => {

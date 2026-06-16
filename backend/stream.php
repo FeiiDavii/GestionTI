@@ -191,8 +191,11 @@ while (true) {
         // E. FORCE LOGOUT
         $s = $pdo->prepare("SELECT force_logout FROM usuarios WHERE id = ?");
         $s->execute([$userId]);
-        if ((int)$s->fetchColumn() === 1) {
+        $reason = (int)$s->fetchColumn();
+        if ($reason > 0) {
+            $pdo->prepare("UPDATE usuarios SET force_logout = 0 WHERE id = ?")->execute([$userId]);
             $updates['force_logout'] = true;
+            $updates['force_logout_reason'] = $reason;
         }
 
         // F. ENVIAR AL CLIENTE

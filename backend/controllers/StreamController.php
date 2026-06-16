@@ -147,8 +147,11 @@ class StreamController {
                 // E. FORCE LOGOUT
                 $stmt = $pdo->prepare("SELECT force_logout FROM usuarios WHERE id = ?");
                 $stmt->execute([$userId]);
-                if ((int)$stmt->fetchColumn() === 1) {
+                $reason = (int)$stmt->fetchColumn();
+                if ($reason > 0) {
+                    $pdo->prepare("UPDATE usuarios SET force_logout = 0 WHERE id = ?")->execute([$userId]);
                     $updates['force_logout'] = true;
+                    $updates['force_logout_reason'] = $reason;
                 }
 
                 // F. ENVIAR AL CLIENTE

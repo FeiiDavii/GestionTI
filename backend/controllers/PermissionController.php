@@ -50,15 +50,17 @@ class PermissionController {
                 $values = array_values($permisos);
                 $this->pdo->prepare("UPDATE roles SET nombre_rol=?, descripcion=?, $sets WHERE id=?")
                     ->execute(array_merge([$nombre, $desc], $values, [$id]));
-                // Force logout users with this role
-                $this->pdo->prepare("UPDATE usuarios SET force_logout=1 WHERE id_rol=? AND id!=?")
+                // Force logout users with this role (reason code 3: permissions/role updated)
+                $this->pdo->prepare("UPDATE usuarios SET force_logout=3 WHERE id_rol=? AND id!=?")
                     ->execute([$id, $_SESSION['user_id']]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'roles', "Rol actualizado: $nombre (ID: $id)");
                 json_success(['forceLogout' => true], 'Rol actualizado exitosamente');
             } else {
                 $cols = implode(', ', array_keys($permisos));
                 $vals = implode(', ', array_fill(0, count($permisos), '?'));
                 $this->pdo->prepare("INSERT INTO roles (nombre_rol, descripcion, $cols) VALUES (?,?, $vals)")
                     ->execute(array_merge([$nombre, $desc], array_values($permisos)));
+                registrar_log($this->pdo, $_SESSION['user_id'], 'roles', "Rol creado: $nombre");
                 json_success(null, 'Rol creado exitosamente');
             }
         } catch (Exception $e) {
@@ -75,7 +77,9 @@ class PermissionController {
         $check = $this->pdo->prepare("SELECT COUNT(*) FROM usuarios WHERE id_rol=?");
         $check->execute([$id]);
         if ($check->fetchColumn() > 0) json_error('No se puede eliminar el rol porque tiene usuarios asignados.');
+        $rName = $this->pdo->query("SELECT nombre_rol FROM roles WHERE id = " . (int)$id)->fetchColumn();
         $this->pdo->prepare("DELETE FROM roles WHERE id=?")->execute([$id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'roles', "Rol eliminado: $rName (ID: $id)");
         json_success(null, 'Rol eliminado');
     }
 
@@ -100,11 +104,14 @@ class PermissionController {
             if ($id) {
                 $this->pdo->prepare("UPDATE sla_config SET tiempo_respuesta_minutos=?, tiempo_resolucion_minutos=?, activo=? WHERE id=?")
                     ->execute([$respuesta, $resolucion, $activo, $id]);
+                $slaName = $this->pdo->query("SELECT nombre FROM sla_config WHERE id = " . (int)$id)->fetchColumn();
+                registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "SLA actualizado: $slaName (Respuesta: " . ($respuesta/60) . "m, Resolución: " . ($resolucion/60) . "m)");
             } else {
                 $prioridad = $sla['prioridad'] ?? $sla['prioridad_ticket'] ?? 'Media';
                 $nombre    = $sla['nombre'] ?? 'SLA '.$prioridad;
                 $this->pdo->prepare("INSERT INTO sla_config (nombre, prioridad_ticket, tiempo_respuesta_minutos, tiempo_resolucion_minutos, activo) VALUES (?,?,?,?,?)")
                     ->execute([$nombre, $prioridad, $respuesta, $resolucion, $activo]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "SLA creado: $nombre (Respuesta: " . ($respuesta/60) . "m, Resolución: " . ($resolucion/60) . "m)");
             }
         }
         json_success(null, 'SLAs actualizados');
@@ -133,12 +140,14 @@ class PermissionController {
             if ($id) {
                 $this->pdo->prepare("UPDATE config_prioridades SET palabra_clave=?, prioridad_asignada=? WHERE id=?")
                     ->execute([$palabra, $prioridad, $id]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "Keyword SLA actualizada: '$palabra' -> Prioridad: $prioridad");
             } else {
                 $check = $this->pdo->prepare("SELECT id FROM config_prioridades WHERE palabra_clave=?");
                 $check->execute([$palabra]);
                 if ($check->fetch()) json_error("La palabra clave '$palabra' ya existe.");
                 $this->pdo->prepare("INSERT INTO config_prioridades (palabra_clave, prioridad_asignada) VALUES (?,?)")
                     ->execute([$palabra, $prioridad]);
+                registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "Keyword SLA creada: '$palabra' -> Prioridad: $prioridad");
             }
             json_success(null, 'Palabra clave guardada');
         } catch (Exception $e) {
@@ -150,7 +159,10 @@ class PermissionController {
         Auth::requireLogin();
         Permission::require('conf_sla');
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-        $this->pdo->prepare("DELETE FROM config_prioridades WHERE id=?")->execute([$input['id'] ?? 0]);
+        $id = $input['id'] ?? 0;
+        $palabra = $this->pdo->query("SELECT palabra_clave FROM config_prioridades WHERE id = " . (int)$id)->fetchColumn();
+        $this->pdo->prepare("DELETE FROM config_prioridades WHERE id=?")->execute([$id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "Keyword SLA eliminada: '$palabra' (ID: $id)");
         json_success(null, 'Palabra clave eliminada');
     }
 
@@ -170,6 +182,7 @@ class PermissionController {
         $stmt = $this->pdo->prepare("DELETE FROM acciones WHERE fecha < DATE_SUB(NOW(), INTERVAL 30 DAY)");
         $stmt->execute();
         $deleted = $stmt->rowCount();
+        registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "Limpieza de logs antiguos ejecutada (Registros eliminados: $deleted)");
         json_success(['deleted' => $deleted], "$deleted registros de log antiguos eliminados.");
     }
 
@@ -188,6 +201,7 @@ class PermissionController {
             $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 0");
             $this->pdo->exec($content);
             $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
+            registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "Restauración de base de datos ejecutada desde archivo SQL");
             json_success(null, 'Backup restaurado exitosamente. Todos los datos fueron reemplazados.');
         } catch (Exception $e) {
             $this->pdo->exec("SET FOREIGN_KEY_CHECKS = 1");
@@ -206,8 +220,10 @@ class PermissionController {
         if ($check->fetchColumn() > 0) {
             json_error('No puedes eliminar un SLA que está siendo utilizado en registros.');
         }
+        $slaName = $this->pdo->query("SELECT nombre FROM sla_config WHERE id = " . (int)$id)->fetchColumn();
         $stmt = $this->pdo->prepare("DELETE FROM sla_config WHERE id=?");
         $stmt->execute([$id]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'sistema', "SLA eliminado: $slaName (ID: $id)");
         json_success(null, 'SLA eliminado exitosamente');
     }
 }

@@ -6,10 +6,37 @@ class MaintenanceController {
     public function list() {
         Auth::requireLogin();
         Permission::require('tk_mantenimientos');
-        $equipos = $this->pdo->query("SELECT e.*, m.nombre_marca, a.nombre_area, CONCAT(f.nombre,' ',f.apellido) as responsable, t.tipo as tipo_equipo, c.ram_rom FROM equipos_de_computo e LEFT JOIN marcas m ON e.id_marca=m.id LEFT JOIN areas a ON e.id_area=a.id LEFT JOIN tipos t ON e.id_tipo=t.id LEFT JOIN configuraciones c ON e.id_configuracion=c.id LEFT JOIN funcionarios f ON e.id_usuario=f.id WHERE e.estado != 'De baja' ORDER BY e.nombre_equipo ASC")->fetchAll();
+        // Equipos activos (en servicio)
+        $equipos = $this->pdo->query(
+            "SELECT e.*, m.nombre_marca, a.nombre_area, CONCAT(f.nombre,' ',f.apellido) as responsable,
+                    t.tipo as tipo_equipo, c.ram_rom
+             FROM equipos_de_computo e
+             LEFT JOIN marcas m ON e.id_marca=m.id
+             LEFT JOIN areas a ON e.id_area=a.id
+             LEFT JOIN tipos t ON e.id_tipo=t.id
+             LEFT JOIN configuraciones c ON e.id_configuracion=c.id
+             LEFT JOIN funcionarios f ON e.id_usuario=f.id
+             WHERE e.estado != 'De baja'
+             ORDER BY e.nombre_equipo ASC"
+        )->fetchAll();
+
+        // Equipos de baja (hoja de vida en solo lectura)
+        $equipos_baja = $this->pdo->query(
+            "SELECT e.*, m.nombre_marca, a.nombre_area, CONCAT(f.nombre,' ',f.apellido) as responsable,
+                    t.tipo as tipo_equipo, c.ram_rom
+             FROM equipos_de_computo e
+             LEFT JOIN marcas m ON e.id_marca=m.id
+             LEFT JOIN areas a ON e.id_area=a.id
+             LEFT JOIN tipos t ON e.id_tipo=t.id
+             LEFT JOIN configuraciones c ON e.id_configuracion=c.id
+             LEFT JOIN funcionarios f ON e.id_usuario=f.id
+             WHERE e.estado = 'De baja'
+             ORDER BY e.fecha_baja DESC, e.nombre_equipo ASC"
+        )->fetchAll();
+
         $configs = $this->pdo->query("SELECT * FROM configuraciones")->fetchAll();
-        $areas = $this->pdo->query("SELECT * FROM areas")->fetchAll();
-        json_success(compact('equipos', 'configs', 'areas'));
+        $areas   = $this->pdo->query("SELECT * FROM areas")->fetchAll();
+        json_success(compact('equipos', 'equipos_baja', 'configs', 'areas'));
     }
 
     public function detail() {
@@ -39,6 +66,14 @@ class MaintenanceController {
         $razon = $input['razon'] ?? '';
         $observaciones = $input['observaciones'] ?? '';
         $id_configuracion = $input['id_configuracion'] ?? null;
+
+        // Verificar que el equipo no esté de baja (hoja de vida es de solo lectura)
+        $estadoStmt = $this->pdo->prepare("SELECT estado FROM equipos_de_computo WHERE id=?");
+        $estadoStmt->execute([$id_equipo]);
+        $estadoEquipo = $estadoStmt->fetchColumn();
+        if ($estadoEquipo === 'De baja') {
+            json_error('No se pueden registrar mantenimientos en un equipo que está de baja. La hoja de vida es de solo lectura.');
+        }
 
         if ($tipo === 'Mantenimiento Correctivo' && strlen($razon) < 6)
             json_error('La razón/falla debe tener al menos 6 caracteres.');

@@ -44,17 +44,20 @@ export default function Perfil() {
   };
 
   const validatePassword = (pass) => {
-    if (pass.length < 8) return 'Debe tener al menos 8 caracteres';
-    if (!/[A-Z]/.test(pass)) return 'Debe contener al menos una mayúscula';
-    if (!/[a-z]/.test(pass)) return 'Debe contener al menos una minúscula';
-    if (!/[0-9]/.test(pass)) return 'Debe contener al menos un número';
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass)) return 'Debe contener al menos un carácter especial';
+    if (pass.length < 8) return 'La contraseña debe tener al menos 8 caracteres';
+    if (!/[A-Z]/.test(pass)) return 'La contraseña debe contener al menos una letra mayúscula';
+    if (!/[a-z]/.test(pass)) return 'La contraseña debe contener al menos una letra minúscula';
+    if (!/[0-9]/.test(pass)) return 'La contraseña debe contener al menos un número';
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass)) return 'La contraseña debe contener al menos un carácter especial (!@#$%^&*...)';
     return null;
   };
 
   const handleSavePassword = async () => {
-    if (!passForm.actual) { showToast('Ingresa tu contraseña actual', 'warning'); return; }
-    if (passForm.nueva !== passForm.confirmar) { showToast('Las contraseñas no coinciden', 'warning'); return; }
+    if (!passForm.actual) { showToast('Por favor ingresa tu contraseña actual', 'warning'); return; }
+    if (!passForm.nueva) { showToast('Por favor ingresa tu nueva contraseña', 'warning'); return; }
+    if (!passForm.confirmar) { showToast('Por favor confirma tu nueva contraseña', 'warning'); return; }
+    if (passForm.nueva !== passForm.confirmar) { showToast('La nueva contraseña y la confirmación no coinciden', 'warning'); return; }
+    if (passForm.actual === passForm.nueva) { showToast('La nueva contraseña no puede ser igual a la actual', 'warning'); return; }
     const err = validatePassword(passForm.nueva);
     if (err) { showToast(err, 'warning'); return; }
 
@@ -66,14 +69,15 @@ export default function Perfil() {
         confirm_password: passForm.confirmar,
       });
       if (res.data.success) {
-        showToast('Contraseña actualizada correctamente', 'success');
+        showToast(res.data.message || 'Contraseña actualizada exitosamente', 'success');
         setShowPasswordModal(false);
         setPassForm({ actual: '', nueva: '', confirmar: '' });
       } else {
-        showToast(res.data.message || 'Error al cambiar contraseña', 'error');
+        showToast(res.data.message || 'Error al cambiar la contraseña', 'error');
       }
     } catch (err) {
-      showToast(err.response?.data?.message || 'Error de conexión', 'error');
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al cambiar la contraseña';
+      showToast(errorMessage, 'error');
     } finally {
       setPassLoading(false);
     }

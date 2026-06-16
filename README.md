@@ -1,215 +1,115 @@
-<div align="center">
+# GestionTI — Sistema de Gestión de Inventario TI
 
-# 🖥️ GestionTI
-### Sistema Integral de Gestión de Inventario TI
+> **Versión:** 3.9.0  
+> **Stack:** React 19 + TailwindCSS v4 (Frontend) · PHP 8.0 + PDO (Backend API REST)  
+> **Base de datos:** MariaDB 10.4 — `inventario_db`  
+> **Servidor local:** XAMPP (Apache 2.4 + PHP 8.0.30)
 
-[![Versión](https://img.shields.io/badge/versión-3.9.0-4a6cf7?style=for-the-badge)](.)
-[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](.)
-[![PHP](https://img.shields.io/badge/PHP-8.0-777BB4?style=for-the-badge&logo=php)](.)
-[![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?style=for-the-badge&logo=mariadb)](.)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css)](.)
-
-*Plataforma web para la gestión completa del ciclo de vida de activos tecnológicos, soporte técnico con SLA y control de acceso granular por permisos.*
+Sistema web integral para la gestión del departamento de TI. Cubre el ciclo de vida completo de activos tecnológicos: registro y asignación de equipos, licencias de software, atención de tickets (Mesa de Servicios con SLA), mantenimientos, reportes y baja de activos. Incluye control de acceso basado en permisos (PBAC), dashboard personalizable con widgets arrastrables, notificaciones en tiempo real vía SSE y modo oscuro.
 
 ---
 
-</div>
+## Tabla de Contenidos
 
-## 📋 Tabla de Contenidos
-
-1. [Descripción general](#-descripción-general)
-2. [Arquitectura del sistema](#-arquitectura-del-sistema)
-3. [Stack tecnológico](#-stack-tecnológico)
-4. [Estructura del proyecto](#-estructura-del-proyecto)
-5. [Base de datos](#-base-de-datos)
-6. [Instalación y puesta en marcha](#-instalación-y-puesta-en-marcha)
-7. [Autenticación y permisos (PBAC)](#-autenticación-y-permisos-pbac)
-8. [API REST — Referencia de endpoints](#-api-rest--referencia-de-endpoints)
-9. [Módulos del frontend](#-módulos-del-frontend)
-10. [Rutas protegidas](#-rutas-protegidas)
-11. [Tiempo real con SSE](#-tiempo-real-con-sse)
-12. [Preferencias de usuario y temas](#-preferencias-de-usuario-y-temas)
+1. [Arquitectura](#arquitectura)
+2. [Estructura del proyecto](#estructura-del-proyecto)
+3. [Stack tecnológico](#stack-tecnológico)
+4. [Base de datos](#base-de-datos)
+5. [Instalación y puesta en marcha](#instalación-y-puesta-en-marcha)
+6. [Sistema de autenticación y permisos (PBAC)](#sistema-de-autenticación-y-permisos-pbac)
+7. [API REST — Endpoints](#api-rest--endpoints)
+8. [Módulos del frontend](#módulos-del-frontend)
+9. [Rutas del frontend](#rutas-del-frontend)
+10. [Tiempo real (SSE)](#tiempo-real-sse)
+11. [Preferencias de usuario](#preferencias-de-usuario)
 
 ---
 
-## 🧭 Descripción general
-
-**GestionTI** es un sistema web corporativo diseñado para centralizar y automatizar las operaciones del departamento de Tecnología de la Información. Cubre el ciclo de vida completo de los activos tecnológicos de una organización, desde su ingreso al inventario hasta su baja definitiva.
-
-### ¿Qué resuelve?
-
-| Área | Funcionalidad |
-|---|---|
-| 📦 **Inventario** | Registro, clasificación y seguimiento de equipos de cómputo, monitores, impresoras, teléfonos IP y otros activos |
-| 🎫 **Mesa de Servicios** | Gestión de tickets de soporte con SLA, chat en tiempo real y escalamiento técnico |
-| 🔒 **Control de acceso** | Sistema PBAC con 18 permisos individuales por rol |
-| 📊 **Dashboard** | Widgets arrastrables y personalizables con KPIs e indicadores en tiempo real |
-| 📄 **Reportes** | Exportación a PDF y CSV de inventario, tickets, bajas, licencias y logs |
-| ⚙️ **Configuración** | Gestión de usuarios, roles, SLAs, palabras clave de prioridad y backup de BD |
-
----
-
-## 🏗️ Arquitectura del sistema
+## Arquitectura
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      CLIENTE (Navegador)                        │
-│                    http://localhost:5173                         │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Vite Dev Server                              │
-│                                                                 │
-│   /api/stream  ──► Apache :80   (SSE — proceso independiente)  │
-│   /api/*       ──► Apache :80   (REST — soporte multipart)     │
-│                                                                 │
-│   El proxy reescribe Set-Cookie para normalizar path=/ y       │
-│   eliminar restricciones de dominio entre :5173 y :80          │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              Apache 2.4 (XAMPP — puerto 80)                    │
-│         /GestionTI/backend/index.php  (Router ~80 rutas)       │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐  │
-│   │  Middleware                                             │  │
-│   │    Auth.php ──── gestión de sesión PHP                  │  │
-│   │    Permission.php ── verificación PBAC por endpoint     │  │
-│   └─────────────────────────────────────────────────────────┘  │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐  │
-│   │  14 Controladores PHP (PDO)                            │  │
-│   └─────────────────────────────────────────────────────────┘  │
-│                         │                                       │
-└─────────────────────────┼───────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│              MariaDB 10.4 — inventario_db                      │
-│                      30 tablas                                  │
-└─────────────────────────────────────────────────────────────────┘
+Navegador (localhost:5173)
+        │
+        ▼
+  Vite Dev Server
+  ┌─────────────────────────────────┐
+  │  /api/stream  →  Apache :80     │  (SSE — evita bloqueo del proceso)
+  │  /api/*       →  Apache :80     │  (REST API con soporte multipart)
+  └─────────────────────────────────┘
+        │
+        ▼
+  Apache 2.4 (XAMPP, puerto 80)
+  /GestionTI/backend/index.php
+        │
+        ├── Middleware Auth.php + Permission.php
+        ├── 14 Controllers (PHP puro, PDO)
+        └── MariaDB 10.4 — inventario_db
 ```
 
-> **Nota de diseño:** Todo el tráfico API pasa por Apache (no por el servidor integrado de PHP) para garantizar soporte correcto de `multipart/form-data` en subida de archivos y sesiones PHP consistentes entre el frontend y el backend.
+Todo el tráfico API pasa por Apache para garantizar el soporte correcto de `multipart/form-data` (subida de archivos) y sesiones PHP consistentes. El proxy de Vite reescribe los headers `Set-Cookie` para normalizar el `path=/` y eliminar restricciones de dominio, permitiendo que la cookie de sesión funcione entre el puerto 5173 y el 80.
 
 ---
 
-## 🛠️ Stack tecnológico
-
-### Frontend
-
-| Tecnología | Versión | Rol en el proyecto |
-|---|---|---|
-| **React** | ^19.0.0 | Framework de UI — SPA |
-| **React Router DOM** | ^7.0.0 | Enrutamiento cliente con rutas protegidas |
-| **TailwindCSS** | ^4.0.0 | Estilos utility-first + modo oscuro |
-| **Vite** | ^6.0.0 | Build tool y dev server con proxy |
-| **Axios** | ^1.16.0 | Cliente HTTP — instancia centralizada |
-| **Chart.js + react-chartjs-2** | ^4.4 / ^5.2 | Gráficas: Bar, Pie, Doughnut, Line |
-| **SweetAlert2** | ^11.0.0 | Modales de confirmación y alertas |
-| **jsPDF + autotable** | ^4.2 / ^5.0 | Exportación de reportes a PDF |
-| **react-icons** | ^5.0.0 | Iconografía (Font Awesome 6) |
-| **react-select** | ^5.10.2 | Selectores avanzados con búsqueda |
-
-### Backend
-
-| Tecnología | Versión | Rol en el proyecto |
-|---|---|---|
-| **PHP** | 8.0.30 | Lenguaje del API REST |
-| **Apache** | 2.4.58 | Servidor web (vía XAMPP) |
-| **PDO** | — | Capa de acceso a base de datos |
-| **PHP Sessions** | — | Autenticación stateful |
-| **Server-Sent Events** | — | Notificaciones en tiempo real |
-
-### Base de datos
-
-| Parámetro | Valor |
-|---|---|
-| Motor | MariaDB 10.4.32 |
-| Nombre de BD | `inventario_db` |
-| Charset | `utf8mb4` / `utf8mb4_unicode_ci` |
-| Zona horaria | `America/Bogota` (`UTC-5`) |
-| Número de tablas | 30 |
-
----
-
-## 📁 Estructura del proyecto
+## Estructura del proyecto
 
 ```
 GestionTI/
-│
 ├── SQL_sripts/
-│   └── inventario_db_set_up.sql        ← Script completo de creación de BD
-│                                          (tablas, índices, FKs, datos iniciales)
-│
+│   └── inventario_db_set_up.sql     ← Script completo de creación de BD
 ├── backend/
-│   ├── .htaccess                        ← Routing Apache, CORS y config SSE
-│   ├── index.php                        ← Router principal (~80 rutas REST)
-│   ├── stream.php                       ← Endpoint SSE (proceso independiente)
-│   │
+│   ├── .htaccess                    ← Routing Apache + CORS + SSE config
+│   ├── index.php                    ← Router REST API (~80 rutas)
+│   ├── stream.php                   ← SSE endpoint (proceso independiente)
 │   ├── config/
-│   │   └── db.php                       ← Conexión PDO a MariaDB
-│   │
-│   ├── controllers/                     ← 14 controladores de dominio
-│   │   ├── AuthController.php           ← Login, logout, perfil, contraseña
-│   │   ├── AuxiliaryController.php      ← Datos auxiliares, usuarios, backup
-│   │   ├── AssignmentController.php     ← Insumos y asignaciones de repuestos
-│   │   ├── BajasController.php          ← Baja de activos y registros
-│   │   ├── DashboardController.php      ← KPIs, widgets y estadísticas SLA
-│   │   ├── EquipmentController.php      ← CRUD inventario de equipos
-│   │   ├── LicenseController.php        ← CRUD licencias de software
-│   │   ├── MaintenanceController.php    ← Fichas técnicas y mantenimientos
-│   │   ├── NotificationController.php   ← Gestión de notificaciones
-│   │   ├── PermissionController.php     ← Roles, SLAs, palabras clave, logs
-│   │   ├── ReportController.php         ← Generación de reportes y filtros
-│   │   ├── SearchController.php         ← Búsqueda global multi-entidad
-│   │   ├── StreamController.php         ← Lógica de eventos SSE
-│   │   └── TicketController.php         ← Ciclo completo de tickets
-│   │
+│   │   └── db.php                   ← Conexión PDO
+│   ├── controllers/                 ← 14 controladores
+│   │   ├── AuthController.php
+│   │   ├── AuxiliaryController.php
+│   │   ├── AssignmentController.php
+│   │   ├── BajasController.php
+│   │   ├── DashboardController.php
+│   │   ├── EquipmentController.php
+│   │   ├── LicenseController.php
+│   │   ├── MaintenanceController.php
+│   │   ├── NotificationController.php
+│   │   ├── PermissionController.php
+│   │   ├── ReportController.php
+│   │   ├── SearchController.php
+│   │   ├── StreamController.php
+│   │   └── TicketController.php
 │   ├── middleware/
-│   │   ├── Auth.php                     ← Sesión PHP, checkForceLogout
-│   │   └── Permission.php              ← Verificación PBAC por endpoint
-│   │
+│   │   ├── Auth.php                 ← Gestión de sesión y autenticación
+│   │   └── Permission.php           ← Verificación PBAC por endpoint
 │   ├── includes/
-│   │   └── functions.php               ← Sanitización, validación, helpers
-│   │
+│   │   └── functions.php            ← Sanitización, validación, helpers
 │   └── uploads/
-│       └── tickets/                    ← Archivos adjuntos de tickets
-│
+│       └── tickets/                 ← Archivos adjuntos de tickets
 └── frontend/
-    ├── index.html                       ← Script inline anti-FOUC (tema oscuro)
-    ├── vite.config.js                   ← Proxy /api/* + rewrite de cookies
+    ├── index.html                   ← Script inline de tema (FOUC fix)
+    ├── vite.config.js               ← Proxy + cookie rewrite
     ├── package.json
-    │
     └── src/
-        ├── App.jsx                      ← Rutas protegidas + HomeRedirect
-        ├── main.jsx                     ← Punto de entrada React
-        ├── index.css                    ← Variables CSS globales (light/dark)
-        │
+        ├── App.jsx                  ← Rutas protegidas + HomeRedirect
+        ├── main.jsx
+        ├── index.css                ← Variables CSS + estilos globales
         ├── api/
-        │   └── client.js               ← Instancia Axios + todos los métodos API
-        │
+        │   └── client.js            ← Axios instance + todos los métodos API
         ├── context/
-        │   ├── AuthContext.jsx         ← Estado global de sesión y permisos PBAC
-        │   └── RealtimeContext.jsx     ← Suscripciones SSE y estado notificaciones
-        │
+        │   ├── AuthContext.jsx      ← Estado global de auth y PBAC
+        │   └── RealtimeContext.jsx  ← SSE subscriptions y notificaciones
         ├── core/
-        │   ├── toast.js                ← Sistema de notificaciones toast
-        │   ├── usePolling.js           ← Hook para polling periódico
-        │   └── useSSE.js              ← Hook para conexión SSE
-        │
+        │   ├── toast.js
+        │   ├── usePolling.js
+        │   └── useSSE.js
         ├── components/
         │   ├── common/
-        │   │   ├── DataTableControls.jsx   ← Controles de tabla reutilizables
-        │   │   └── SearchableSelect.jsx    ← Select con búsqueda y Quick Add
+        │   │   ├── DataTableControls.jsx
+        │   │   └── SearchableSelect.jsx
         │   └── layout/
-        │       ├── AppLayout.jsx       ← Layout principal, aplica tema y sidebar
-        │       ├── LoginLayout.jsx     ← Layout para pantalla de acceso
-        │       ├── Sidebar.jsx         ← Menú dinámico filtrado por PBAC
-        │       └── TopBar.jsx          ← Búsqueda global + campana notificaciones
-        │
+        │       ├── AppLayout.jsx    ← Aplica tema y sidebar al montar
+        │       ├── LoginLayout.jsx
+        │       ├── Sidebar.jsx      ← Menú dinámico según PBAC
+        │       └── TopBar.jsx       ← Búsqueda global + notificaciones
         └── pages/
             ├── Login.jsx
             ├── Dashboard.jsx
@@ -227,34 +127,73 @@ GestionTI/
 
 ---
 
-## 🗄️ Base de datos
+## Stack tecnológico
 
-### Grupos funcionales
+### Frontend
+
+| Tecnología | Versión | Uso |
+|------------|---------|-----|
+| React | ^19.0.0 | UI framework |
+| React Router DOM | ^7.0.0 | Enrutamiento SPA |
+| TailwindCSS | ^4.0.0 | Framework CSS utility-first |
+| Vite | ^6.0.0 | Build tool y dev server |
+| Axios | ^1.16.0 | Cliente HTTP |
+| Chart.js + react-chartjs-2 | ^4.4 / ^5.2 | Gráficas (Bar, Pie, Doughnut, Line) |
+| SweetAlert2 | ^11.0.0 | Modales de confirmación y alertas |
+| jsPDF + autotable | ^4.2 / ^5.0 | Exportación a PDF |
+| react-icons | ^5.0.0 | Font Awesome 6 como componentes React |
+| react-select | ^5.10.2 | Selectores con búsqueda |
+
+### Backend
+
+| Tecnología | Versión | Uso |
+|------------|---------|-----|
+| PHP | 8.0.30 | Lenguaje del API REST |
+| Apache | 2.4.58 | Servidor web (XAMPP) |
+| PDO | — | Acceso a base de datos |
+| PHP Sessions | — | Autenticación stateful |
+| Server-Sent Events | — | Notificaciones en tiempo real |
+
+### Base de datos
+
+| | |
+|---|---|
+| Motor | MariaDB 10.4.32 |
+| Nombre | `inventario_db` |
+| Charset | `utf8mb4` / `utf8mb4_unicode_ci` |
+| Zona horaria | `America/Bogota` (`-05:00`) |
+| Tablas | 30 |
+
+---
+
+## Base de datos
+
+### Diagrama de grupos funcionales
 
 ```
-┌─── USUARIOS Y ROLES ──────────┐   ┌─── INVENTARIO ─────────────────────┐
-│ usuarios                      │   │ equipos_de_computo                 │
-│ roles (18 flags de permiso)   │   │ monitores                          │
-│ funcionarios                  │   │ impresoras_escaneres                │
-└───────────────────────────────┘   │ telefonos                          │
-                                    │ otros                              │
-┌─── TICKETS Y SOPORTE ─────────┐   │ articulos (+ columnas VIRTUAL)     │
-│ tickets                       │   │ asignaciones                       │
-│ tickets_chat                  │   │ licencias                          │
-│ ticket_eventos                │   │ historial_equipos                  │
-│ tickets_trazabilidad          │   │ bajas                              │
-│ config_prioridades            │   └────────────────────────────────────┘
+┌─── USUARIOS Y ROLES ──────────┐   ┌─── INVENTARIO ─────────────────┐
+│ usuarios                      │   │ equipos_de_computo             │
+│ roles (18 flags de permiso)   │   │ monitores                      │
+│ funcionarios                  │   │ impresoras_escaneres            │
+└───────────────────────────────┘   │ telefonos                      │
+                                    │ otros                          │
+┌─── TICKETS Y SOPORTE ─────────┐   │ articulos (+ columnas VIRTUAL) │
+│ tickets                       │   │ asignaciones                   │
+│ tickets_chat                  │   │ licencias                      │
+│ ticket_eventos                │   │ historial_equipos              │
+│ tickets_trazabilidad          │   │ bajas                          │
+│ config_prioridades            │   └────────────────────────────────┘
 └───────────────────────────────┘
-                                    ┌─── SLA ─────────────────────────────┐
-┌─── NOTIFICACIONES Y LOGS ─────┐   │ config_slas                        │
-│ notificaciones                │   │ sla_config                         │
-│ acciones (audit log)          │   │ sla_registros                      │
-└───────────────────────────────┘   └────────────────────────────────────┘
+                                    ┌─── SLA ────────────────────────┐
+┌─── NOTIFICACIONES Y LOGS ─────┐   │ config_slas                   │
+│ notificaciones                │   │ sla_config                    │
+│ acciones (audit log)          │   │ sla_registros                 │
+└───────────────────────────────┘   └────────────────────────────────┘
 
-┌─── DATOS AUXILIARES ──────────┐   ┌─── DASHBOARD ───────────────────────┐
-│ areas                         │   │ widget_templates                   │
-│ marcas                        │   │ shared_widget_configs              │
-│ tipos                         │   └────────────────────────────────────┘
+┌─── DATOS AUXILIARES ──────────┐   ┌─── DASHBOARD ──────────────────┐
+│ areas                         │   │ widget_templates               │
+│ marcas                        │   │ shared_widget_configs          │
+│ tipos                         │   └────────────────────────────────┘
 │ configuraciones               │
 │ modulos                       │
 └───────────────────────────────┘
@@ -263,595 +202,394 @@ GestionTI/
 ### Tablas principales
 
 #### `usuarios`
-
 | Columna | Tipo | Descripción |
-|---|---|---|
-| `id` | `int` PK | Identificador único |
-| `username` | `varchar(100)` UNIQUE | Nombre de usuario para login |
-| `password` | `varchar(255)` | Hash bcrypt |
-| `nombre_completo` | `varchar(255)` | Nombre visible en la interfaz |
-| `id_rol` | `int` FK → `roles` | Rol asignado al usuario |
-| `estado` | `tinyint(1)` | `1` = Activo · `0` = Inactivo |
-| `ultimo_acceso` | `timestamp` | Fecha y hora del último login exitoso |
-| `id_funcionario` | `int` FK → `funcionarios` | Vinculación al empleado de nómina |
-| `dashboard_config` | `longtext` (JSON) | Layout de widgets personalizado |
-| `force_logout` | `tinyint(1)` | Flag para forzar cierre de sesión remoto |
+|---------|------|-------------|
+| `id` | int PK | Identificador |
+| `username` | varchar(100) UNIQUE | Nombre de usuario |
+| `password` | varchar(255) | Hash bcrypt |
+| `nombre_completo` | varchar(255) | Nombre para mostrar |
+| `id_rol` | int FK → roles | Rol asignado |
+| `estado` | tinyint(1) | 1=Activo, 0=Inactivo |
+| `ultimo_acceso` | timestamp | Fecha del último login |
+| `id_funcionario` | int FK → funcionarios | Vinculación al empleado |
+| `dashboard_config` | longtext (JSON) | Configuración de widgets personalizada |
+| `force_logout` | tinyint(1) | Forzar cierre de sesión en próxima request |
 
 #### `roles`
-
 | Columna | Tipo | Descripción |
-|---|---|---|
-| `id` | `int` PK | Identificador |
-| `nombre_rol` | `varchar(50)` | Nombre del rol |
-| `descripcion` | `text` | Descripción del rol |
-| `inv_ver` … `conf_sla` | `tinyint(1)` ×18 | Flags de permiso PBAC (ver sección permisos) |
+|---------|------|-------------|
+| `id` | int PK | Identificador |
+| `nombre_rol` | varchar(50) | Nombre del rol |
+| `descripcion` | text | Descripción |
+| `inv_ver` … `conf_sla` | tinyint(1) ×18 | Flags de permiso PBAC |
 
 #### `equipos_de_computo`
-
 | Columna | Tipo | Descripción |
-|---|---|---|
-| `serial` | `varchar(255)` | Serial del fabricante |
-| `serial_interno` | `varchar(255)` | Serial asignado internamente por TI |
-| `nivel_clasificacion` | `enum` | `Público` / `Interno` / `Confidencial` / `Restringido` |
-| `prot_cifrado` | `tinyint(1)` | Tiene cifrado de disco habilitado |
-| `prot_antivirus` | `tinyint(1)` | Tiene antivirus activo |
-| `prot_firewall` | `tinyint(1)` | Tiene firewall habilitado |
-| `estado` | `enum` | `Activo` / `En mantenimiento` / `De baja` |
-| `teamviewer_id` | `varchar(50)` | ID de acceso remoto |
+|---------|------|-------------|
+| `serial` | varchar(255) | Serial de fabricante |
+| `serial_interno` | varchar(255) | Serial interno del área TI |
+| `nivel_clasificacion` | enum | Público / Interno / Confidencial / Restringido |
+| `prot_cifrado` | tinyint(1) | Tiene cifrado de disco |
+| `prot_antivirus` | tinyint(1) | Tiene antivirus |
+| `prot_firewall` | tinyint(1) | Tiene firewall |
+| `estado` | enum | Activo / En mantenimiento / De baja |
+| `teamviewer_id` | varchar(50) | ID de acceso remoto |
 
 #### `tickets`
-
 | Columna | Tipo | Descripción |
-|---|---|---|
-| `prioridad` | `enum` | `Baja` / `Media` / `Alta` / `Crítica` |
-| `estado` | `enum` | `Abierto` / `En Proceso` / `Resuelto` / `Cerrado` |
-| `categoria` | `enum` | `Software` / `Software Core` / `Hardware` / `Usuarios` / `Otros` |
-| `calificacion` | `int(1)` | Estrellas 1–5 asignadas al cerrar |
-| `sla_respuesta_cumplido` | `tinyint(1)` | `1`=cumplido · `0`=incumplido · `NULL`=pendiente |
-| `sla_resolucion_cumplido` | `tinyint(1)` | `1`=cumplido · `0`=incumplido · `NULL`=pendiente |
-| `archivo_adjunto` | `varchar(255)` | Nombre del archivo en `uploads/tickets/` |
+|---------|------|-------------|
+| `prioridad` | enum | Baja / Media / Alta / Crítica |
+| `estado` | enum | Abierto / En Proceso / Resuelto / Cerrado |
+| `categoria` | enum | Software / Software Core / Hardware / Usuarios / Otros |
+| `calificacion` | int(1) | Estrellas 1–5 post-resolución |
+| `sla_respuesta_cumplido` | tinyint(1) | 1=cumplido, 0=incumplido, NULL=pendiente |
+| `sla_resolucion_cumplido` | tinyint(1) | 1=cumplido, 0=incumplido, NULL=pendiente |
+| `archivo_adjunto` | varchar(255) | Nombre de archivo en uploads/tickets/ |
 
-#### `sla_config` — Configuración por defecto
+#### `sla_config`
+Configuración activa de SLA (tiempos en minutos):
 
-| Prioridad | Tiempo de respuesta | Tiempo de resolución |
-|---|---|---|
-| 🔴 Crítica | 15 min | 60 min |
-| 🟠 Alta | 30 min | 240 min (4 h) |
-| 🟡 Media | 60 min | 480 min (8 h) |
-| 🟢 Baja | 120 min | 1440 min (24 h) |
+| Prioridad | Respuesta | Resolución |
+|-----------|-----------|------------|
+| Crítica | 15 min | 60 min |
+| Alta | 30 min | 240 min |
+| Media | 60 min | 480 min |
+| Baja | 120 min | 1440 min |
 
-#### `config_prioridades` — Palabras clave de asignación automática
+#### `config_prioridades`
+36 palabras clave para asignación automática de prioridad al crear un ticket:
 
-El sistema analiza el título y descripción del ticket al crearlo y asigna prioridad automáticamente según estas palabras clave (36 en total, configurables desde la interfaz):
-
-| Prioridad | Ejemplos de palabras clave |
-|---|---|
-| 🔴 Crítica | `servidor`, `caído`, `hackeado`, `virus`, `pantalla azul`, `no arranca` |
-| 🟠 Alta | `internet`, `wifi`, `correo`, `impresora`, `error`, `sin acceso` |
-| 🟡 Media | `lento`, `mouse`, `teclado`, `monitor`, `parpadea` |
-| 🟢 Baja | `consulta`, `instalar`, `clave`, `toner`, `solicitud` |
+| Prioridad | Ejemplos |
+|-----------|---------|
+| Crítica | servidor, caído, hackeado, virus, pantalla azul, no arranca |
+| Alta | internet, wifi, correo, impresora, error, sin acceso |
+| Media | lento, mouse, teclado, monitor, parpadea |
+| Baja | consulta, instalar, clave, toner, solicitud |
 
 ### Relaciones clave (Foreign Keys)
 
 ```
-usuarios.id_rol               → roles.id
-usuarios.id_funcionario       → funcionarios.id
+usuarios.id_rol           → roles.id
+usuarios.id_funcionario   → funcionarios.id
 equipos_de_computo.id_usuario → funcionarios.id
 equipos_de_computo.id_area    → areas.id
-tickets.usuario_id            → usuarios.id         (ON DELETE CASCADE)
-tickets.tecnico_id            → usuarios.id         (ON DELETE SET NULL)
-tickets_chat.ticket_id        → tickets.id          (ON DELETE CASCADE)
-sla_registros.ticket_id       → tickets.id          (ON DELETE CASCADE)
-notificaciones.id_destinatario → usuarios.id        (ON DELETE CASCADE)
-historial_equipos.id_equipo   → equipos_de_computo.id (ON DELETE SET NULL)
+tickets.usuario_id        → usuarios.id  (ON DELETE CASCADE)
+tickets.tecnico_id        → usuarios.id  (ON DELETE SET NULL)
+tickets_chat.ticket_id    → tickets.id   (ON DELETE CASCADE)
+sla_registros.ticket_id   → tickets.id   (ON DELETE CASCADE)
+notificaciones.id_destinatario → usuarios.id (ON DELETE CASCADE)
+historial_equipos.id_equipo    → equipos_de_computo.id (ON DELETE SET NULL)
 ```
 
 ---
 
-## 🚀 Instalación y puesta en marcha
+## Instalación y puesta en marcha
 
-### Requisitos previos
+### Requisitos
 
-| Componente | Versión mínima |
-|---|---|
-| XAMPP (Apache + PHP) | Apache 2.4 · PHP 8.0+ |
-| MariaDB / MySQL | 10.4+ |
-| Node.js | 18+ |
-| npm | 9+ |
+- XAMPP con Apache 2.4 y PHP 8.0+ activos
+- MariaDB / MySQL
+- Node.js 18+
 
-### Paso 1 — Clonar el repositorio
-
-Coloca la carpeta del proyecto dentro del directorio `htdocs` de XAMPP:
-
-```
-C:\xampp\htdocs\GestionTI\
-```
-
-### Paso 2 — Base de datos
-
-Abre **phpMyAdmin** o una consola MySQL y ejecuta el script de configuración completo:
+### 1. Base de datos
 
 ```sql
+-- En phpMyAdmin o consola MySQL:
 SOURCE /xampp/htdocs/GestionTI/SQL_sripts/inventario_db_set_up.sql;
 ```
 
-Este script realiza automáticamente:
-- Creación de la base de datos `inventario_db`
-- Creación de las 30 tablas con sus índices y claves foráneas
-- Inserción de datos iniciales: configuraciones de hardware, SLA por defecto, palabras clave de prioridad
-- Creación del usuario administrador inicial
+El script crea la base `inventario_db`, todas las tablas, índices, claves foráneas y los datos iniciales (configuraciones de hardware, SLA por defecto, palabras clave de prioridad y usuario administrador de ejemplo).
 
-### Paso 3 — Verificar credenciales de BD
+### 2. Backend
 
-Abre `backend/config/db.php` y confirma los datos de conexión. Para una instalación estándar de XAMPP local no es necesario ningún cambio:
+No requiere instalación adicional. Apache sirve el backend desde:
 
-```php
-// backend/config/db.php
-$host = 'localhost';
-$db   = 'inventario_db';
-$user = 'root';
-$pass = '';          // XAMPP por defecto no tiene contraseña
+```
+http://localhost/GestionTI/backend/
 ```
 
-### Paso 4 — Iniciar Apache y MySQL en XAMPP
+Verifica que `backend/config/db.php` tenga las credenciales correctas (por defecto `root` sin contraseña para XAMPP local).
 
-Asegúrate de que tanto **Apache** como **MySQL** estén en estado `Running` en el panel de control de XAMPP antes de continuar.
-
-### Paso 5 — Instalar dependencias del frontend
+### 3. Frontend — desarrollo
 
 ```bash
 cd frontend
 npm install
-```
-
-### Paso 6 — Levantar el servidor de desarrollo
-
-```bash
 npm run dev
 ```
 
-La aplicación quedará disponible en:
+La aplicación queda disponible en `http://localhost:5173`. El proxy de Vite enruta automáticamente `/api/*` a Apache.
 
-```
-http://localhost:5173
-```
-
-El proxy de Vite enrutará automáticamente todas las peticiones `/api/*` hacia Apache en el puerto 80.
-
-### Build para producción
+### 4. Frontend — producción
 
 ```bash
 cd frontend
 npm run build
 ```
 
-El directorio `dist/` generado puede copiarse a `htdocs/GestionTI/` y servirse directamente desde Apache. Asegúrate de configurar `mod_rewrite` para redirigir todas las rutas al `index.html` de la SPA.
+El `dist/` generado puede servirse directamente desde Apache copiando su contenido a `htdocs/GestionTI/` y configurando el `mod_rewrite` para SPA.
 
-### Credenciales de acceso iniciales
+### Credenciales de ejemplo
 
-> ⚠️ **Cambia estas contraseñas inmediatamente en un entorno de producción.**
-
-| Usuario | Rol | Acceso |
-|---|---|---|
-| `FREIDERD` | Administrador | Acceso completo a todos los módulos |
-| `ADMIN` | Avanzado | Acceso a configuración sin operaciones destructivas |
-| `JHOND` | Funcionario | Solo mesa de servicios (`/tickets`) |
-
-Las contraseñas de cada usuario se encuentran en el script SQL de inicialización.
+| Usuario | Contraseña | Rol |
+|---------|------------|-----|
+| `FREIDERD` | (ver BD) | Administrador |
+| `ADMIN` | (ver BD) | Avanzado |
+| `JHOND` | (ver BD) | Funcionario |
 
 ---
 
-## 🔐 Autenticación y permisos (PBAC)
+## Sistema de autenticación y permisos (PBAC)
 
-El sistema implementa **Permission-Based Access Control (PBAC)**: 18 flags booleanos almacenados directamente como columnas `tinyint(1)` en la tabla `roles`. No existe una tabla intermedia de permisos, lo que simplifica las consultas y acelera la verificación.
+El sistema usa **Permission-Based Access Control** con 18 flags booleanos almacenados directamente en la tabla `roles`. No hay tabla intermedia de permisos — cada columna es un flag `tinyint(1)`.
 
-### Los 18 permisos disponibles
-
-#### Inventario
+### Los 18 permisos
 
 | Código | Descripción |
-|---|---|
-| `inv_ver` | Ver el inventario general de equipos |
-| `inv_crear_editar` | Crear y editar registros de equipos |
-| `inv_eliminar` | Eliminar registros del inventario |
-| `inv_asignaciones` | Gestionar insumos, repuestos y asignaciones |
+|--------|-------------|
+| `inv_ver` | Ver inventario general |
+| `inv_crear_editar` | Crear y editar equipos |
+| `inv_eliminar` | Eliminar registros de inventario |
+| `inv_asignaciones` | Gestionar insumos y repuestos |
 | `inv_licencias` | Gestionar licencias de software |
 | `inv_bajas` | Registrar bajas de activos |
-
-#### Tickets y soporte
-
-| Código | Descripción |
-|---|---|
-| `tk_ver_global` | Ver todos los tickets del sistema (no solo los propios) |
-| `tk_responder` | Responder y actualizar tickets como técnico |
+| `tk_ver_global` | Ver todos los tickets del sistema |
+| `tk_responder` | Responder tickets como técnico |
 | `tk_asignar_otros` | Reasignar tickets a otros técnicos |
-| `tk_mantenimientos` | Acceder a hojas de vida y registrar mantenimientos |
-| `tk_crear` | Crear nuevos tickets de soporte |
-
-#### Usuarios
-
-| Código | Descripción |
-|---|---|
-| `usr_ver` | Ver el listado de usuarios del sistema |
+| `tk_mantenimientos` | Hojas de vida técnicas |
+| `tk_crear` | Crear tickets de soporte |
+| `usr_ver` | Ver listado de usuarios |
 | `usr_gestionar` | Crear, editar y desactivar usuarios |
-
-#### Reportes y configuración
-
-| Código | Descripción |
-|---|---|
-| `rep_generar` | Generar reportes y exportar a CSV / PDF |
-| `conf_basica` | Configuración general, ver logs de auditoría |
-| `conf_roles` | Gestionar roles y su matriz de permisos |
-| `conf_avanzada` | Backup, restauración de BD y limpieza de logs |
-| `conf_sla` | Configurar tiempos SLA y palabras clave de prioridad |
+| `rep_generar` | Generar reportes y exportaciones |
+| `conf_basica` | Configuración general del sistema |
+| `conf_roles` | Gestionar roles y permisos |
+| `conf_avanzada` | Operaciones avanzadas (backup, logs) |
+| `conf_sla` | Configurar SLAs y palabras clave |
 
 ### Flujo de autenticación
 
-```
-1. POST /api/auth/login
-   └── Valida credenciales contra hash bcrypt
-   └── Registra ultimo_acceso en la BD
-   └── Guarda $_SESSION con user_id, username, nombre, role, permisos[]
+1. `POST /api/auth/login` → valida credenciales, actualiza `ultimo_acceso`, guarda `$_SESSION`
+2. `$_SESSION` almacena: `user_id`, `username`, `nombre`, `role`, `permisos` (array completo)
+3. En cada request protegida: `Auth::requireLogin()` verifica `$_SESSION['user_id']`
+4. `Permission::require('permiso')` o `Permission::requireAny([...])` verifica el flag específico
+5. `Auth::checkForceLogout($pdo)` detecta si el admin cambió los permisos y fuerza re-login
+6. Redirección post-login: `esAdministrativo()` → `/dashboard`; solo `tk_crear` → `/tickets`
 
-2. Cada request protegida:
-   ├── Auth::requireLogin()         → verifica $_SESSION['user_id']
-   ├── Auth::checkForceLogout($pdo) → detecta cambio de permisos por admin
-   └── Permission::require('flag') → verifica el permiso específico del endpoint
+### `esAdministrativo()` (AuthContext)
 
-3. Respuesta en caso de error:
-   ├── 401 — No autenticado
-   └── 403 — Sin permiso suficiente
-
-4. Redirección post-login (frontend):
-   ├── esAdministrativo() = true  → /dashboard
-   └── esAdministrativo() = false → /tickets
-```
-
-### `esAdministrativo()` — lógica de rol
-
-La función `esAdministrativo()` en `AuthContext.jsx` devuelve `true` si el usuario posee **al menos uno** de los siguientes permisos: `inv_ver`, `tk_ver_global`, `tk_responder`, `usr_ver`, `rep_generar`, `conf_basica`. Determina el layout mostrado, las rutas accesibles y la página de inicio tras el login.
+Retorna `true` si el usuario tiene cualquiera de: `inv_ver`, `tk_ver_global`, `tk_responder`, `usr_ver`, `rep_generar`, `conf_basica`. Determina qué layout y rutas se muestran.
 
 ---
 
-## 📡 API REST — Referencia de endpoints
+## API REST — Endpoints
 
-**Base URL (desarrollo):** `http://localhost:5173/api` *(proxiado a Apache)*
+Base URL en desarrollo: `http://localhost:5173/api` (proxiado a Apache).
 
-**Formato de respuesta estándar:**
-
+Formato de respuesta estándar:
 ```json
-// Éxito
 { "success": true, "message": "Operación exitosa", "data": { ... } }
-
-// Error
 { "success": false, "message": "Descripción del error" }
 ```
 
----
-
-### 🔑 Autenticación
+### Autenticación
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `POST` | `/auth/login` | Público | Iniciar sesión |
-| `POST` | `/auth/logout` | Público | Cerrar sesión y destruir cookie |
-| `GET` | `/auth/me` | login | Usuario actual con su array de permisos |
-| `GET` | `/auth/permisos` | login | Array de permisos del usuario activo |
-| `POST` | `/auth/recovery` | Público | Solicitar recuperación de contraseña |
-| `POST` | `/auth/change-password` | login | Cambiar contraseña del usuario activo |
-| `GET` | `/auth/profile-stats` | login | Estadísticas del perfil (tickets, equipos, etc.) |
+|--------|------|---------|-------------|
+| POST | `/auth/login` | — | Iniciar sesión |
+| POST | `/auth/logout` | — | Cerrar sesión |
+| GET | `/auth/me` | login | Usuario actual + permisos |
+| GET | `/auth/permisos` | login | Array de permisos |
+| POST | `/auth/recovery` | — | Solicitar recuperación de contraseña |
+| POST | `/auth/change-password` | login | Cambiar contraseña |
+| GET | `/auth/profile-stats` | login | Estadísticas del perfil |
 
----
-
-### 📊 Dashboard
+### Dashboard
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/dashboard/data` | login | KPIs y datos para gráficas |
-| `GET` / `POST` | `/dashboard/config` | login | Leer o guardar layout de widgets personalizado |
-| `GET` | `/dashboard/sla-stats` | login | Estadísticas de cumplimiento de SLA |
+|--------|------|---------|-------------|
+| GET | `/dashboard/data` | login | KPIs y datos de gráficas |
+| GET/POST | `/dashboard/config` | login | Leer/guardar layout de widgets |
+| GET | `/dashboard/sla-stats` | login | Estadísticas de cumplimiento SLA |
 
----
-
-### 🎫 Tickets
+### Tickets
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/tickets/my` | login | Tickets del usuario actual |
-| `GET` | `/tickets/all` | `tk_ver_global` | Todos los tickets del sistema |
-| `GET` | `/tickets/detail?id=` | login | Detalle + historial de chat + timeline de eventos |
-| `POST` | `/tickets/create` | `tk_crear` | Crear ticket (`multipart/form-data`, admite adjunto) |
-| `POST` | `/tickets/reply` | login | Enviar mensaje en el chat del ticket |
-| `POST` | `/tickets/update` | `tk_responder` | Cambiar estado, categoría o técnico asignado |
-| `POST` | `/tickets/escalate` | `tk_responder` | Escalar ticket a otro técnico con motivo obligatorio |
-| `POST` | `/tickets/rate` | login | Calificar y cerrar ticket (1–5 estrellas) |
-| `POST` | `/tickets/reopen` | login | Reabrir un ticket en estado Cerrado |
-| `GET` | `/tickets/timeline?id=` | login | Timeline completo de eventos del ticket |
-| `GET` | `/tickets/chat-users` | `tk_ver_global` | Usuarios disponibles para asignar al chat |
+|--------|------|---------|-------------|
+| GET | `/tickets/my` | login | Tickets del usuario actual |
+| GET | `/tickets/all` | `tk_ver_global` | Todos los tickets |
+| GET | `/tickets/detail?id=` | login | Detalle + chat + timeline |
+| POST | `/tickets/create` | `tk_crear` | Crear ticket (multipart/form-data) |
+| POST | `/tickets/reply` | login | Responder en chat |
+| POST | `/tickets/update` | `tk_responder` | Cambiar estado/categoría/técnico |
+| POST | `/tickets/escalate` | `tk_responder` | Escalar a otro técnico |
+| POST | `/tickets/rate` | login | Calificar y cerrar ticket |
+| POST | `/tickets/reopen` | login | Reabrir ticket cerrado |
+| GET | `/tickets/timeline?id=` | login | Timeline de eventos |
+| GET | `/tickets/chat-users` | `tk_ver_global` | Usuarios del chat |
 
----
-
-### 📦 Inventario
+### Inventario
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/equipments` | `inv_ver` | Listado paginado de equipos |
-| `GET` | `/equipments/{id}` | `inv_ver` | Detalle completo de un equipo |
-| `GET` | `/equipments/listas` | `inv_ver` | Listas auxiliares (marcas, tipos, áreas, configs) |
-| `GET` | `/equipments/totales` | `inv_ver` | KPIs del inventario (totales por categoría) |
-| `POST` | `/equipments/create` | `inv_crear_editar` | Crear nuevo equipo |
-| `POST` | `/equipments/update` | `inv_crear_editar` | Actualizar datos de un equipo existente |
-| `POST` | `/equipments/delete` | `inv_eliminar` | Eliminar un equipo del inventario |
+|--------|------|---------|-------------|
+| GET | `/equipments` | `inv_ver` | Listado de equipos |
+| GET | `/equipments/{id}` | `inv_ver` | Detalle de equipo |
+| GET | `/equipments/listas` | `inv_ver` | Listas auxiliares (marcas, tipos…) |
+| GET | `/equipments/totales` | `inv_ver` | KPIs del inventario |
+| POST | `/equipments/create` | `inv_crear_editar` | Crear equipo |
+| POST | `/equipments/update` | `inv_crear_editar` | Actualizar equipo |
+| POST | `/equipments/delete` | `inv_eliminar` | Dar de baja equipo |
 
----
-
-### 🔧 Mantenimientos
+### Mantenimientos
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/maintenance/list` | `tk_mantenimientos` | Listado de equipos con fichas técnicas |
-| `GET` | `/maintenance/detail?id=` | `tk_mantenimientos` | Ficha técnica completa con historial de intervenciones |
-| `POST` | `/maintenance/save` | `tk_mantenimientos` | Registrar nueva intervención de mantenimiento |
-| `POST` | `/maintenance/update` | `tk_mantenimientos` | Actualizar datos técnicos del equipo |
+|--------|------|---------|-------------|
+| GET | `/maintenance/list` | `tk_mantenimientos` | Lista de equipos |
+| GET | `/maintenance/detail?id=` | `tk_mantenimientos` | Ficha técnica completa |
+| POST | `/maintenance/save` | `tk_mantenimientos` | Registrar mantenimiento |
+| POST | `/maintenance/update` | `tk_mantenimientos` | Actualizar datos del equipo |
 
----
-
-### 💿 Licencias
+### Licencias
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/licenses` | `inv_licencias` | Listado de licencias de software |
-| `GET` | `/licenses/listas` | `inv_licencias` | Listas auxiliares (equipos, áreas) |
-| `POST` | `/licenses/create` | `inv_licencias` | Registrar nueva licencia |
-| `POST` | `/licenses/update` | `inv_licencias` | Actualizar datos de una licencia |
-| `POST` | `/licenses/delete` | `inv_licencias` | Eliminar licencia del registro |
+|--------|------|---------|-------------|
+| GET | `/licenses` | `inv_licencias` | Listado |
+| GET | `/licenses/listas` | `inv_licencias` | Listas auxiliares |
+| POST | `/licenses/create` | `inv_licencias` | Crear licencia |
+| POST | `/licenses/update` | `inv_licencias` | Actualizar licencia |
+| POST | `/licenses/delete` | `inv_licencias` | Eliminar licencia |
 
----
-
-### 📋 Asignaciones
+### Asignaciones
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/assignments` | `inv_asignaciones` | Catálogo de artículos e insumos |
-| `GET` | `/assignments/asignaciones` | `inv_asignaciones` | Asignaciones activas a funcionarios/equipos/áreas |
-| `POST` | `/assignments/save` | `inv_asignaciones` | Crear o editar artículo en el catálogo |
-| `POST` | `/assignments/asignar` | `inv_asignaciones` | Registrar nueva asignación (descuenta stock) |
-| `POST` | `/assignments/edit-asignacion` | `inv_asignaciones` | Modificar una asignación existente |
-| `POST` | `/assignments/delete-asignacion` | `inv_asignaciones` | Eliminar asignación (restaura stock automáticamente) |
+|--------|------|---------|-------------|
+| GET | `/assignments` | `inv_asignaciones` | Catálogo de artículos |
+| GET | `/assignments/asignaciones` | `inv_asignaciones` | Asignaciones activas |
+| POST | `/assignments/save` | `inv_asignaciones` | Guardar artículo |
+| POST | `/assignments/asignar` | `inv_asignaciones` | Crear asignación |
+| POST | `/assignments/edit-asignacion` | `inv_asignaciones` | Editar asignación |
+| POST | `/assignments/delete-asignacion` | `inv_asignaciones` | Eliminar asignación |
 
----
-
-### ❌ Bajas
+### Bajas
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/bajas/search?q=` | `inv_bajas` | Buscar activo por serial para dar de baja |
-| `POST` | `/bajas/save` | `inv_bajas` | Registrar baja (desvincula periféricos, licencias y asignaciones) |
-| `GET` | `/bajas/list` | `inv_bajas` | Historial completo de bajas |
-| `GET` | `/bajas/consolidated` | `inv_bajas` | Consolidado de bajas por categoría de activo |
+|--------|------|---------|-------------|
+| GET | `/bajas/search?q=` | `inv_bajas` | Buscar activo para dar de baja |
+| POST | `/bajas/save` | `inv_bajas` | Registrar baja |
+| GET | `/bajas/list` | `inv_bajas` | Historial de bajas |
+| GET | `/bajas/consolidated` | `inv_bajas` | Consolidado por categoría |
 
----
-
-### 📄 Reportes
+### Reportes
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `POST` | `/reports/generate` | `rep_generar` | Generar reporte con filtros (`preview` / `csv` / `pdf_all`) |
-| `GET` | `/reports/listas` | `rep_generar` | Opciones de filtros disponibles por tipo de reporte |
+|--------|------|---------|-------------|
+| POST | `/reports/generate` | `rep_generar` | Generar reporte (preview / csv / pdf_all) |
+| GET | `/reports/listas` | `rep_generar` | Listas de filtros |
 
----
-
-### 🔔 Notificaciones
+### Notificaciones
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/notifications` | login | Lista de notificaciones del usuario activo |
-| `POST` | `/notifications/send` | login | Enviar notificación a usuario o grupo |
-| `POST` | `/notifications/mark-read` | login | Marcar notificación como leída |
-| `POST` | `/notifications/mark-read-by-related` | login | Marcar como leídas todas las relacionadas con una entidad |
+|--------|------|---------|-------------|
+| GET | `/notifications` | login | Lista de notificaciones |
+| POST | `/notifications/send` | login | Enviar notificación |
+| POST | `/notifications/mark-read` | login | Marcar como leída |
+| POST | `/notifications/mark-read-by-related` | login | Marcar relacionadas como leídas |
 
----
-
-### 🔍 Búsqueda global
+### Búsqueda global
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/search/global?q=` | login | Búsqueda simultánea en todas las entidades del sistema |
+|--------|------|---------|-------------|
+| GET | `/search/global?q=` | login | Búsqueda en todas las entidades |
 
----
-
-### ⚙️ Auxiliares y usuarios
+### Auxiliares y usuarios
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/aux/areas` | login | Listado de áreas |
-| `GET` | `/aux/marcas` | login | Listado de marcas |
-| `GET` | `/aux/tipos` | login | Tipos de activo disponibles |
-| `GET` | `/aux/configuraciones` | login | Configuraciones de hardware registradas |
-| `GET` | `/aux/funcionarios` | login | Listado de funcionarios |
-| `POST` | `/aux/save` | login | Crear registro auxiliar o iniciar backup de BD |
-| `GET` | `/aux/users` | `usr_ver` | Listado paginado de usuarios del sistema |
-| `POST` | `/aux/users/save` | `usr_gestionar` | Crear o editar usuario |
-| `POST` | `/aux/users/toggle-status` | `usr_gestionar` | Activar o desactivar cuenta de usuario |
-| `POST` | `/aux/users/force-logout` | `usr_gestionar` | Forzar cierre de sesión remoto |
+|--------|------|---------|-------------|
+| GET | `/aux/areas` | login | Áreas |
+| GET | `/aux/marcas` | login | Marcas |
+| GET | `/aux/tipos` | login | Tipos de activo |
+| GET | `/aux/configuraciones` | login | Configuraciones de hardware |
+| GET | `/aux/funcionarios` | login | Funcionarios |
+| POST | `/aux/save` | login | Crear registro auxiliar o backup BD |
+| GET | `/aux/users` | `usr_ver` | Lista de usuarios |
+| POST | `/aux/users/save` | `usr_gestionar` | Crear/editar usuario |
+| POST | `/aux/users/toggle-status` | `usr_gestionar` | Activar/desactivar usuario |
+| POST | `/aux/users/force-logout` | `usr_gestionar` | Forzar cierre de sesión |
 
----
-
-### 🔒 Permisos y configuración del sistema
+### Permisos y configuración
 
 | Método | Ruta | Permiso | Descripción |
-|---|---|---|---|
-| `GET` | `/permissions/roles` | `conf_basica` | Lista de roles con su matriz completa de permisos |
-| `POST` | `/permissions/roles/save` | `conf_roles` | Crear o editar un rol |
-| `POST` | `/permissions/delete-role` | `conf_roles` | Eliminar un rol |
-| `GET` | `/permissions/config-sla` | `conf_sla` | Configuración SLA activa |
-| `POST` | `/permissions/save-sla` | `conf_sla` | Actualizar tiempos de SLA |
-| `POST` | `/permissions/delete-sla` | `conf_sla` | Eliminar configuración de SLA |
-| `GET` | `/permissions/keywords` | `conf_sla` | Palabras clave de prioridad automática |
-| `POST` | `/permissions/save-keyword` | `conf_sla` | Agregar nueva palabra clave |
-| `POST` | `/permissions/delete-keyword` | `conf_sla` | Eliminar palabra clave |
-| `GET` | `/permissions/logs` | `conf_basica` | Log de auditoría del sistema |
-| `POST` | `/permissions/clear-logs` | `conf_avanzada` | Limpiar logs con más de 30 días de antigüedad |
-| `POST` | `/permissions/import-backup` | `conf_avanzada` | Restaurar base de datos desde archivo SQL |
+|--------|------|---------|-------------|
+| GET | `/permissions/roles` | `conf_basica` | Lista de roles con permisos |
+| POST | `/permissions/roles/save` | `conf_roles` | Crear/editar rol |
+| POST | `/permissions/delete-role` | `conf_roles` | Eliminar rol |
+| GET | `/permissions/config-sla` | `conf_sla` | Configuración SLA actual |
+| POST | `/permissions/save-sla` | `conf_sla` | Actualizar SLA |
+| POST | `/permissions/delete-sla` | `conf_sla` | Eliminar SLA |
+| GET | `/permissions/keywords` | `conf_sla` | Palabras clave de prioridad |
+| POST | `/permissions/save-keyword` | `conf_sla` | Agregar palabra clave |
+| POST | `/permissions/delete-keyword` | `conf_sla` | Eliminar palabra clave |
+| GET | `/permissions/logs` | `conf_basica` | Log de auditoría |
+| POST | `/permissions/clear-logs` | `conf_avanzada` | Limpiar logs > 30 días |
+| POST | `/permissions/import-backup` | `conf_avanzada` | Restaurar backup SQL |
 
----
-
-### 📡 SSE — Tiempo real
+### SSE
 
 | Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/stream` | Stream persistente de eventos en tiempo real |
+|--------|------|-------------|
+| GET | `/api/stream` | Stream de eventos en tiempo real |
 
 ---
 
-## 🖼️ Módulos del frontend
+## Módulos del frontend
 
 ### Dashboard (`/dashboard`)
-
-Dashboard completamente personalizable mediante drag-and-drop. Cuenta con un catálogo de **22 tipos de widgets**:
-
-- **KPIs numéricos:** totales de PCs, portátiles, impresoras, licencias, tickets abiertos, cumplimiento SLA.
-- **Gráficas Chart.js:** barras comparativas, pie de distribución por categoría, doughnut de estado de tickets, línea de tendencia temporal.
-- **Listas:** auditoría reciente, SLAs próximos a vencer.
-
-La configuración de widgets se persiste en la columna `usuarios.dashboard_config` (JSON), por lo que cada usuario conserva su layout personalizado entre sesiones.
-
-> Los usuarios sin permisos administrativos son redirigidos automáticamente a `/tickets` al intentar acceder a esta ruta.
-
----
+Dashboard completamente personalizable con sistema de widgets arrastrables. Catálogo de 22 tipos de widgets: KPIs numéricos (PCs, portátiles, impresoras, licencias, tickets, SLA), gráficas Chart.js (Bar, Pie, Doughnut), listas de auditoría y SLA próximos a vencer. La configuración se persiste en `usuarios.dashboard_config` (JSON). Solo accesible para usuarios administrativos; los funcionarios son redirigidos directamente a `/tickets`.
 
 ### Mesa de Servicios (`/tickets`)
-
-Vista de usuario final para la gestión autónoma de solicitudes de soporte:
-
-- Creación de tickets con descripción, archivo adjunto (imagen o documento) y **prioridad automática** por palabras clave.
-- Chat bidireccional con el equipo técnico con actualizaciones en tiempo real vía SSE.
-- Wizard de calificación post-resolución (1–5 estrellas), disponible al recibir respuesta del técnico.
-- **Detección anti-spam:** el sistema detecta tickets duplicados abiertos y alerta al usuario antes de crear uno nuevo.
-
----
+Vista de usuario final para gestión de sus propios tickets. Creación con descripción, archivo adjunto y prioridad automática por palabras clave. Chat en tiempo real con el soporte técnico. Wizard de calificación post-resolución (1–5 estrellas). Detección anti-spam de tickets duplicados abiertos.
 
 ### Gestión de Tickets (`/gestion-tickets`)
-
-Vista exclusiva para el equipo técnico (requiere `tk_ver_global`). Incluye:
-
-- Tabla completa con filtros combinables por estado, prioridad, técnico asignado y categoría.
-- **Panel de detalle en tres secciones:**
-  1. Información del ticket (datos, SLA, historial de estados)
-  2. Chat con burbujas diferenciadas por rol (usuario / técnico)
-  3. Timeline cronológico de eventos (creación, cambios de estado, escalamientos)
-- Acciones disponibles: cambiar estado, asignar técnico, escalar con motivo obligatorio, responder.
-
----
+Vista de soporte técnico. Tabla completa con filtros por estado y prioridad. Panel de detalle en tres secciones: información del ticket, chat con burbujas diferenciadas por rol, y timeline de eventos. Acciones: cambiar estado, asignar técnico, escalar con motivo, responder.
 
 ### Inventario (`/equipos`)
-
-CRUD completo para **5 tipos de activos tecnológicos:**
-
-| Tipo | Campos específicos |
-|---|---|
-| 💻 Computadores de escritorio / portátiles | Serial, configuración de hardware, protecciones de seguridad (cifrado, antivirus, firewall), nivel de clasificación, TeamViewer ID |
-| 🖨️ Impresoras y escáneres | Tipo de conexión, IP de red |
-| 🖥️ Monitores | Tamaño, resolución, tipo de panel |
-| ☎️ Teléfonos IP | Extensión, dirección IP |
-| 📦 Otros activos | Categoría libre |
-
-Características adicionales: selectores con **Quick Add inline** para crear marcas, tipos, áreas y configuraciones sin salir del formulario. KPIs de totales por categoría en la cabecera de la página.
-
----
+CRUD completo de 5 tipos de activos: computadores, impresoras/escáneres, monitores, teléfonos IP y otros. Campos de seguridad por equipo (cifrado, antivirus, firewall, nivel de clasificación). Selectores con "Quick Add" inline para marcas, tipos, áreas, configuraciones y funcionarios. KPIs de totales en la cabecera.
 
 ### Asignaciones (`/asignaciones`)
-
-Control de stock de insumos y repuestos con columnas virtuales (`cantidad_total` calculada desde la BD):
-
-- Registro de asignaciones a funcionarios, áreas o equipos específicos.
-- La devolución de un artículo restaura automáticamente el stock disponible.
-- Historial de asignaciones activas con fecha, receptor y cantidad.
-
----
+Control de stock de insumos y repuestos con columnas virtuales (`cantidad_total`). Registro de asignaciones a funcionarios, áreas o equipos. La devolución restaura el stock automáticamente.
 
 ### Licencias (`/licencias`)
-
-Registro y seguimiento de licencias de software:
-
-- CRUD completo con serial key y **toggle de visibilidad** (ocultar/mostrar la clave en pantalla).
-- Asignación de licencias a equipos específicos o a áreas completas.
-- Control de fechas de vencimiento.
-
----
+CRUD de licencias de software con serial key (toggle de visibilidad), edición, asignación a equipos y áreas.
 
 ### Bajas (`/bajas`)
+Tres flujos de baja: activo en inventario (búsqueda por serial + soft-delete), activo no inventariado (formulario manual) e insumo genérico (con cantidad apilable). Al dar de baja un equipo se desvinculan periféricos, licencias y asignaciones.
 
-El módulo soporta **tres flujos de baja** diferentes:
-
-1. **Activo en inventario:** búsqueda por número de serial, confirmación y soft-delete. Al darse de baja un equipo, el sistema desvincula automáticamente sus periféricos, licencias activas y asignaciones pendientes.
-2. **Activo no inventariado:** formulario manual para registrar bienes sin serial en el sistema.
-3. **Insumo genérico:** baja con cantidad apilable para repuestos o consumibles.
-
----
-
-### Hojas de Vida / Mantenimientos (`/mantenimientos`)
-
-Ficha técnica completa por equipo con historial de intervenciones:
-
-| Tipo de mantenimiento | Requisito |
-|---|---|
-| 🔵 Preventivo | Descripción de la intervención |
-| 🟠 Correctivo | Razón del fallo **obligatoria** |
-| 🟣 Repotenciación | Descripción de la actualización de hardware |
-
-Incluye registro de cambios en datos del equipo con justificación obligatoria para garantizar trazabilidad.
-
----
+### Hojas de Vida (`/mantenimientos`)
+Ficha técnica completa de cada equipo con historial de mantenimientos. Tipos de mantenimiento: preventivo, correctivo (con razón obligatoria) y repotenciación (actualización de hardware). Registro de cambios de datos con justificación.
 
 ### Reportes (`/reportes`)
-
-Seis tipos de reporte con filtros dinámicos:
-
-| Reporte | Filtros disponibles |
-|---|---|
-| 📦 Inventario | Tipo, área, estado, marca |
-| 🔩 Repuestos | Área, estado de stock |
-| 💿 Licencias | Software, área, vencimiento |
-| 🎫 Tickets | Rango de fechas, estado, técnico, prioridad |
-| ❌ Bajas | Rango de fechas, categoría |
-| 📋 Logs de auditoría | Usuario, acción, fecha |
-
-Opciones de salida: vista previa paginada en pantalla, exportación a **CSV** (con BOM UTF-8 para compatibilidad con Excel) y exportación a **PDF**.
-
----
+Seis tipos de reporte: Inventario, Repuestos, Licencias, Tickets, Bajas y Logs. Filtros dinámicos por tipo. Vista previa paginada. Exportación a CSV (con BOM UTF-8) y PDF.
 
 ### Configuración (`/configuracion`)
-
-Seis pestañas protegidas individualmente por permiso:
-
-| Tab | Permiso | Funcionalidad |
-|---|---|---|
-| 🎨 Apariencia | — | Modo oscuro y sidebar compacto (80px); persiste en `localStorage` |
-| ⚙️ Sistema | `conf_basica` | Información del sistema, backup/restauración de BD, log de auditoría |
-| 👥 Usuarios | `usr_ver` | Tabla paginada, CRUD de usuarios, toggle activo/inactivo, force logout remoto |
-| 🔐 Roles y Permisos | `conf_roles` | Matriz visual de 18 permisos por rol, crear/editar/eliminar roles |
-| ⏱️ SLAs | `conf_sla` | Tiempos de respuesta y resolución por prioridad |
-| 🏷️ Prioridades | `conf_sla` | CRUD de palabras clave para asignación automática de prioridad |
-
----
+Seis tabs protegidos por permiso:
+- **Apariencia** — modo oscuro y sidebar compacto (persiste en localStorage)
+- **Sistema** — info del sistema, backup/restauración de BD, log de auditoría
+- **Usuarios** — tabla paginada con búsqueda, CRUD de usuarios, toggle activo/inactivo, force logout
+- **Roles y Permisos** — matriz completa de 18 permisos por rol, crear/editar/eliminar roles
+- **SLAs** — tiempos de respuesta y resolución en horas por prioridad
+- **Prioridades** — CRUD de palabras clave para prioridad automática de tickets
 
 ### Perfil (`/perfil`)
-
-Panel personal del usuario activo:
-
-- Estadísticas individuales: tickets creados, tickets resueltos, equipos asignados a cargo, mantenimientos registrados.
-- Cambio de contraseña con **validación de fortaleza en tiempo real:** debe incluir mayúscula, minúscula, número, carácter especial y mínimo 8 caracteres.
+Estadísticas del usuario actual (tickets creados, resueltos, equipos asignados, mantenimientos registrados). Cambio de contraseña con validación de fortaleza en tiempo real (mayúscula, minúscula, número, carácter especial, mínimo 8 caracteres).
 
 ---
 
-## 🗺️ Rutas protegidas
+## Rutas del frontend
 
 | Ruta | Componente | Permiso requerido |
-|---|---|---|
+|------|-----------|-------------------|
 | `/login` | Login | Público |
-| `/` | HomeRedirect | Redirige automáticamente según rol |
-| `/dashboard` | Dashboard | Usuario autenticado con perfil administrativo |
+| `/` | HomeRedirect | Redirige según rol |
+| `/dashboard` | Dashboard | Cualquier usuario autenticado |
 | `/tickets` | Tickets | Cualquier usuario autenticado |
 | `/gestion-tickets` | GestionTickets | `tk_ver_global` |
 | `/equipos` | Equipos | `inv_ver` |
@@ -864,74 +602,55 @@ Panel personal del usuario activo:
 | `/perfil` | Perfil | Cualquier usuario autenticado |
 
 **Lógica de redirección:**
-
-```
-/ o /login (con sesión activa):
-  esAdministrativo() = true  → /dashboard
-  esAdministrativo() = false → /tickets
-
-/dashboard sin esAdministrativo() → redirige a /tickets
-
-Ruta protegida sin permiso suficiente → redirige a /dashboard
-```
+- `/` y `/login` (cuando hay sesión activa) → `esAdministrativo()` ? `/dashboard` : `/tickets`
+- `/dashboard` sin `esAdministrativo()` → redirige directamente a `/tickets`
+- Ruta protegida sin permiso → redirige a `/dashboard`
 
 ---
 
-## ⚡ Tiempo real con SSE
+## Tiempo real (SSE)
 
-El endpoint `GET /api/stream` (`backend/stream.php`) mantiene una **conexión HTTP persistente** con cada cliente conectado. Corre bajo Apache —no bajo el servidor integrado de PHP— para evitar bloqueos de proceso.
+El endpoint `GET /api/stream` (`backend/stream.php`) mantiene una conexión persistente SSE con el cliente. Emite eventos en las siguientes categorías:
 
-El cliente React gestiona la conexión en `RealtimeContext.jsx` mediante el hook `useSSE.js`.
+| Evento | Descripción |
+|--------|-------------|
+| `new_notification` | Nueva notificación personal o global |
+| `tickets_update` | Cambio en el estado de tickets |
+| `chat_update` | Nuevo mensaje en chat de ticket |
+| `system_update` | Cambio en inventario u otras entidades |
+| `force_logout` | El administrador revocó la sesión del usuario |
 
-### Eventos emitidos
-
-| Evento | Cuándo se dispara |
-|---|---|
-| `new_notification` | Nueva notificación personal o broadcast |
-| `tickets_update` | Cambio de estado en cualquier ticket |
-| `chat_update` | Nuevo mensaje en el chat de un ticket |
-| `system_update` | Cambio en inventario u otras entidades del sistema |
-| `force_logout` | El administrador revocó la sesión del usuario activo |
+El cliente React los maneja en `RealtimeContext.jsx` vía `useSSE.js`. El stream SSE corre bajo Apache (no el PHP built-in) para evitar bloqueos de proceso.
 
 ---
 
-## 🎨 Preferencias de usuario y temas
+## Preferencias de usuario
 
-Las preferencias visuales se almacenan en `localStorage` del navegador y son instantáneas (sin recarga de página):
+Las preferencias visuales se guardan en `localStorage` del navegador:
 
 | Clave | Tipo | Descripción |
-|---|---|---|
-| `darkMode` | `'true'` / `'false'` | Activa el modo oscuro |
-| `sidebarCompact` | `'true'` / `'false'` | Reduce el sidebar a 80px de ancho |
+|-------|------|-------------|
+| `darkMode` | `'true'` / `'false'` | Modo oscuro |
+| `sidebarCompact` | `'true'` / `'false'` | Sidebar compacto (80px) |
 
-### Prevención de FOUC (Flash of Unstyled Content)
+**Aplicación sin flash (FOUC):** `index.html` contiene un script inline en el `<head>` que lee `localStorage` y aplica `data-theme="dark"` al `<html>` antes de que el bundle de React cargue. `AppLayout.jsx` aplica ambas preferencias al montar y limpia la clase temporal.
 
-`index.html` contiene un **script inline en el `<head>`** que lee `localStorage` y aplica `data-theme="dark"` al elemento `<html>` *antes* de que el bundle de React cargue, eliminando el parpadeo de tema en la carga inicial. `AppLayout.jsx` aplica ambas preferencias al montar y limpia las clases temporales.
-
-### Variables CSS del sistema de temas
+El tema oscuro usa variables CSS en `:root` y `[data-theme="dark"]`:
 
 ```css
-/* Tema claro (por defecto) */
 :root {
   --primary-color: #4a6cf7;
-  --bg-color:      #f0f2f5;
-  --card-bg:       #ffffff;
-  --text-color:    #333333;
+  --bg-color: #f0f2f5;
+  --card-bg: #ffffff;
+  --text-color: #333;
+  /* ... */
 }
 
-/* Tema oscuro */
 [data-theme="dark"] {
   --primary-color: #6aa5e3;
-  --bg-color:      #121212;
-  --card-bg:       #1e1e1e;
-  --text-color:    #e0e0e0;
+  --bg-color: #121212;
+  --card-bg: #1e1e1e;
+  --text-color: #e0e0e0;
+  /* ... */
 }
 ```
-
----
-
-<div align="center">
-
-*GestionTI — Desarrollado con React 19 + PHP 8.0 + MariaDB*
-
-</div>

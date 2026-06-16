@@ -18,12 +18,17 @@ class Auth {
     public static function checkForceLogout($pdo) {
         $stmt = $pdo->prepare("SELECT force_logout FROM usuarios WHERE id = ?");
         $stmt->execute([$_SESSION['user_id']]);
-        if ($stmt->fetchColumn() == 1) {
+        $reason = (int)$stmt->fetchColumn();
+        if ($reason > 0) {
             $pdo->prepare("UPDATE usuarios SET force_logout = 0 WHERE id = ?")->execute([$_SESSION['user_id']]);
             session_unset();
             session_destroy();
             http_response_code(401);
-            echo json_encode(['success' => false, 'message' => 'Tus permisos han sido actualizados. Inicia sesión nuevamente.']);
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Sesión terminada. Por favor, inicia sesión nuevamente.', 
+                'reason' => $reason
+            ]);
             exit;
         }
     }
@@ -57,8 +62,8 @@ class Auth {
         $user = $stmt->fetch();
 
         if ($user && ($password === $user['password'] || password_verify($password, $user['password']))) {
-            // Actualizar último acceso
-            $pdo->prepare("UPDATE usuarios SET ultimo_acceso = NOW() WHERE id = ?")->execute([$user['id']]);
+            // Actualizar último acceso y limpiar force_logout al iniciar sesión
+            $pdo->prepare("UPDATE usuarios SET ultimo_acceso = NOW(), force_logout = 0 WHERE id = ?")->execute([$user['id']]);
             
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];

@@ -150,6 +150,7 @@ export default function Equipos() {
 
   // -- Modal CRUD --
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalTab, setModalTab] = useState('equipos');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
 
@@ -191,7 +192,7 @@ export default function Equipos() {
           auxAPI.areas(),
           auxAPI.marcas(),
           auxAPI.tipos(),
-          auxAPI.configuraciones(),
+          auxAPI.hardwareConfigs(),
         ]);
 
       const inv = equiposRes.data?.success ? equiposRes.data.data : (equiposRes.data || {});
@@ -256,6 +257,7 @@ export default function Equipos() {
       showToast('Sin permiso: No tienes permisos para crear o editar registros.', 'warning');
       return;
     }
+    setModalTab(tab);
     setEditingItem(null);
     setFormData(getDefaultForm(tab));
     setModalOpen(true);
@@ -266,6 +268,7 @@ export default function Equipos() {
       showToast('Sin permiso: No tienes permisos para crear o editar registros.', 'warning');
       return;
     }
+    setModalTab(tab);
     setEditingItem(item);
     setFormData({ ...item });
     setModalOpen(true);
@@ -273,6 +276,7 @@ export default function Equipos() {
 
   const closeModal = () => {
     setModalOpen(false);
+    setModalTab('equipos');
     setEditingItem(null);
     setFormData({});
   };
@@ -331,8 +335,9 @@ export default function Equipos() {
 
   const validateForm = (tab) => {
     const f = formData;
+    const targetTab = tab || modalTab;
 
-    switch (tab) {
+    switch (targetTab) {
       case 'equipos':
         if (!validators.minLength(f.nombre_equipo, 2)) return 'El nombre del equipo debe tener al menos 2 caracteres.';
         if (!validators.alphanumeric(f.nombre_equipo)) return 'El nombre del equipo solo puede contener caracteres alfanuméricos.';
@@ -376,7 +381,7 @@ export default function Equipos() {
      ----------------------------------------------------------------------- */
 
   const handleSave = async () => {
-    const validationError = validateForm(activeTab);
+    const validationError = validateForm(modalTab);
     if (validationError) {
       showToast('Validación: ' + validationError, 'warning');
       return;
@@ -384,7 +389,7 @@ export default function Equipos() {
 
     try {
       let res;
-      const tab = activeTab;
+      const tab = modalTab;
       const category = getTabCategory(tab);
 
       const payload = {
@@ -508,7 +513,7 @@ export default function Equipos() {
         // Refresh auxiliary data lists
         const [m, a, t, c, f] = await Promise.all([
           auxAPI.marcas(), auxAPI.areas(), auxAPI.tipos(),
-          auxAPI.configuraciones(), auxAPI.funcionarios(),
+          auxAPI.hardwareConfigs(), auxAPI.funcionarios(),
         ]);
         
         setAux((prev) => ({
@@ -734,12 +739,12 @@ export default function Equipos() {
 
   const getModalTitle = () => {
     const prefix = editingItem ? 'Editar' : 'Nuevo';
-    const tabLabel = TABS.find((t) => t.key === activeTab)?.label || activeTab;
+    const tabLabel = TABS.find((t) => t.key === modalTab)?.label || modalTab;
     return `${prefix} ${tabLabel}`;
   };
 
   const renderFormFields = () => {
-    switch (activeTab) {
+    switch (modalTab) {
       case 'equipos':
         return (
           <>

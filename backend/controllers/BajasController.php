@@ -46,8 +46,12 @@ class BajasController {
             if (strlen($motivo) < 10) json_error('El motivo debe tener al menos 10 caracteres.');
 
             if (($input['tipo_form'] ?? '') === 'insumo') {
+                $categoria_insumo = $input['categoria_insumo'] ?? 'OTRO';
+                $cantidad = (int)($input['cantidad'] ?? 1);
                 $this->pdo->prepare("INSERT INTO bajas (tipo_activo, categoria, marca, motivo, cantidad, usuario_responsable_id) VALUES (?,?,?,?,?,?)")
-                    ->execute(['Insumo/Generico', $input['categoria_insumo'] ?? 'OTRO', $input['marca_insumo'] ?? 'Genérico', $motivo, (int)($input['cantidad'] ?? 1), $_SESSION['user_id']]);
+                    ->execute(['Insumo/Generico', $categoria_insumo, $input['marca_insumo'] ?? 'Genérico', $motivo, $cantidad, $_SESSION['user_id']]);
+                
+                registrar_log($this->pdo, $_SESSION['user_id'], 'bajas', "Baja registrada (Insumo): $categoria_insumo - Cantidad: $cantidad (Motivo: $motivo)");
             } else {
                 $origen_tabla = $input['origen_tabla'] ?? '';
                 $id_origen = $input['origen_id'] ?? 0;
@@ -59,15 +63,40 @@ class BajasController {
 
                 // Si viene de inventario, hacer soft-delete
                 if ($origen_tabla === 'equipos_de_computo' && $id_origen) {
-                    $this->pdo->prepare("UPDATE equipos_de_computo SET estado='De baja', fecha_baja=NOW() WHERE id=?")
-                        ->execute([$id_origen]);
-                    // Desvincular periféricos
+                    // 1. Marcar equipo como De baja y quitar asignación de funcionario
+                    $this->pdo->prepare(
+                        "UPDATE equipos_de_computo SET estado='De baja', fecha_baja=CURDATE(), id_usuario=NULL WHERE id=?"
+                    )->execute([$id_origen]);
+
+                    // 2. Desvincular periféricos (monitores e impresoras quedan libres)
                     $this->pdo->prepare("UPDATE monitores SET id_equipo=NULL WHERE id_equipo=?")->execute([$id_origen]);
                     $this->pdo->prepare("UPDATE impresoras_escaneres SET id_equipo=NULL WHERE id_equipo=?")->execute([$id_origen]);
+
+                    // 3. Liberar insumos asignados a este equipo (devolver al stock disponible)
+                    $asignaciones = $this->pdo->prepare(
+                        "SELECT id, id_articulo FROM asignaciones WHERE id_equipo=?"
+                    );
+                    $asignaciones->execute([$id_origen]);
+                    foreach ($asignaciones->fetchAll() as $asig) {
+                        $this->pdo->prepare(
+                            "UPDATE articulos SET cantidad_asignada = GREATEST(0, cantidad_asignada - 1),
+                                                  cantidad_disponible = cantidad_disponible + 1
+                             WHERE id=?"
+                        )->execute([$asig['id_articulo']]);
+                    }
+                    $this->pdo->prepare("DELETE FROM asignaciones WHERE id_equipo=?")->execute([$id_origen]);
+
+                    // 4. Registrar en historial_equipos que fue dado de baja
+                    $this->pdo->prepare(
+                        "INSERT INTO historial_equipos (id_equipo, tipo_accion, fecha, usuario_id, observaciones)
+                         VALUES (?, 'Actualizacion de Datos', CURDATE(), ?, ?)"
+                    )->execute([$id_origen, $_SESSION['user_id'], 'Equipo dado de baja del inventario. Motivo: ' . $motivo]);
                 }
 
                 $this->pdo->prepare("INSERT INTO bajas (tipo_activo, categoria, marca, modelo, serial, serial_interno, motivo, origen_tabla, id_origen, usuario_responsable_id) VALUES (?,?,?,?,?,?,?,?,?,?)")
                     ->execute(['Activo Fijo', $categoria, $marca, $modelo, $serial, $serial_interno, $motivo, $origen_tabla, $id_origen ?: null, $_SESSION['user_id']]);
+                
+                registrar_log($this->pdo, $_SESSION['user_id'], 'bajas', "Baja registrada (Activo Fijo): $categoria $marca $modelo (Serial: $serial, Motivo: $motivo)");
             }
 
             $this->pdo->commit();

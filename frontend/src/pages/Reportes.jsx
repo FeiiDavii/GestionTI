@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { reportAPI } from '../api/client';
 import { showToast } from '../core/toast';
@@ -143,16 +144,22 @@ function renderCell(fieldId, value, tipo) {
 /* ══════════════════════════════ MAIN COMPONENT ══════════════════════════════ */
 export default function Reportes() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sincronizar tipo de reporte con URL (?type=)
+  const validTypes = REPORT_TYPES.map(r => r.id);
+  const typeFromUrl = searchParams.get('type');
+  const initialType = validTypes.includes(typeFromUrl) ? typeFromUrl : 'equipos';
 
   // Report state
-  const [selectedType, setSelectedType]   = useState('equipos');
+  const [selectedType, setSelectedType]   = useState(initialType);
   const [loading, setLoading]             = useState(false);
   const [data, setData]                   = useState([]);
   const [filters, setFilters]             = useState({});
   const [page, setPage]                   = useState(1);
   const [totalPages, setTotalPages]       = useState(1);
   const [totalRows, setTotalRows]         = useState(0);
-  const [selectedFields, setSelectedFields] = useState(FIELD_MAP['equipos'].map(f => f.id));
+  const [selectedFields, setSelectedFields] = useState(FIELD_MAP[initialType].map(f => f.id));
   const [searchTerm, setSearchTerm]       = useState('');
   const [hasGenerated, setHasGenerated]   = useState(false);
   const [pageSize, setPageSize]           = useState(50);
@@ -167,6 +174,15 @@ export default function Reportes() {
     }).catch(() => {});
   }, []);
 
+  // Reaccionar cuando cambia el parámetro ?type= en la URL (navegación desde el buscador)
+  useEffect(() => {
+    const t = searchParams.get('type');
+    if (t && validTypes.includes(t) && t !== selectedType) {
+      handleTypeChange(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const fields = FIELD_MAP[selectedType] || [];
 
   const handleTypeChange = (type) => {
@@ -179,6 +195,8 @@ export default function Reportes() {
     setHasGenerated(false);
     setTotalRows(0);
     setTotalPages(1);
+    // Actualizar URL para reflejar el tipo activo
+    setSearchParams(prev => { prev.set('type', type); return prev; }, { replace: true });
   };
 
   const setFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }));
@@ -201,13 +219,14 @@ export default function Reportes() {
         setTotalPages(result.totalPages || 1);
         setPage(p);
         setHasGenerated(true);
-        if (p === 1 && (result.data || []).length === 0) showToast('No hay datos para los filtros aplicados', 'info');
+        if (p === 1 && (result.data || []).length === 0) showToast('No hay datos para los filtros aplicados. Prueba con otros criterios.', 'info');
       } else {
-        showToast('No hay datos disponibles', 'warning');
+        showToast(res.data?.message || 'No hay datos disponibles para el reporte seleccionado', 'warning');
         setData([]);
       }
-    } catch {
-      showToast('Error al generar el reporte', 'error');
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error al generar el reporte';
+      showToast(errorMessage, 'error');
     }
     setLoading(false);
   }, [selectedType, filters, searchTerm]);
@@ -237,7 +256,7 @@ export default function Reportes() {
     link.download = `reporte_${selectedType}_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
-    showToast('CSV exportado', 'success');
+    showToast('Reporte CSV exportado exitosamente', 'success');
   };
 
   /* ── Export PDF ── */
@@ -277,10 +296,11 @@ export default function Reportes() {
       });
 
       doc.save(`reporte_${selectedType}_${new Date().toISOString().slice(0, 10)}.pdf`);
-      showToast('PDF generado', 'success');
+      showToast('Reporte PDF generado exitosamente', 'success');
     } catch (err) {
       console.error('Error PDF:', err);
-      showToast('Error generando PDF', 'error');
+      const errorMessage = err.message || 'Error al generar el archivo PDF';
+      showToast(errorMessage, 'error');
     }
   };
 
