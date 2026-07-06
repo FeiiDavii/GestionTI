@@ -3,7 +3,7 @@
 # 🖥️ GestionTI
 ### Sistema Integral de Gestión de Inventario TI
 
-[![Versión](https://img.shields.io/badge/versión-3.9.0-4a6cf7?style=for-the-badge)](.)
+[![Versión](https://img.shields.io/badge/versión-3.10.0-4a6cf7?style=for-the-badge)](.)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](.)
 [![PHP](https://img.shields.io/badge/PHP-8.0-777BB4?style=for-the-badge&logo=php)](.)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?style=for-the-badge&logo=mariadb)](.)

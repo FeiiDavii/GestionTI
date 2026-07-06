@@ -38,52 +38,86 @@ class ReportController {
 
                 /* ─────────────────────── EQUIPOS ─────────────────────── */
                 case 'equipos':
-                    $sql = "SELECT e.id,
-                                   e.nombre_equipo,
-                                   e.serial,
-                                   e.serial_interno,
-                                   COALESCE(tp.tipo, 'PC') AS tipo,
-                                   m.nombre_marca AS marca,
-                                   a.nombre_area  AS area,
-                                   e.procesador,
-                                   c.ram_rom       AS configuracion,
-                                   e.sistema_operativo AS so,
-                                   e.estado,
-                                   e.nivel_clasificacion AS clasificacion,
-                                   e.fecha_compra,
-                                   e.fecha_baja,
-                                   e.precio_compra,
-                                   CONCAT(f.nombre,' ',f.apellido) AS responsable,
-                                   CONCAT_WS(', ', IF(e.prot_cifrado=1, 'Cifrado', NULL), IF(e.prot_antivirus=1, 'Antivirus', NULL), IF(e.prot_firewall=1, 'Firewall', NULL)) AS protecciones
-                            FROM equipos_de_computo e
-                            LEFT JOIN marcas m       ON e.id_marca = m.id
-                            LEFT JOIN areas a        ON e.id_area  = a.id
-                            LEFT JOIN tipos tp       ON e.id_tipo  = tp.id
-                            LEFT JOIN configuraciones c ON e.id_configuracion = c.id
-                            LEFT JOIN funcionarios f ON e.id_usuario = f.id
-                            WHERE e.estado != 'De baja'";
+                    $baseSelect = "SELECT * FROM (
+                        SELECT e.id, e.nombre_equipo, e.modelo, e.serial, e.serial_interno, COALESCE(tp.tipo, 'PC') AS tipo, m.nombre_marca AS marca, a.nombre_area AS area, e.procesador, c.ram_rom AS configuracion, e.sistema_operativo AS so, e.estado, e.nivel_clasificacion AS clasificacion, e.fecha_compra, e.fecha_baja, e.precio_compra, CONCAT(f.nombre,' ',f.apellido) AS responsable, CONCAT_WS(', ', IF(e.prot_cifrado=1, 'Cifrado', NULL), IF(e.prot_antivirus=1, 'Antivirus', NULL), IF(e.prot_firewall=1, 'Firewall', NULL)) AS protecciones, e.id_area, e.id_marca, 'Computador' AS categoria_hardware
+                        FROM equipos_de_computo e
+                        LEFT JOIN marcas m ON e.id_marca = m.id
+                        LEFT JOIN areas a ON e.id_area = a.id
+                        LEFT JOIN tipos tp ON e.id_tipo = tp.id
+                        LEFT JOIN configuraciones c ON e.id_configuracion = c.id
+                        LEFT JOIN funcionarios f ON e.id_usuario = f.id
+
+                        UNION ALL
+
+                        SELECT i.id, e.nombre_equipo AS nombre_equipo, i.modelo, i.serial, i.serial_interno, COALESCE(tpi.tipo, 'Impresora/Escáner') AS tipo, mi.nombre_marca AS marca, a.nombre_area AS area, NULL AS procesador, NULL AS configuracion, NULL AS so, 'Activo' AS estado, NULL AS clasificacion, NULL AS fecha_compra, NULL AS fecha_baja, NULL AS precio_compra, CONCAT(f.nombre,' ',f.apellido) AS responsable, NULL AS protecciones, e.id_area, i.id_marca, 'Impresora/Escaner' AS categoria_hardware
+                        FROM impresoras_escaneres i
+                        LEFT JOIN marcas mi ON i.id_marca = mi.id
+                        LEFT JOIN tipos tpi ON i.id_tipo = tpi.id
+                        LEFT JOIN equipos_de_computo e ON i.id_equipo = e.id
+                        LEFT JOIN areas a ON e.id_area = a.id
+                        LEFT JOIN funcionarios f ON e.id_usuario = f.id
+
+                        UNION ALL
+
+                        SELECT mn.id, e.nombre_equipo AS nombre_equipo, mn.modelo, mn.serial, mn.serial_interno, 'Monitor' AS tipo, mmn.nombre_marca AS marca, a.nombre_area AS area, NULL AS procesador, NULL AS configuracion, NULL AS so, 'Activo' AS estado, NULL AS clasificacion, NULL AS fecha_compra, NULL AS fecha_baja, NULL AS precio_compra, CONCAT(f.nombre,' ',f.apellido) AS responsable, NULL AS protecciones, e.id_area, mn.id_marca, 'Monitor' AS categoria_hardware
+                        FROM monitores mn
+                        LEFT JOIN marcas mmn ON mn.id_marca = mmn.id
+                        LEFT JOIN equipos_de_computo e ON mn.id_equipo = e.id
+                        LEFT JOIN areas a ON e.id_area = a.id
+                        LEFT JOIN funcionarios f ON e.id_usuario = f.id
+
+                        UNION ALL
+
+                        SELECT t.id, CONCAT('Ext: ', IFNULL(t.extension, '-')) AS nombre_equipo, NULL AS modelo, t.serial, t.ip AS serial_interno, 'Teléfono' AS tipo, mt.nombre_marca AS marca, at.nombre_area AS area, NULL AS procesador, NULL AS configuracion, NULL AS so, 'Activo' AS estado, NULL AS clasificacion, NULL AS fecha_compra, NULL AS fecha_baja, NULL AS precio_compra, CONCAT(ft.nombre,' ',ft.apellido) AS responsable, NULL AS protecciones, ft.id_area, t.id_marca, 'Teléfono' AS categoria_hardware
+                        FROM telefonos t
+                        LEFT JOIN marcas mt ON t.id_marca = mt.id
+                        LEFT JOIN funcionarios ft ON t.id_usuario = ft.id
+                        LEFT JOIN areas at ON ft.id_area = at.id
+
+                        UNION ALL
+
+                        SELECT o.id, NULL AS nombre_equipo, o.modelo, o.serial, NULL AS serial_interno, COALESCE(tpo.tipo, 'Otro') AS tipo, mo.nombre_marca AS marca, ao.nombre_area AS area, NULL AS procesador, NULL AS configuracion, NULL AS so, 'Activo' AS estado, NULL AS clasificacion, NULL AS fecha_compra, NULL AS fecha_baja, NULL AS precio_compra, NULL AS responsable, NULL AS protecciones, o.id_area, o.id_marca, 'Otro' AS categoria_hardware
+                        FROM otros o
+                        LEFT JOIN marcas mo ON o.id_marca = mo.id
+                        LEFT JOIN tipos tpo ON o.id_tipo = tpo.id
+                        LEFT JOIN areas ao ON o.id_area = ao.id
+                    ) AS all_equipments WHERE 1=1";
+
+                    $sql = $baseSelect;
                     $params = [];
 
                     if (!empty($filters['search'])) {
                         $s = '%' . $filters['search'] . '%';
-                        $sql .= " AND (e.nombre_equipo LIKE ? OR e.serial LIKE ?)";
+                        $sql .= " AND (nombre_equipo LIKE ? OR serial LIKE ?)";
                         array_push($params, $s, $s);
                     }
                     if (!empty($filters['estado'])) {
-                        $sql .= " AND e.estado = ?";    $params[] = $filters['estado'];
+                        $est = strtolower($filters['estado']);
+                        if ($est === 'activo') {
+                            $sql .= " AND estado = 'Activo'";
+                        } elseif ($est === 'mantenimiento') {
+                            $sql .= " AND estado = 'En mantenimiento'";
+                        } elseif ($est === 'baja') {
+                            $sql .= " AND estado = 'De baja'";
+                        } elseif ($est === 'reserva') {
+                            $sql .= " AND estado = 'Reserva'";
+                        } else {
+                            $sql .= " AND estado = ?"; $params[] = $filters['estado'];
+                        }
                     }
                     if (!empty($filters['id_area'])) {
-                        $sql .= " AND e.id_area = ?";    $params[] = (int)$filters['id_area'];
+                        $sql .= " AND id_area = ?";    $params[] = (int)$filters['id_area'];
                     }
                     if (!empty($filters['id_marca'])) {
-                        $sql .= " AND e.id_marca = ?";   $params[] = (int)$filters['id_marca'];
+                        $sql .= " AND id_marca = ?";   $params[] = (int)$filters['id_marca'];
                     }
                     if (!empty($filters['clasificacion'])) {
-                        $sql .= " AND e.nivel_clasificacion = ?"; $params[] = $filters['clasificacion'];
+                        $sql .= " AND categoria_hardware = ?"; $params[] = $filters['clasificacion'];
                     }
 
-                    $total = $this->doCount("SELECT COUNT(*) FROM equipos_de_computo e WHERE e.estado != 'De baja'", $filters, 'equipos');
-                    $sql .= " ORDER BY e.id DESC LIMIT $limit OFFSET $offset";
+                    $totalSql = str_replace("SELECT * FROM (", "SELECT COUNT(*) FROM (", $baseSelect);
+                    $total = $this->doCount($totalSql, $filters, 'equipos');
+                    $sql .= " ORDER BY nombre_equipo LIMIT $limit OFFSET $offset";
                     $stmt = $this->pdo->prepare($sql); $stmt->execute($params); $data = $stmt->fetchAll();
                     break;
 
@@ -289,13 +323,42 @@ class ReportController {
             json_error('Error al generar reporte: ' . $e->getMessage());
         }
 
-        json_success([
+        // For equipos, include category breakdown so the frontend can show a summary
+        $extra = [];
+        if ($type === 'equipos') {
+            try {
+                $catSql = str_replace("SELECT * FROM (", "SELECT categoria_hardware, COUNT(*) as cnt FROM (", $baseSelect);
+                $catSql .= " GROUP BY categoria_hardware";
+                $catParams = [];
+                // Apply same filters for accurate count
+                if (!empty($filters['estado'])) {
+                    $est = strtolower($filters['estado']);
+                    if ($est === 'activo') { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND estado = 'Activo' GROUP BY", $catSql); }
+                    elseif ($est === 'mantenimiento') { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND estado = 'En mantenimiento' GROUP BY", $catSql); }
+                    elseif ($est === 'baja') { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND estado = 'De baja' GROUP BY", $catSql); }
+                    elseif ($est === 'reserva') { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND estado = 'Reserva' GROUP BY", $catSql); }
+                }
+                if (!empty($filters['id_area'])) { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND id_area = ? GROUP BY", $catSql); $catParams[] = (int)$filters['id_area']; }
+                if (!empty($filters['id_marca'])) { $catSql = str_replace("WHERE 1=1 GROUP BY", "WHERE 1=1 AND id_marca = ? GROUP BY", $catSql); $catParams[] = (int)$filters['id_marca']; }
+                $catStmt = $this->pdo->prepare($catSql);
+                $catStmt->execute($catParams);
+                $cats = $catStmt->fetchAll();
+                $extra['categoryCounts'] = [];
+                foreach ($cats as $c) {
+                    $extra['categoryCounts'][$c['categoria_hardware']] = (int)$c['cnt'];
+                }
+            } catch (Exception $e) {
+                // Non-critical, ignore silently
+            }
+        }
+
+        json_success(array_merge([
             'data'       => $data,
             'total'      => $total,
             'page'       => $page,
             'limit'      => $limit,
             'totalPages' => $limit > 0 ? (int)ceil($total / $limit) : 1
-        ]);
+        ], $extra));
     }
 
     /**
@@ -308,10 +371,17 @@ class ReportController {
 
         switch ($type) {
             case 'equipos':
-                if (!empty($filters['estado'])) { $sql .= " AND estado = ?"; $params[] = $filters['estado']; }
+                if (!empty($filters['estado'])) {
+                    $est = strtolower($filters['estado']);
+                    if ($est === 'activo') { $sql .= " AND estado = 'Activo'"; }
+                    elseif ($est === 'mantenimiento') { $sql .= " AND estado = 'En mantenimiento'"; }
+                    elseif ($est === 'baja') { $sql .= " AND estado = 'De baja'"; }
+                    elseif ($est === 'reserva') { $sql .= " AND estado = 'Reserva'"; }
+                    else { $sql .= " AND estado = ?"; $params[] = $filters['estado']; }
+                }
                 if (!empty($filters['id_area'])) { $sql .= " AND id_area = ?"; $params[] = (int)$filters['id_area']; }
                 if (!empty($filters['id_marca'])) { $sql .= " AND id_marca = ?"; $params[] = (int)$filters['id_marca']; }
-                if (!empty($filters['clasificacion'])) { $sql .= " AND nivel_clasificacion = ?"; $params[] = $filters['clasificacion']; }
+                if (!empty($filters['clasificacion'])) { $sql .= " AND categoria_hardware = ?"; $params[] = $filters['clasificacion']; }
                 if (!empty($filters['search'])) {
                     $s = '%'.$filters['search'].'%';
                     $sql .= " AND (nombre_equipo LIKE ? OR serial LIKE ?)";

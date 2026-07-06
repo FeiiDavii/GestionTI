@@ -152,7 +152,7 @@ export default function Login() {
             </button>
 
             <div className="signup-link">
-              Sistema de Gestión de Inventario v3.9.0
+              Sistema de Gestión de Inventario v3.10.0
             </div>
           </form>
         </div>

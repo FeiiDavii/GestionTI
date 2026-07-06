@@ -18,18 +18,20 @@ const REPORT_TYPES = [
 
 const FIELD_MAP = {
   equipos:   [
-    { id: 'nombre_equipo', label: 'Equipo' },
-    { id: 'serial',        label: 'Serial' },
-    { id: 'serial_interno',label: 'Serial Interno' },
+    { id: 'categoria_hardware', label: 'Categoría' },
+    { id: 'nombre_equipo', label: 'Equipo Conectado' },
+    { id: 'modelo',        label: 'Modelo' },
     { id: 'tipo',          label: 'Tipo' },
     { id: 'marca',         label: 'Marca' },
+    { id: 'serial',        label: 'Serial' },
+    { id: 'serial_interno',label: 'Serial Interno' },
+    { id: 'estado',        label: 'Estado' },
     { id: 'area',          label: 'Área' },
+    { id: 'responsable',   label: 'Usuario/Responsable' },
     { id: 'procesador',    label: 'Procesador' },
     { id: 'configuracion', label: 'Configuración' },
     { id: 'so',            label: 'S.O.' },
-    { id: 'estado',        label: 'Estado' },
     { id: 'clasificacion', label: 'Clasificación' },
-    { id: 'responsable',   label: 'Responsable' },
     { id: 'protecciones',  label: 'Protecciones' },
     { id: 'fecha_compra',  label: 'F. Compra' },
     { id: 'fecha_baja',    label: 'F. Baja' },
@@ -91,6 +93,7 @@ const estadoTicketColor = { Abierto:'#4a6cf7', 'En Proceso':'#f6c23e', Resuelto:
 const prioridadColor    = { Baja:'#1cc88a', Media:'#f6c23e', Alta:'#e67e22', 'Crítica':'#e74a3b', critica:'#e74a3b', alta:'#e67e22', media:'#f6c23e', baja:'#1cc88a' };
 const estadoLicColor    = { activa:'#1cc88a', vencida:'#e74a3b', por_vencer:'#f6c23e' };
 const tipoActivoColor   = { 'Activo Fijo':'#4a6cf7', 'Insumo/Generico':'#f6c23e' };
+const categoriaHWColor  = { 'Computador':'#4a6cf7', 'Impresora/Escaner':'#e67e22', 'Monitor':'#36b9cc', 'Teléfono':'#1cc88a', 'Otro':'#5a5c69' };
 
 function Badge({ value, colorMap }) {
   const color = colorMap?.[value?.toLowerCase?.()] || colorMap?.[value] || '#888';
@@ -126,6 +129,7 @@ function formatCurrency(val) {
 
 function renderCell(fieldId, value, tipo) {
   if (value === null || value === undefined || value === '') return <span style={{ color: '#bbb' }}>—</span>;
+  if (tipo === 'equipos'   && fieldId === 'categoria_hardware') return <Badge value={value} colorMap={categoriaHWColor} />;
   if (tipo === 'equipos'   && fieldId === 'estado')      return <Badge value={value} colorMap={estadoEquipoColor} />;
   if (tipo === 'tickets'   && fieldId === 'estado')      return <Badge value={value} colorMap={estadoTicketColor} />;
   if (tipo === 'tickets'   && fieldId === 'prioridad')   return <Badge value={value} colorMap={prioridadColor} />;
@@ -163,6 +167,10 @@ export default function Reportes() {
   const [searchTerm, setSearchTerm]       = useState('');
   const [hasGenerated, setHasGenerated]   = useState(false);
   const [pageSize, setPageSize]           = useState(50);
+  const [categoryCounts, setCategoryCounts] = useState(null);
+  
+  // Export Modal state
+  const [exportModal, setExportModal] = useState({ show: false, format: null, scope: 'all', loading: false });
 
   // Dynamic filter options
   const [listas, setListas] = useState({ areas: [], marcas: [], tecnicos: [], usuarios: [] });
@@ -183,6 +191,12 @@ export default function Reportes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
+  // Recargar reporte cuando cambia el tamaño de página (y reiniciar a la página 1)
+  useEffect(() => {
+    if (hasGenerated) loadReport(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
+
   const fields = FIELD_MAP[selectedType] || [];
 
   const handleTypeChange = (type) => {
@@ -195,6 +209,7 @@ export default function Reportes() {
     setHasGenerated(false);
     setTotalRows(0);
     setTotalPages(1);
+    setCategoryCounts(null);
     // Actualizar URL para reflejar el tipo activo
     setSearchParams(prev => { prev.set('type', type); return prev; }, { replace: true });
   };
@@ -219,6 +234,8 @@ export default function Reportes() {
         setTotalPages(result.totalPages || 1);
         setPage(p);
         setHasGenerated(true);
+        if (result.categoryCounts) setCategoryCounts(result.categoryCounts);
+        else setCategoryCounts(null);
         if (p === 1 && (result.data || []).length === 0) showToast('No hay datos para los filtros aplicados. Prueba con otros criterios.', 'info');
       } else {
         showToast(res.data?.message || 'No hay datos disponibles para el reporte seleccionado', 'warning');
@@ -229,7 +246,7 @@ export default function Reportes() {
       showToast(errorMessage, 'error');
     }
     setLoading(false);
-  }, [selectedType, filters, searchTerm]);
+  }, [selectedType, filters, searchTerm, pageSize]);
 
   /* ── Toggle field ── */
   const toggleField = (id) => setSelectedFields(prev => {
@@ -238,18 +255,48 @@ export default function Reportes() {
     return fields.map(f => f.id).filter(fid => [...prev, id].includes(fid));
   });
 
+  /* ── Get formatted filters for metadata ── */
+  const getFiltersMetadata = () => {
+    const parts = [];
+    if (searchTerm) parts.push(`Búsqueda: "${searchTerm}"`);
+    if (filters.estado) parts.push(`Estado: ${filters.estado}`);
+    if (filters.id_area) {
+      const area = listas.areas.find(a => a.id === filters.id_area);
+      if (area) parts.push(`Área: ${area.nombre_area}`);
+    }
+    if (filters.id_marca) {
+      const marca = listas.marcas.find(m => m.id === filters.id_marca);
+      if (marca) parts.push(`Marca: ${marca.nombre_marca}`);
+    }
+    if (filters.clasificacion) parts.push(`Clasificación: ${filters.clasificacion}`);
+    return parts.length > 0 ? parts.join(' | ') : 'Ninguno';
+  };
+
   /* ── Export CSV ── */
-  const exportCSV = () => {
-    if (!data.length) { showToast('No hay datos para exportar', 'info'); return; }
+  const exportCSV = (exportData) => {
+    if (!exportData || !exportData.length) { showToast('No hay datos para exportar', 'info'); return; }
     const visibleFields = fields.filter(f => selectedFields.includes(f.id));
+    
+    // Metadata Header
+    let csvLines = [];
+    csvLines.push(`"Reporte de ${REPORT_TYPES.find(r => r.id === selectedType)?.name || selectedType}"`);
+    csvLines.push(`"Generado:","${new Date().toLocaleString()}"`);
+    csvLines.push(`"Usuario:","${user?.name || user?.username || 'Usuario'}"`);
+    csvLines.push(`"Filtros:","${getFiltersMetadata()}"`);
+    csvLines.push(''); // Blank line
+
     const header = visibleFields.map(f => `"${f.label}"`).join(',');
-    const rows = data.map(item =>
+    csvLines.push(header);
+
+    const rows = exportData.map(item =>
       visibleFields.map(f => {
         const v = item[f.id];
         return `"${String(v ?? '').replace(/"/g, '""')}"`;
       }).join(',')
     );
-    const csv = [header, ...rows].join('\n');
+    csvLines.push(...rows);
+
+    const csv = csvLines.join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -260,8 +307,8 @@ export default function Reportes() {
   };
 
   /* ── Export PDF ── */
-  const exportPDF = async () => {
-    if (!data.length) { showToast('No hay datos para exportar', 'info'); return; }
+  const exportPDF = async (exportData) => {
+    if (!exportData || !exportData.length) { showToast('No hay datos para exportar', 'info'); return; }
     try {
       const { default: jsPDF } = await import('jspdf');
       const { default: autoTable } = await import('jspdf-autotable');
@@ -269,39 +316,72 @@ export default function Reportes() {
       const reportName = REPORT_TYPES.find(r => r.id === selectedType)?.name || selectedType;
       const visibleFields = fields.filter(f => selectedFields.includes(f.id));
 
-      // Header
+      // Header background
       doc.setFillColor(74, 108, 247);
-      doc.rect(0, 0, 297, 22, 'F');
+      doc.rect(0, 0, 297, 28, 'F');
       doc.setTextColor(255, 255, 255);
+      
+      // Title
       doc.setFontSize(16);
       doc.setFont(undefined, 'bold');
-      doc.text(`Reporte de ${reportName}`, 14, 14);
+      doc.text(`Reporte de ${reportName}`, 14, 12);
+      
+      // Metadata
       doc.setFontSize(9);
       doc.setFont(undefined, 'normal');
-      doc.text(
-        `Generado: ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}   |   Total: ${totalRows} registros`,
-        14, 20
-      );
+      doc.text(`Generado: ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}  |  Usuario: ${user?.name || user?.username || 'Usuario'}  |  Total: ${exportData.length} registros`, 14, 18);
+      
+      doc.setFontSize(8);
+      doc.text(`Filtros: ${getFiltersMetadata()}`, 14, 24);
 
       autoTable(doc, {
-        startY: 28,
+        startY: 32,
         head: [visibleFields.map(f => f.label)],
-        body: data.map(item => visibleFields.map(f => String(item[f.id] ?? ''))),
-        theme: 'grid',
-        headStyles: { fillColor: [74, 108, 247], textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 7 },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        styles: { cellPadding: 2, overflow: 'linebreak' },
-        margin: { left: 10, right: 10 },
+        body: exportData.map(item => visibleFields.map(f => item[f.id] ?? '')),
+        styles: { fontSize: 7, cellPadding: 2, valign: 'middle' },
+        headStyles: { fillColor: [74, 108, 247], textColor: [255, 255, 255], fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [248, 249, 252] },
+        margin: { top: 32, right: 10, bottom: 15, left: 10 },
       });
 
       doc.save(`reporte_${selectedType}_${new Date().toISOString().slice(0, 10)}.pdf`);
-      showToast('Reporte PDF generado exitosamente', 'success');
+      showToast('Reporte PDF exportado exitosamente', 'success');
     } catch (err) {
-      console.error('Error PDF:', err);
-      const errorMessage = err.message || 'Error al generar el archivo PDF';
-      showToast(errorMessage, 'error');
+      showToast('Error al generar PDF', 'error');
     }
+  };
+
+  /* ── Process Export Action ── */
+  const processExport = async () => {
+    setExportModal(prev => ({ ...prev, loading: true }));
+    let dataToExport = data;
+
+    if (exportModal.scope === 'all') {
+      try {
+        const res = await reportAPI.generate({
+          tipo: selectedType,
+          filtros: { ...filters, search: searchTerm || undefined },
+          page: 1,
+          limit: 999999, // Fetch all
+        });
+        if (res.data?.success) {
+          dataToExport = res.data.data?.data || [];
+        } else {
+          showToast('Error al obtener datos completos para exportar', 'error');
+          setExportModal(prev => ({ ...prev, loading: false }));
+          return;
+        }
+      } catch (err) {
+        showToast('Error al obtener datos completos para exportar', 'error');
+        setExportModal(prev => ({ ...prev, loading: false }));
+        return;
+      }
+    }
+
+    if (exportModal.format === 'csv') exportCSV(dataToExport);
+    else if (exportModal.format === 'pdf') await exportPDF(dataToExport);
+
+    setExportModal({ show: false, format: null, scope: 'all', loading: false });
   };
 
   /* ── Sidebar filter panels ── */
@@ -418,62 +498,7 @@ export default function Reportes() {
     }
   };
 
-  /* ── Pagination ── */
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    const maxButtons = 7;
-    let start = Math.max(1, page - Math.floor(maxButtons / 2));
-    let end   = Math.min(totalPages, start + maxButtons - 1);
-    if (end - start < maxButtons - 1) start = Math.max(1, end - maxButtons + 1);
-    const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '16px', flexWrap: 'wrap' }}>
-        <button className="action-btn" disabled={page <= 1} onClick={() => loadReport(page - 1)}
-          style={{ opacity: page <= 1 ? 0.4 : 1, fontSize: '12px', padding: '5px 10px' }}>
-          <i className="fa-solid fa-chevron-left" /> Anterior
-        </button>
-        {start > 1 && <><button style={btnPageStyle(false)} onClick={() => loadReport(1)}>1</button><span style={{ color: '#bbb' }}>…</span></>}
-        {pages.map(p => (
-          <button key={p} style={btnPageStyle(p === page)} onClick={() => loadReport(p)}>{p}</button>
-        ))}
-        {end < totalPages && <><span style={{ color: '#bbb' }}>…</span><button style={btnPageStyle(false)} onClick={() => loadReport(totalPages)}>{totalPages}</button></>}
-        <button className="action-btn" disabled={page >= totalPages} onClick={() => loadReport(page + 1)}
-          style={{ opacity: page >= totalPages ? 0.4 : 1, fontSize: '12px', padding: '5px 10px' }}>
-          Siguiente <i className="fa-solid fa-chevron-right" />
-        </button>
-        <span style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}>
-          {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, totalRows)} de {totalRows}
-        </span>
-      </div>
-    );
-  };
-
-  const btnPageStyle = (active) => ({
-    minWidth: '32px', height: '32px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-    background: active ? 'var(--primary-color)' : '#f1f5f9',
-    color: active ? '#fff' : '#555', fontWeight: active ? 700 : 400,
-    fontSize: '12px', transition: 'all 0.2s', padding: '0 8px'
-  });
-
-  /* ── Local filter + pagination ── */
-  const localFilteredData = useMemo(() => {
-    if (!searchTerm.trim() || !data.length) return data;
-    const q = searchTerm.toLowerCase();
-    return data.filter(item =>
-      fields.some(f => selectedFields.includes(f.id) && String(item[f.id] ?? '').toLowerCase().includes(q))
-    );
-  }, [data, searchTerm, fields, selectedFields]);
-
-  const paginatedData = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return localFilteredData.slice(start, start + pageSize);
-  }, [localFilteredData, page, pageSize]);
-
-  useEffect(() => { setPage(1); }, [localFilteredData.length, pageSize]);
-
-  const localTotalPages = Math.ceil(localFilteredData.length / pageSize);
-
+  /* ── Server-side Pagination ── */
   const activeType = REPORT_TYPES.find(r => r.id === selectedType);
 
   /* ══════════════════════ RENDER ══════════════════════ */
@@ -562,7 +587,7 @@ export default function Reportes() {
         </aside>
 
         {/* ── Main content ── */}
-        <main style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <main style={{ display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
 
           {/* Column selector */}
           <div style={{ background: 'var(--card-bg)', borderRadius: '14px', padding: '16px 20px', boxShadow: '0 2px 10px var(--shadow-color)', border: '1px solid var(--border-color)' }}>
@@ -614,7 +639,7 @@ export default function Reportes() {
             {/* Export toolbar */}
             {hasGenerated && !loading && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <span style={{
                     background: activeType?.color + '22', color: activeType?.color,
                     border: `1px solid ${activeType?.color}44`, borderRadius: '20px',
@@ -623,13 +648,33 @@ export default function Reportes() {
                     <i className={`fa-solid ${activeType?.icon}`} style={{ marginRight: '5px' }} />
                     {totalRows} registro(s) encontrados
                   </span>
+                  {/* Category breakdown badges */}
+                  {selectedType === 'equipos' && categoryCounts && Object.keys(categoryCounts).length > 0 && (
+                    Object.entries(categoryCounts).map(([cat, cnt]) => {
+                      const color = categoriaHWColor[cat] || '#888';
+                      return (
+                        <span key={cat}
+                          onClick={() => { setFilter('clasificacion', cat); setTimeout(() => loadReport(1), 100); }}
+                          style={{
+                            background: color + '18', color,
+                            border: `1px solid ${color}44`, borderRadius: '20px',
+                            padding: '2px 10px', fontSize: '11px', fontWeight: 600,
+                            cursor: 'pointer', transition: 'all 0.15s',
+                          }}
+                          title={`Filtrar por ${cat}`}
+                        >
+                          {cat}: {cnt}
+                        </span>
+                      );
+                    })
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button className="action-btn" onClick={exportCSV}
+                  <button className="action-btn" onClick={() => setExportModal({ show: true, format: 'csv', scope: 'all', loading: false })}
                     style={{ background: '#1cc88a', color: '#fff', fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <i className="fa-solid fa-file-excel" /> Exportar CSV
                   </button>
-                  <button className="action-btn" onClick={exportPDF}
+                  <button className="action-btn" onClick={() => setExportModal({ show: true, format: 'pdf', scope: 'all', loading: false })}
                     style={{ background: '#e74a3b', color: '#fff', fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <i className="fa-solid fa-file-pdf" /> Exportar PDF
                   </button>
@@ -663,14 +708,14 @@ export default function Reportes() {
               </div>
             ) : (
               <>
-  <DataTableControls
+                <DataTableControls
                   pageSize={pageSize}
-                  setPageSize={(v) => { setPageSize(v); setPage(1); }}
+                  setPageSize={(v) => { setPageSize(v); }}
                   searchTerm={searchTerm}
                   setSearchTerm={setSearchTerm}
-                  totalItems={localFilteredData.length}
-                  filteredItemsCount={paginatedData.length}
-                  searchPlaceholder="Filtrar en resultados..."
+                  totalItems={totalRows}
+                  filteredItemsCount={data.length}
+                  searchPlaceholder="Filtrar en base de datos..."
                 />
                 <div className="table-scroll" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                   <table className="data-table" style={{ fontSize: '12px', width: '100%', minWidth: selectedFields.length > 8 ? '1200px' : 'auto' }}>
@@ -682,7 +727,7 @@ export default function Reportes() {
                       </tr>
                     </thead>
                     <tbody>
-                      {paginatedData.map((item, i) => (
+                      {data.map((item, i) => (
                         <tr key={item.id || i}>
                           {fields.filter(f => selectedFields.includes(f.id)).map(f => (
                             <td key={f.id} style={{ maxWidth: '160px', minWidth: '60px', verticalAlign: 'middle', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -696,16 +741,72 @@ export default function Reportes() {
                 </div>
                 <Pagination
                   page={page}
-                  setPage={setPage}
-                  totalPages={localTotalPages}
-                  totalItems={localFilteredData.length}
+                  setPage={(p) => loadReport(p)}
+                  totalPages={totalPages}
+                  totalItems={totalRows}
                   pageSize={pageSize}
+                  setPageSize={setPageSize}
                 />
               </>
             )}
           </div>
         </main>
       </div>
+      
+      {/* Export Modal */}
+      {exportModal.show && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '24px', width: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <i className={`fa-solid ${exportModal.format === 'csv' ? 'fa-file-excel' : 'fa-file-pdf'}`} 
+                 style={{ color: exportModal.format === 'csv' ? '#1cc88a' : '#e74a3b' }} />
+              Exportar {exportModal.format.toUpperCase()}
+            </h3>
+            
+            <p style={{ fontSize: '14px', color: 'var(--gray-text)', marginBottom: '20px' }}>
+              Selecciona qué registros deseas incluir en la exportación:
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input type="radio" name="exportScope" checked={exportModal.scope === 'all'} 
+                       onChange={() => setExportModal(prev => ({ ...prev, scope: 'all' }))} />
+                <span>Todos los resultados filtrados ({totalRows})</span>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input type="radio" name="exportScope" checked={exportModal.scope === 'current'} 
+                       onChange={() => setExportModal(prev => ({ ...prev, scope: 'current' }))} />
+                <span>Solo la página actual (Pág. {page})</span>
+              </label>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                onClick={() => setExportModal({ show: false, format: null, scope: 'all', loading: false })}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', cursor: 'pointer' }}
+                disabled={exportModal.loading}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={processExport}
+                style={{ 
+                  padding: '8px 16px', borderRadius: '6px', border: 'none', 
+                  background: exportModal.format === 'csv' ? '#1cc88a' : '#e74a3b', 
+                  color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+                disabled={exportModal.loading}
+              >
+                {exportModal.loading ? <i className="fa-solid fa-spinner fa-spin" /> : <i className="fa-solid fa-download" />}
+                Exportar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
