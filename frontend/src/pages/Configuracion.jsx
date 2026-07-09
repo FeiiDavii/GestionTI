@@ -5,14 +5,15 @@ import { auxAPI, permissionAPI } from '../api/client';
 import Swal from 'sweetalert2';
 import { showToast } from '../core/toast';
 import Pagination from '../components/common/Pagination';
+import DataTableControls from '../components/common/DataTableControls';
 
 const TABS = [
   { id: 'apariencia', label: 'Apariencia', icon: 'fa-palette' },
   { id: 'usuarios', label: 'Usuarios', icon: 'fa-users' },
   { id: 'roles', label: 'Roles y Permisos', icon: 'fa-shield' },
   { id: 'sla', label: 'SLAs', icon: 'fa-gauge-high' },
+  { id: 'prioridades', label: 'Prioridades', icon: 'fa-tag' },
   { id: 'sistema', label: 'Sistema', icon: 'fa-server' },
-  { id: 'prioridades', label: 'Prioridades', icon: 'fa-tag' }
 ];
 
 const PERMISOS_LISTA = [
@@ -110,7 +111,7 @@ const KEYWORDS_PREDEFINIDAS = [
   { keyword: 'permiso', prioridad: 'Baja' }
 ];
 
-const ITEMS_PER_PAGE = 10; // Rows per page for usuarios
+const ITEMS_PER_PAGE = 10; // mantenido por compatibilidad, ya no se usa directo
 
 export default function Configuracion() {
   const { user, permisos, hasPermission, logout } = useAuth();
@@ -160,6 +161,7 @@ export default function Configuracion() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [busquedaUsuario, setBusquedaUsuario] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showModalUsuario, setShowModalUsuario] = useState(false);
   const [editandoUsuario, setEditandoUsuario] = useState(null);
   const [formUsuario, setFormUsuario] = useState({
@@ -169,6 +171,9 @@ export default function Configuracion() {
   // --- Roles ---
   const [roles, setRoles] = useState([]);
   const [rolesSimple, setRolesSimple] = useState([]); // solo para dropdowns (sin permisos)
+  const [rolesPage, setRolesPage] = useState(1);
+  const [rolesPageSize, setRolesPageSize] = useState(10);
+  const [rolesBusqueda, setRolesBusqueda] = useState('');
   const [showModalRol, setShowModalRol] = useState(false);
   const [editandoRol, setEditandoRol] = useState(null);
   const [formRol, setFormRol] = useState({ nombre: '', descripcion: '' });
@@ -177,6 +182,9 @@ export default function Configuracion() {
   // --- SLA ---
   const [slaConfig, setSlaConfig] = useState(SLA_DEFAULTS);
   const [slaOriginal, setSlaOriginal] = useState(null);
+  const [slaPage, setSlaPage] = useState(1);
+  const [slaPageSize, setSlaPageSize] = useState(10);
+  const [slaBusqueda, setSlaBusqueda] = useState('');
   const [showModalSLA, setShowModalSLA] = useState(false);
   const [editandoSLA, setEditandoSLA] = useState(null);
   const [formSLA, setFormSLA] = useState({
@@ -447,13 +455,37 @@ export default function Configuracion() {
     (u.username || '').toLowerCase().includes(busquedaUsuario.toLowerCase()) ||
     (u.nombre || '').toLowerCase().includes(busquedaUsuario.toLowerCase())
   );
-  const totalPaginasUsuarios = Math.max(1, Math.ceil(usuariosFiltrados.length / ITEMS_PER_PAGE));
+  const totalPaginasUsuarios = Math.max(1, Math.ceil(usuariosFiltrados.length / pageSize));
   const usuariosPaginados = usuariosFiltrados.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
+    (page - 1) * pageSize,
+    page * pageSize
   );
 
-  useEffect(() => setPage(1), [ITEMS_PER_PAGE, busquedaUsuario]);
+  useEffect(() => setPage(1), [pageSize, busquedaUsuario]);
+
+  // Paginación de Roles
+  const rolesFiltrados = roles.filter(r =>
+    (r.nombre || '').toLowerCase().includes(rolesBusqueda.toLowerCase()) ||
+    (r.descripcion || '').toLowerCase().includes(rolesBusqueda.toLowerCase())
+  );
+  const totalPaginasRoles = Math.max(1, Math.ceil(rolesFiltrados.length / rolesPageSize));
+  const rolesPaginados = rolesFiltrados.slice(
+    (rolesPage - 1) * rolesPageSize,
+    rolesPage * rolesPageSize
+  );
+  useEffect(() => setRolesPage(1), [rolesPageSize, rolesBusqueda]);
+
+  // Paginación de SLA
+  const slaFiltrados = slaConfig.filter(s =>
+    (s.nombre || s.prioridad || '').toLowerCase().includes(slaBusqueda.toLowerCase()) ||
+    (s.prioridad || s.prioridad_ticket || '').toLowerCase().includes(slaBusqueda.toLowerCase())
+  );
+  const totalPaginasSLA = Math.max(1, Math.ceil(slaFiltrados.length / slaPageSize));
+  const slaPaginados = slaFiltrados.slice(
+    (slaPage - 1) * slaPageSize,
+    slaPage * slaPageSize
+  );
+  useEffect(() => setSlaPage(1), [slaPageSize, slaBusqueda]);
 
   const abrirModalUsuario = (usuario = null) => {
     if (usuario) {
@@ -1105,18 +1137,16 @@ export default function Configuracion() {
               </button>
             </div>
             <div className="card-body" style={{ padding: '25px' }}>
-              {/* Búsqueda */}
-              <div className="search-bar" style={{ marginBottom: '15px' }}>
-                <i className="fa-solid fa-magnifying-glass"></i>
-                <input
-                  type="text"
-                  placeholder="Buscar usuarios por nombre o usuario..."
-                  value={busquedaUsuario}
-                  onChange={(e) => { setBusquedaUsuario(e.target.value); setPage(1); }}
-                  className="form-control"
-                  style={{ paddingLeft: '35px' }}
-                />
-              </div>
+              {/* Búsqueda + controles */}
+              <DataTableControls
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+                searchTerm={busquedaUsuario}
+                setSearchTerm={(v) => { setBusquedaUsuario(v); setPage(1); }}
+                totalItems={usuarios.length}
+                filteredItemsCount={usuariosFiltrados.length}
+                searchPlaceholder="Buscar por nombre o usuario..."
+              />
 
               {/* Tabla */}
               <div className="table-responsive">
@@ -1197,12 +1227,7 @@ export default function Configuracion() {
                 </table>
               </div>
 
-              <Pagination page={page} setPage={setPage} totalPages={totalPaginasUsuarios} totalItems={usuariosFiltrados.length} pageSize={ITEMS_PER_PAGE} />
-
-              <div style={{ fontSize: '12px', color: 'var(--gray-text)', marginTop: '10px', textAlign: 'right' }}>
-                Mostrando {usuariosPaginados.length} de {usuariosFiltrados.length} usuarios
-                {busquedaUsuario && ` (filtrados de ${usuarios.length})`}
-              </div>
+              <Pagination page={page} setPage={setPage} totalPages={totalPaginasUsuarios} totalItems={usuariosFiltrados.length} pageSize={pageSize} />
             </div>
           </div>
         </div>
@@ -1220,6 +1245,17 @@ export default function Configuracion() {
                 <i className="fa-solid fa-plus"></i> Nuevo Rol
               </button>
             </div>
+            <div className="card-body" style={{ padding: '15px 20px' }}>
+              <DataTableControls
+                pageSize={rolesPageSize}
+                setPageSize={setRolesPageSize}
+                searchTerm={rolesBusqueda}
+                setSearchTerm={(v) => { setRolesBusqueda(v); setRolesPage(1); }}
+                totalItems={roles.length}
+                filteredItemsCount={rolesFiltrados.length}
+                searchPlaceholder="Buscar rol..."
+              />
+            </div>
             <div className="card-body" style={{ padding: '0' }}>
               <div className="table-responsive">
                 <table className="data-table" style={{ marginTop: 0 }}>
@@ -1234,15 +1270,15 @@ export default function Configuracion() {
                     </tr>
                   </thead>
                   <tbody>
-                    {roles.length === 0 ? (
+                    {rolesPaginados.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center" style={{ padding: '30px', color: 'var(--gray-text)' }}>
                           <i className="fa-solid fa-shield-halved" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
-                          No hay roles registrados.
+                          {rolesBusqueda ? 'No se encontraron roles con ese criterio.' : 'No hay roles registrados.'}
                         </td>
                       </tr>
                     ) : (
-                      roles.map(rol => {
+                      rolesPaginados.map(rol => {
                         const permisosActivos = rol.permisos
                           ? Object.values(rol.permisos).filter(Boolean).length
                           : 0;
@@ -1303,6 +1339,9 @@ export default function Configuracion() {
                 </table>
               </div>
             </div>
+            <div className="card-body" style={{ padding: '10px 20px 15px' }}>
+              <Pagination page={rolesPage} setPage={setRolesPage} totalPages={totalPaginasRoles} totalItems={rolesFiltrados.length} pageSize={rolesPageSize} />
+            </div>
           </div>
         </div>
       )}
@@ -1319,6 +1358,17 @@ export default function Configuracion() {
                 <i className="fa-solid fa-plus"></i> Nuevo SLA
               </button>
             </div>
+            <div className="card-body" style={{ padding: '15px 20px' }}>
+              <DataTableControls
+                pageSize={slaPageSize}
+                setPageSize={setSlaPageSize}
+                searchTerm={slaBusqueda}
+                setSearchTerm={(v) => { setSlaBusqueda(v); setSlaPage(1); }}
+                totalItems={slaConfig.length}
+                filteredItemsCount={slaFiltrados.length}
+                searchPlaceholder="Buscar SLA..."
+              />
+            </div>
             <div className="card-body" style={{ padding: '0' }}>
               <div className="table-responsive">
                 <table className="data-table" style={{ marginTop: 0 }}>
@@ -1334,15 +1384,15 @@ export default function Configuracion() {
                     </tr>
                   </thead>
                   <tbody>
-                    {slaConfig.length === 0 ? (
+                    {slaPaginados.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="text-center" style={{ padding: '30px', color: 'var(--gray-text)' }}>
                           <i className="fa-solid fa-gauge-simple" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
-                          No hay SLAs configurados. Haz clic en "Nuevo SLA" para comenzar.
+                          {slaBusqueda ? 'No se encontraron SLAs con ese criterio.' : 'No hay SLAs configurados. Haz clic en "Nuevo SLA" para comenzar.'}
                         </td>
                       </tr>
                     ) : (
-                      slaConfig.map(sla => {
+                      slaPaginados.map(sla => {
                         const colorClass =
                           (sla.prioridad === 'Crítica' || sla.prioridad_ticket === 'Crítica') ? 'critica' :
                           (sla.prioridad === 'Alta'    || sla.prioridad_ticket === 'Alta')    ? 'alta' :
@@ -1404,6 +1454,9 @@ export default function Configuracion() {
                   </tbody>
                 </table>
               </div>
+            </div>
+            <div className="card-body" style={{ padding: '10px 20px 15px' }}>
+              <Pagination page={slaPage} setPage={setSlaPage} totalPages={totalPaginasSLA} totalItems={slaFiltrados.length} pageSize={slaPageSize} />
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 <div align="center">
 
 # 🖥️ GestionTI
+
 ### Sistema Integral de Gestión de Inventario TI
 
 [![Versión](https://img.shields.io/badge/versión-3.10.0-4a6cf7?style=for-the-badge)](.)
@@ -376,6 +377,7 @@ SOURCE /xampp/htdocs/GestionTI/SQL_sripts/inventario_db_set_up.sql;
 ```
 
 Este script realiza automáticamente:
+
 - Creación de la base de datos `inventario_db`
 - Creación de las 30 tablas con sus índices y claves foráneas
 - Inserción de datos iniciales: configuraciones de hardware, SLA por defecto, palabras clave de prioridad

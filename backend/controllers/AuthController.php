@@ -14,6 +14,7 @@ class AuthController {
         $user = Auth::login($this->pdo, $username, $password);
         if ($user) {
             $esAdmin = ($user['inv_ver'] || $user['tk_ver_global'] || $user['tk_responder'] || $user['usr_ver'] || $user['rep_generar'] || $user['conf_basica']);
+            registrar_log($this->pdo, $user['id'], 'sesiones', "Inicio de sesión: {$user['username']} ({$user['nombre_completo']})");
             json_success([
                 'id' => $user['id'],
                 'username' => $user['username'],
@@ -115,6 +116,7 @@ class AuthController {
 
         $hash = password_hash($new, PASSWORD_DEFAULT);
         $this->pdo->prepare("UPDATE usuarios SET password = ? WHERE id = ?")->execute([$hash, $_SESSION['user_id']]);
+        registrar_log($this->pdo, $_SESSION['user_id'], 'sesiones', "Cambio de contraseña realizado por el usuario ID: {$_SESSION['user_id']}");
         json_success(null, 'Contraseña actualizada exitosamente. Ahora puede iniciar sesión con su nueva contraseña.');
     }
 

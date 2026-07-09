@@ -37,7 +37,7 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <button
-          className="action-btn"
+          className="action-btn btn-prev"
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
           style={{ opacity: page <= 1 ? 0.4 : 1, padding: '5px 10px', fontSize: '12px' }}
@@ -60,7 +60,7 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
           </>
         )}
         <button
-          className="action-btn"
+          className="action-btn btn-next"
           disabled={page >= totalPages}
           onClick={() => setPage(page + 1)}
           style={{ opacity: page >= totalPages ? 0.4 : 1, padding: '5px 10px', fontSize: '12px' }}

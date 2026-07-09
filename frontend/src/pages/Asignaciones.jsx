@@ -55,6 +55,21 @@ export default function Asignaciones() {
   const [quickAddForm, setQuickAddForm] = useState({ nombre: '' });
   const [quickAddLoading, setQuickAddLoading] = useState(false);
 
+  // FAB toggle
+  const [fabOpen, setFabOpen] = useState(false);
+
+  // Cerrar FAB al hacer click fuera
+  useEffect(() => {
+    if (!fabOpen) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.fab-container')) {
+        setFabOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [fabOpen]);
+
   const puedeVer = useMemo(() => permisos?.inv_asignaciones, [permisos]);
   const puedeCrearEditar = useMemo(() => permisos?.inv_crear_editar, [permisos]);
 
@@ -587,8 +602,12 @@ export default function Asignaciones() {
 
       {/* Floating Action Button (FAB) Menu */}
       {puedeCrearEditar && (
-        <div className="fab-container">
-          <button className="fab-main">
+        <div className={`fab-container${fabOpen ? ' active' : ''}`}>
+          <button
+            className={`fab-main${fabOpen ? ' active' : ''}`}
+            onClick={() => setFabOpen(o => !o)}
+            aria-label="Abrir menú de acciones"
+          >
             <i className="fa-solid fa-plus"></i>
           </button>
           <button className="fab-item" data-tooltip="Asignar" onClick={() => openAsignar(null)}>
