@@ -194,8 +194,7 @@ class EquipmentController {
             }
             registrar_log($this->pdo, $_SESSION['user_id'], $logTable, $logMsg);
 
-            $accion = $isUpdate ? 'actualizado' : 'guardado';
-            json_success(null, "$tipo $accion exitosamente en el sistema.");
+            $accion = $isUpdate ? 'actualizado' : 'guardado';            json_success(null, "$tipo $accion exitosamente en el sistema.");
         } catch (Exception $e) {
             json_error(get_friendly_error($e));
         }

@@ -169,7 +169,7 @@ class PermissionController {
     public function logs() {
         Auth::requireLogin();
         Permission::requireAny(['conf_basica', 'conf_roles', 'rep_generar']);
-        $acciones = $this->pdo->query("SELECT a.*, u.nombre_completo FROM acciones a LEFT JOIN usuarios u ON a.usuario_id=u.id ORDER BY a.fecha DESC LIMIT 200")->fetchAll();
+        $acciones = $this->pdo->query("SELECT a.*, u.nombre_completo FROM acciones a LEFT JOIN usuarios u ON a.usuario_id=u.id ORDER BY a.fecha DESC LIMIT 500")->fetchAll();
         json_success([
             'data' => $acciones,
             'total' => count($acciones)

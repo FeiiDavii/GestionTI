@@ -19,8 +19,13 @@ function time_ago($datetime) {
 }
 
 function registrar_log($pdo, $user_id, $accion, $detalles) {
-    $stmt = $pdo->prepare("INSERT INTO acciones (tabla, descripcion, usuario_id) VALUES (?, ?, ?)");
-    $stmt->execute([$accion, $detalles, $user_id]);
+    try {
+        $uid = is_numeric($user_id) ? (int)$user_id : 0;
+        $stmt = $pdo->prepare("INSERT INTO acciones (tabla, descripcion, usuario_id) VALUES (?, ?, ?)");
+        $stmt->execute([$accion, $detalles, $uid]);
+    } catch (Exception $e) {
+        error_log("[GestionTI] registrar_log failed: " . $e->getMessage() . " | tabla=$accion | uid=$user_id");
+    }
 }
 
 function sanitize_input($data, $type = 'string', $maxLength = 255) {

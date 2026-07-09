@@ -725,8 +725,9 @@ body.modal-open { overflow: hidden; }
   transition: transform 0.3s, background 0.3s, box-shadow 0.3s;
   z-index: 1000;
 }
-.fab-main:hover { transform: scale(1.05); }
+.fab-main:hover:not(.active) { transform: scale(1.05); }
 .fab-main.active, .fab-container.active .fab-main { transform: rotate(45deg); box-shadow: 0 8px 25px rgba(74, 108, 247, 0.55); background: linear-gradient(135deg,#e74a3b,#c73a2d); }
+.fab-main.active:hover { transform: rotate(45deg) scale(1.05); }
 
 .fab-items {
   display: flex;

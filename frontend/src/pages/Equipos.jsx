@@ -161,6 +161,7 @@ export default function Equipos() {
   const [quickAddLoading, setQuickAddLoading] = useState(false);
 
   // -- FAB --
+  const [fabOpen, setFabOpen] = useState(false);
 
 
   // -- Search --
@@ -169,6 +170,18 @@ export default function Equipos() {
   // -- Permission helpers --
   const canCrearEditar = hasPermission('inv_crear_editar');
   const canEliminar = hasPermission('inv_eliminar');
+
+  // Cerrar FAB al hacer click fuera
+  useEffect(() => {
+    if (!fabOpen) return;
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.fab-container')) {
+        setFabOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [fabOpen]);
 
   /* -----------------------------------------------------------------------
      Carga de datos
@@ -647,15 +660,17 @@ export default function Equipos() {
       return (
         <div className="form-group" key={field}>
           <label>{label}{required && <span className="text-danger"> *</span>}</label>
-          <div className="select-with-quickadd" style={{ display: 'flex', gap: '8px' }}>
-            <SearchableSelect
-              value={formData[field] || ''}
-              onChange={(val) => handleFormChange(field, val)}
-              options={selectOptions.map(opt => ({
-                value: opt.id,
-                label: getOptionLabel(opt, field)
-              }))}
-            />
+          <div className="select-with-quickadd" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <SearchableSelect
+                value={formData[field] || ''}
+                onChange={(val) => handleFormChange(field, val)}
+                options={selectOptions.map(opt => ({
+                  value: opt.id,
+                  label: getOptionLabel(opt, field)
+                }))}
+              />
+            </div>
             {showQuickAdd && (
               <button
                 type="button"
@@ -1155,8 +1170,12 @@ export default function Equipos() {
     if (!canCrearEditar) return null;
 
     return (
-      <div className="fab-container">
-        <button className="fab-main">
+      <div className={`fab-container${fabOpen ? ' active' : ''}`}>
+        <button
+          className={`fab-main${fabOpen ? ' active' : ''}`}
+          onClick={() => setFabOpen(o => !o)}
+          aria-label="Abrir menú de acciones"
+        >
           <i className="fa-solid fa-plus"></i>
         </button>
         <button className="fab-item" data-tooltip="Tipo" onClick={() => openCreateModal('tipos')}>

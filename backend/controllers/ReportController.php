@@ -323,10 +323,25 @@ class ReportController {
             json_error('Error al generar reporte: ' . $e->getMessage());
         }
 
+        // Registrar log de descarga/generación de reporte
+        $tipoLabels = [
+            'equipos'   => 'Inventario de Equipos',
+            'repuestos' => 'Inventario de Repuestos',
+            'licencias' => 'Licencias de Software',
+            'tickets'   => 'Tickets de Soporte',
+            'bajas'     => 'Bajas de Activos',
+            'logs'      => 'Auditoría / Logs',
+        ];
+        $tipoLabel = $tipoLabels[$type] ?? $type;
+        $filtrosDesc = '';
+        if (!empty($filters['desde']) || !empty($filters['hasta'])) {
+            $filtrosDesc = ' (Rango: ' . ($filters['desde'] ?? '') . ' al ' . ($filters['hasta'] ?? 'hoy') . ')';
+        }
+        registrar_log($this->pdo, $_SESSION['user_id'], 'reportes', "Reporte generado: $tipoLabel$filtrosDesc ($total registros)");
+
         // For equipos, include category breakdown so the frontend can show a summary
         $extra = [];
-        if ($type === 'equipos') {
-            try {
+        if ($type === 'equipos') {            try {
                 $catSql = str_replace("SELECT * FROM (", "SELECT categoria_hardware, COUNT(*) as cnt FROM (", $baseSelect);
                 $catSql .= " GROUP BY categoria_hardware";
                 $catParams = [];

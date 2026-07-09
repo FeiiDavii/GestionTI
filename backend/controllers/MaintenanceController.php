@@ -101,6 +101,17 @@ class MaintenanceController {
                     ->execute([$id_configuracion, $id_equipo]);
             }
 
+            // Obtener nombre del equipo para el log
+            $eqStmt = $this->pdo->prepare("SELECT nombre_equipo, serial FROM equipos_de_computo WHERE id = ?");
+            $eqStmt->execute([$id_equipo]);
+            $eqInfo = $eqStmt->fetch();
+            $eqLabel = $eqInfo ? $eqInfo['nombre_equipo'] . ' (Serial: ' . $eqInfo['serial'] . ')' : 'ID ' . $id_equipo;
+
+            $logDetalle = "Mantenimiento registrado en equipo $eqLabel — Tipo: $tipo";
+            if ($razon) $logDetalle .= ", Razón: $razon";
+            if ($detalles_cambio) $logDetalle .= ", $detalles_cambio";
+            registrar_log($this->pdo, $_SESSION['user_id'], 'mantenimientos', $logDetalle);
+
             $this->pdo->commit();
             json_success(null, 'Mantenimiento registrado');
         } catch (Exception $e) {
@@ -219,6 +230,13 @@ class MaintenanceController {
             $detalles = implode(", ", $cambios);
             $this->pdo->prepare("INSERT INTO historial_equipos (id_equipo, tipo_accion, fecha, usuario_id, observaciones, detalles_cambio) VALUES (?, 'Actualizacion de Datos', NOW(), ?, ?, ?)")
                 ->execute([$id_equipo, $_SESSION['user_id'], $obs_cambio, $detalles]);
+
+            // Obtener nombre del equipo para el log de auditoría
+            $eqNameStmt = $this->pdo->prepare("SELECT nombre_equipo, serial FROM equipos_de_computo WHERE id = ?");
+            $eqNameStmt->execute([$id_equipo]);
+            $eqName = $eqNameStmt->fetch();
+            $eqLabel = $eqName ? $eqName['nombre_equipo'] . ' (Serial: ' . $eqName['serial'] . ')' : 'ID ' . $id_equipo;
+            registrar_log($this->pdo, $_SESSION['user_id'], 'mantenimientos', "Hoja de vida actualizada: $eqLabel — Cambios: $detalles");
 
             $this->pdo->commit();
             json_success(null, 'Ficha técnica actualizada e historial generado.');

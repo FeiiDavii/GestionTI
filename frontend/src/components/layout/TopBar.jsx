@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../context/RealtimeContext';
@@ -32,7 +32,7 @@ function stripHtml(html) {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export default function TopBar({ onToggleMobile }) {
+export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
   const { user, permisos, esAdministrativo, logout } = useAuth();
   const {
     notifications,
@@ -229,8 +229,13 @@ export default function TopBar({ onToggleMobile }) {
         </div>
       </div>
 
-      <div className="notification-wrapper" ref={notifRef}
-        style={{ marginRight: '25px', position: 'relative', cursor: 'pointer' }}>
+      <div className="flex items-center gap-[15px]">
+        <div style={{ cursor: 'pointer', position: 'relative' }} title="Atajos de teclado (Alt+Shift+K)" onClick={onOpenShortcuts}>
+          <i className="fa-regular fa-keyboard" style={{ fontSize: '18px', color: '#555', marginTop: '4px' }}></i>
+        </div>
+
+        <div className="notification-wrapper" ref={notifRef}
+          style={{ marginRight: '15px', position: 'relative', cursor: 'pointer' }}>
         <i className="fa-regular fa-bell" style={{ fontSize: '20px', color: '#555' }}
           onClick={() => setShowNotif(!showNotif)}></i>
         {unreadCount > 0 && (
@@ -285,6 +290,7 @@ export default function TopBar({ onToggleMobile }) {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       <div className="user-profile" ref={profileRef}>
