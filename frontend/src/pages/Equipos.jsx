@@ -250,6 +250,16 @@ export default function Equipos() {
     return () => window.removeEventListener('rt:system_update', handler);
   }, [loadAll]);
 
+  // Shortcut Alt+Shift+N → abrir modal de creación según pestaña activa
+  useEffect(() => {
+    const handler = () => {
+      if (!canCrearEditar) return;
+      openCreateModal(activeTab);
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [activeTab, canCrearEditar]);
+
   /* -----------------------------------------------------------------------
      CRUD helpers
      ----------------------------------------------------------------------- */

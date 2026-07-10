@@ -305,6 +305,15 @@ export default function GestionTickets() {
     return () => window.removeEventListener('rt:tickets_update', handleTicketsUpdate);
   }, [puedeVerGlobal, puedeResponder, puedeReasignar, cargarTickets]);
 
+  // Shortcut Alt+Shift+N → abrir modal de nuevo ticket
+  useEffect(() => {
+    const handler = () => {
+      if (puedeCrear) abrirNuevoModal();
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [puedeCrear]);
+
   // ── Open from URL (?ticket_id=X) ─────────────────────────────────────────
   useEffect(() => {
     const ticketIdParam = searchParams.get('ticket_id');
