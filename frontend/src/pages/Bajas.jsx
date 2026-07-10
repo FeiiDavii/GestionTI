@@ -71,6 +71,15 @@ export default function Bajas() {
     return () => window.removeEventListener('rt:system_update', handler);
   }, [loadData]);
 
+  // Shortcut Alt+Shift+N → abrir modal de registrar baja
+  useEffect(() => {
+    const handler = () => {
+      if (puedeEliminar) openModal();
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [puedeEliminar]);
+
   // ─── Search asset ──────────────────────────────────────────
   const handleSearch = (q) => {
     setSearchTerm(q);

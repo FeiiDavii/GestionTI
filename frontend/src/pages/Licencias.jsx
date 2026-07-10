@@ -75,6 +75,15 @@ export default function Licencias() {
     return () => window.removeEventListener('rt:system_update', handler);
   }, [loadData]);
 
+  // Shortcut Alt+Shift+N → abrir modal de nueva licencia
+  useEffect(() => {
+    const handler = () => {
+      if (hasPermission('inv_crear_editar')) openCreate();
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, []);
+
   // ─── Tabs dinámicos ───────────────────────────────────────────
   const softwareGroups = useMemo(() => {
     const groups = {};
