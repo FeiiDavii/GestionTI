@@ -105,6 +105,15 @@ export default function Asignaciones() {
     return () => window.removeEventListener('rt:system_update', handler);
   }, [loadAll]);
 
+  // Shortcut Alt+Shift+N → abrir modal de nuevo artículo/repuesto
+  useEffect(() => {
+    const handler = () => {
+      if (permisos?.inv_crear_editar) openCreateArticle();
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [permisos]);
+
   const getStock = (art) => {
     const disp = parseInt(art.cantidad_disponible, 10) || 0;
     const asig = parseInt(art.cantidad_asignada, 10) || 0;

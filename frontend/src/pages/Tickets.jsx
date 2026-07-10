@@ -214,6 +214,13 @@ export default function Tickets() {
     return () => window.removeEventListener('rt:tickets_update', handleTicketsUpdate);
   }, [loadTickets]);
 
+  // Shortcut Alt+Shift+N → abrir modal de nuevo ticket
+  useEffect(() => {
+    const handler = () => openCreateModal();
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [canCreate, canCreateTicket]);
+
   // ── Abrir ticket desde URL (?ticket_id=X) — para links de notificaciones ──
   useEffect(() => {
     const ticketIdParam = searchParams.get('ticket_id');

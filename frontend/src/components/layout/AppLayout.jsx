@@ -66,7 +66,7 @@ export default function AppLayout({ children }) {
         // Acciones operativas adicionales
         if (key === 'n') { // Nuevo registro
           e.preventDefault();
-          document.querySelector('.fab-main')?.click();
+          window.dispatchEvent(new CustomEvent('shortcut:new'));
           return;
         }
         if (key === 'k') { // Búsqueda global

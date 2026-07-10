@@ -275,6 +275,27 @@ export default function Configuracion() {
     cargarTodo();
   }, [cargarTodo]);
 
+  // Shortcut Alt+Shift+N → abrir modal según tab activo
+  useEffect(() => {
+    const handler = () => {
+      switch (tabActivo) {
+        case 'usuarios':
+          if (hasPermission('usr_gestionar')) abrirModalUsuario(null);
+          break;
+        case 'roles':
+          if (hasPermission('conf_roles')) abrirModalRol(null);
+          break;
+        case 'sla':
+          if (hasPermission('conf_sla')) abrirModalSLA(null);
+          break;
+        default:
+          break;
+      }
+    };
+    window.addEventListener('shortcut:new', handler);
+    return () => window.removeEventListener('shortcut:new', handler);
+  }, [tabActivo]);
+
   // ─── Recargas individuales (sin necesidad de reload completo) ───────────────
   const recargarUsuarios = useCallback(async () => {
     try {
