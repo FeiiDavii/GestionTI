@@ -4,7 +4,7 @@
 
 ### Sistema Integral de Gestión de Inventario TI
 
-[![Versión](https://img.shields.io/badge/versión-3.10.0-4a6cf7?style=for-the-badge)](.)
+[![Versión](https://img.shields.io/badge/versión-3.8.0-4a6cf7?style=for-the-badge)](.)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react)](.)
 [![PHP](https://img.shields.io/badge/PHP-8.0-777BB4?style=for-the-badge&logo=php)](.)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.4-003545?style=for-the-badge&logo=mariadb)](.)
@@ -72,7 +72,8 @@
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              Apache 2.4 (XAMPP — puerto 80)                    │
-│         /GestionTI/backend/index.php  (Router ~80 rutas)       │
+│         /GestionTI/backend/index.php  (Router ~82 rutas)       │
+│         /GestionTI/backend/router.php (Dev server PHP built-in)│
 │                                                                 │
 │   ┌─────────────────────────────────────────────────────────┐  │
 │   │  Middleware                                             │  │
@@ -147,8 +148,10 @@ GestionTI/
 │
 ├── backend/
 │   ├── .htaccess                        ← Routing Apache, CORS y config SSE
-│   ├── index.php                        ← Router principal (~80 rutas REST)
+│   ├── index.php                        ← Router principal (~82 rutas REST)
+│   ├── router.php                       ← Router para PHP built-in server (dev)
 │   ├── stream.php                       ← Endpoint SSE (proceso independiente)
+│   ├── Dockerfile                       ← Imagen Docker (PHP 8.2 + Apache)
 │   │
 │   ├── config/
 │   │   └── db.php                       ← Conexión PDO a MariaDB
@@ -669,9 +672,10 @@ La función `esAdministrativo()` en `AuthContext.jsx` devuelve `true` si el usua
 | `GET` | `/aux/areas` | login | Listado de áreas |
 | `GET` | `/aux/marcas` | login | Listado de marcas |
 | `GET` | `/aux/tipos` | login | Tipos de activo disponibles |
-| `GET` | `/aux/configuraciones` | login | Configuraciones de hardware registradas |
+| `GET` | `/aux/configuraciones` | login | Información del sistema y estadísticas generales |
+| `GET` | `/aux/hardware-configs` | login | Listado de configuraciones de hardware (RAM/ROM) |
 | `GET` | `/aux/funcionarios` | login | Listado de funcionarios |
-| `POST` | `/aux/save` | login | Crear registro auxiliar o iniciar backup de BD |
+| `POST` | `/aux/save` | login | Crear registro auxiliar (marca, área, tipo, funcionario, configuración) o iniciar backup de BD |
 | `GET` | `/aux/users` | `usr_ver` | Listado paginado de usuarios del sistema |
 | `POST` | `/aux/users/save` | `usr_gestionar` | Crear o editar usuario |
 | `POST` | `/aux/users/toggle-status` | `usr_gestionar` | Activar o desactivar cuenta de usuario |
@@ -929,6 +933,60 @@ Las preferencias visuales se almacenan en `localStorage` del navegador y son ins
   --text-color:    #e0e0e0;
 }
 ```
+
+---
+
+---
+
+## 🐳 Docker (despliegue con contenedor)
+
+El directorio `backend/` incluye un `Dockerfile` basado en `php:8.2-apache` para contenerizar el backend de forma independiente.
+
+### Qué hace el Dockerfile
+
+- Parte de la imagen oficial `php:8.2-apache`
+- Instala las extensiones PHP necesarias: `pdo`, `pdo_mysql`, `zip`
+- Habilita los módulos Apache `mod_rewrite` y `mod_headers` (requeridos para routing y CORS)
+- Copia el código del backend al contenedor y ajusta permisos para `www-data`
+- Crea y protege el directorio `uploads/tickets/` con permisos de escritura
+- Expone el puerto **80**
+
+```bash
+# Construir la imagen
+docker build -t gestionti-backend ./backend
+
+# Ejecutar el contenedor
+docker run -d -p 80:80 \
+  -e MYSQL_HOST=host.docker.internal \
+  gestionti-backend
+```
+
+> **Nota:** La BD sigue corriendo en MariaDB local (XAMPP). Ajusta las credenciales en `backend/config/db.php` antes de construir la imagen, o pásalas como variables de entorno.
+
+---
+
+## 🖥️ Servidor de desarrollo PHP (alternativa a XAMPP)
+
+El archivo `backend/router.php` permite levantar el backend usando el **servidor integrado de PHP** sin necesidad de Apache/XAMPP:
+
+```bash
+php -S localhost:8080 -t backend/ backend/router.php
+```
+
+Este router redirige las peticiones a archivos estáticos directamente (uploads, imágenes) y todo lo demás lo delega a `index.php`. Útil para desarrollo rápido o entornos sin XAMPP.
+
+---
+
+## 📝 Changelog
+
+### v3.9.0
+
+| Tipo | Descripción | Archivo |
+|---|---|---|
+| 🐛 **Fix** | Corregido error tipográfico `cellular` → `celular` en la consulta `INSERT INTO funcionarios`. Causaba `SQLSTATE[42S22]: Column not found` al crear un nuevo funcionario. | `AuxiliaryController.php` |
+| ✨ **Feat** | Añadido `Dockerfile` para contenerizar el backend con PHP 8.2 + Apache | `backend/Dockerfile` |
+| ✨ **Feat** | Añadido `router.php` para soporte del servidor built-in de PHP en desarrollo | `backend/router.php` |
+| ✨ **Feat** | Nuevo endpoint `GET /aux/hardware-configs` separado de `/aux/configuraciones` (estadísticas del sistema) | `AuxiliaryController.php` |
 
 ---
 
