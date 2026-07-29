@@ -245,7 +245,7 @@ class AuxiliaryController {
                     $apellido = sanitize_input($input['apellido'] ?? '', 'string', 100);
                     $celular = sanitize_input($input['celular'] ?? '', 'string', 50);
                     $id_area = !empty($input['id_area']) ? (int)$input['id_area'] : null;
-                    $this->pdo->prepare("INSERT INTO funcionarios (nombre, apellido, cellular, id_area) VALUES (?,?,?,?)")
+                    $this->pdo->prepare("INSERT INTO funcionarios (nombre, apellido, celular, id_area) VALUES (?,?,?,?)")
                         ->execute([$nombre, $apellido, $celular, $id_area]);
                     $id = $this->pdo->lastInsertId();
                     registrar_log($this->pdo, $_SESSION['user_id'], 'funcionarios', "Funcionario creado: $nombre $apellido");
