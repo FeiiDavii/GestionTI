@@ -63,6 +63,7 @@ const FIELD_MAP = {
     { id: 'estado',        label: 'Estado' },
     { id: 'asignado_a',    label: 'Técnico' },
     { id: 'calificacion',  label: 'Calificación' },
+    { id: 'concepto_tecnico', label: 'Concepto / Solución' },
     { id: 'fecha_creacion',label: 'F. Creación' },
     { id: 'fecha_cierre',  label: 'F. Cierre' },
   ],

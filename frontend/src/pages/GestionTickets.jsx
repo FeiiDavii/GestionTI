@@ -144,12 +144,14 @@ function TimelineItem({ item }) {
   const iconMap = {
     creacion: 'fa-plus-circle', asignacion: 'fa-user-tag',
     escalacion: 'fa-arrow-up', estado: 'fa-rotate',
-    calificacion: 'fa-star', reapertura: 'fa-undo'
+    calificacion: 'fa-star', reapertura: 'fa-undo',
+    resolucion: 'fa-check-circle'
   };
   const colorMap = {
     creacion: '#4a6cf7', asignacion: '#28a745',
     escalacion: '#ffc107', estado: '#17a2b8',
-    calificacion: '#f6c23e', reapertura: '#e74a3b'
+    calificacion: '#f6c23e', reapertura: '#e74a3b',
+    resolucion: '#1cc88a'
   };
   const icon = iconMap[item.tipo] || 'fa-circle';
   const iconColor = colorMap[item.tipo] || '#6c757d';
@@ -235,6 +237,10 @@ export default function GestionTickets() {
   const [escalarTicketId, setEscalarTicketId] = useState(null);
   const [escalarTecnico, setEscalarTecnico] = useState('');
   const [escalarMotivo, setEscalarMotivo] = useState('');
+
+  // Modal de resolución
+  const [resolucionModalOpen, setResolucionModalOpen] = useState(false);
+  const [conceptoTecnico, setConceptoTecnico] = useState('');
 
   // Nuevo ticket modal
   const [showNuevoModal, setShowNuevoModal] = useState(false);
@@ -425,6 +431,8 @@ export default function GestionTickets() {
     setFormCategoria('');
     setFormTecnicoId('');
     setChatMessage('');
+    setResolucionModalOpen(false);
+    setConceptoTecnico('');
   };
 
   // ── CARGAR TIMELINE (inicial, al abrir modal) ───────────────────────────
@@ -472,8 +480,15 @@ export default function GestionTickets() {
   };
 
   // ── GUARDAR CAMBIOS ──────────────────────────────────────────────────────
-  const handleGuardarCambios = async (e) => {
-    e.preventDefault();
+  const handleGuardarCambios = async (e, forceConcepto = null) => {
+    if (e) e.preventDefault();
+
+    if (formEstado === 'Resuelto' && currentTicket.estado !== 'Resuelto' && forceConcepto === null) {
+      setConceptoTecnico('');
+      setResolucionModalOpen(true);
+      return;
+    }
+
     const jsonData = {
       ticket_id: currentTicket.id,
       estado: formEstado,
@@ -481,6 +496,9 @@ export default function GestionTickets() {
       prioridad: currentTicket.prioridad,
       tecnico_id: formTecnicoId,
     };
+    if (forceConcepto !== null) {
+      jsonData.concepto_tecnico = forceConcepto;
+    }
 
     try {
       const res = await ticketAPI.update(jsonData);
@@ -495,6 +513,15 @@ export default function GestionTickets() {
       const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al guardar los cambios';
       showToast(errorMessage, 'error');
     }
+  };
+
+  const confirmarResolucion = () => {
+    if (!conceptoTecnico || conceptoTecnico.trim().length < 5) {
+      showToast('Por favor ingrese un concepto técnico detallado (mínimo 5 caracteres)', 'warning');
+      return;
+    }
+    setResolucionModalOpen(false);
+    handleGuardarCambios(null, conceptoTecnico.trim());
   };
 
   // ── ENVIAR CHAT ──────────────────────────────────────────────────────────
@@ -1346,6 +1373,119 @@ export default function GestionTickets() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {resolucionModalOpen && (
+        <div
+          onClick={() => setResolucionModalOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.6)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(3px)',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'var(--card-bg)',
+              borderRadius: '16px',
+              width: '100%',
+              maxWidth: 500,
+              margin: '0 16px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+              border: '1px solid var(--border-color)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div style={{
+              padding: '18px 24px',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'rgba(28,200,138,0.08)',
+            }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <FaCheckCircle style={{ color: '#1cc88a', fontSize: '1.1rem' }} />
+                Resolución de Ticket #{currentTicket?.id}
+              </h3>
+              <button
+                onClick={() => setResolucionModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-text)', fontSize: '1.1rem', display: 'flex', alignItems: 'center' }}
+              >
+                <FaTimes />
+              </button>
+            </div>
+            {/* Body */}
+            <div style={{ padding: '20px 24px 24px' }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--gray-text)', marginBottom: '16px', lineHeight: 1.6 }}>
+                Para marcar este ticket como <strong style={{ color: '#1cc88a' }}>Resuelto</strong>, ingrese el concepto técnico o solución aplicada.
+                Esta información quedará registrada en la línea de tiempo y será exportable en los reportes.
+              </p>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--gray-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Concepto Técnico / Solución *
+              </label>
+              <textarea
+                autoFocus
+                rows="5"
+                value={conceptoTecnico}
+                onChange={e => setConceptoTecnico(e.target.value)}
+                placeholder="Describa detalladamente la solución aplicada al problema del usuario..."
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--input-bg)',
+                  color: 'var(--text-color)',
+                  fontSize: '0.9rem',
+                  resize: 'vertical',
+                  outline: 'none',
+                  fontFamily: 'inherit',
+                  lineHeight: 1.6,
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => e.target.style.borderColor = '#1cc88a'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
+              />
+              <p style={{ fontSize: '0.78rem', color: '#aaa', marginTop: 6, marginBottom: 0 }}>
+                Mínimo 5 caracteres. {conceptoTecnico.length > 0 && <span style={{ color: conceptoTecnico.trim().length >= 5 ? '#1cc88a' : '#e74a3b' }}>{conceptoTecnico.trim().length} caracteres</span>}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+                <button
+                  onClick={() => setResolucionModalOpen(false)}
+                  style={{
+                    padding: '9px 20px', borderRadius: 8,
+                    border: '1px solid var(--border-color)',
+                    cursor: 'pointer', background: 'var(--input-bg)',
+                    color: 'var(--text-color)', fontSize: '0.9rem', fontWeight: 600,
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarResolucion}
+                  style={{
+                    background: '#1cc88a', color: 'white',
+                    padding: '9px 22px', borderRadius: 8, border: 'none',
+                    cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
+                    boxShadow: '0 4px 14px rgba(28,200,138,0.4)',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <FaCheckCircle /> Confirmar Resolución
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

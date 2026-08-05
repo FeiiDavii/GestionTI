@@ -1060,14 +1060,14 @@ export default function Configuracion() {
               </div>
             </div>
             <div className="card-body" style={{ padding: 0 }}>
-              <div style={{ overflowX: 'auto', maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px' }}>
-                <table className="data-table" style={{ marginTop: 0 }}>
+              <div className="table-responsive" style={{ maxHeight: '450px', overflowY: 'auto' }}>
+                <table className="data-table" style={{ marginTop: 0, width: '100%' }}>
                   <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                     <tr>
-                      <th style={{ whiteSpace: 'nowrap' }}>Fecha</th>
-                      <th style={{ whiteSpace: 'nowrap' }}>Hora</th>
-                      <th>Acción</th>
-                      <th>Usuario</th>
+                      <th style={{ width: '120px', whiteSpace: 'nowrap' }}>Fecha</th>
+                      <th style={{ width: '100px', whiteSpace: 'nowrap' }}>Hora</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>Acción</th>
+                      <th style={{ width: '200px', whiteSpace: 'nowrap' }}>Usuario</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1088,11 +1088,11 @@ export default function Configuracion() {
                             <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
                               {fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                             </td>
-                            <td style={{ fontSize: '13px' }}>
+                            <td style={{ fontSize: '13px', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '250px' }}>
                               <i className="fa-solid fa-circle-dot" style={{ color: 'var(--primary-color)', fontSize: '8px', marginRight: '6px' }}></i>
                               {log.descripcion}
                             </td>
-                            <td style={{ fontSize: '13px' }}>{log.nombre_completo || log.usuario_nombre || 'Sistema'}</td>
+                            <td style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>{log.nombre_completo || log.usuario_nombre || 'Sistema'}</td>
                           </tr>
                         );
                       })

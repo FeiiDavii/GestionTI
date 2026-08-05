@@ -196,7 +196,8 @@ class ReportController {
                                    COALESCE(tec.nombre_completo, 'Sin asignar') AS asignado_a,
                                    COALESCE(t.calificacion, 'N/A') AS calificacion,
                                    DATE_FORMAT(t.fecha_creacion,'%d/%m/%Y %H:%i') AS fecha_creacion,
-                                   COALESCE(DATE_FORMAT(t.fecha_cierre,'%d/%m/%Y %H:%i'), '-') AS fecha_cierre
+                                   COALESCE(DATE_FORMAT(t.fecha_cierre,'%d/%m/%Y %H:%i'), '-') AS fecha_cierre,
+                                   t.concepto_tecnico
                             FROM tickets t
                             LEFT JOIN usuarios u   ON t.usuario_id  = u.id
                             LEFT JOIN usuarios tec ON t.tecnico_id  = tec.id

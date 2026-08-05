@@ -43,7 +43,7 @@ class Auth {
 
     public static function getUser($pdo) {
         $stmt = $pdo->prepare("SELECT u.id, u.username, u.nombre_completo as nombre, u.id_rol, u.estado, r.nombre_rol as role,
-            r.inv_ver, r.inv_crear_editar, r.inv_eliminar, r.inv_asignaciones, r.inv_licencias, r.inv_bajas,
+            r.inv_ver, r.inv_crear_editar, r.inv_eliminar, r.inv_asignaciones, r.inv_licencias, r.inv_bajas, r.inv_topology,
             r.tk_ver_global, r.tk_responder, r.tk_asignar_otros, r.tk_mantenimientos, r.tk_crear,
             r.usr_ver, r.usr_gestionar, r.rep_generar, r.conf_basica, r.conf_roles, r.conf_avanzada, r.conf_sla
             FROM usuarios u LEFT JOIN roles r ON u.id_rol = r.id WHERE u.id = ?");
@@ -53,7 +53,7 @@ class Auth {
 
     public static function login($pdo, $username, $password) {
         $sql = "SELECT u.*, r.inv_ver, r.inv_crear_editar, r.inv_eliminar, r.inv_asignaciones, 
-                r.inv_licencias, r.inv_bajas, r.tk_ver_global, r.tk_responder, 
+                r.inv_licencias, r.inv_bajas, r.inv_topology, r.tk_ver_global, r.tk_responder, 
                 r.tk_asignar_otros, r.tk_mantenimientos, r.tk_crear, r.usr_ver, r.usr_gestionar, 
                 r.rep_generar, r.conf_basica, r.conf_roles, r.conf_avanzada, r.conf_sla
                 FROM usuarios u LEFT JOIN roles r ON u.id_rol = r.id WHERE u.username = ? AND u.estado = 1";
@@ -73,6 +73,7 @@ class Auth {
                 'inv_ver' => (bool)$user['inv_ver'], 'inv_crear_editar' => (bool)$user['inv_crear_editar'],
                 'inv_eliminar' => (bool)$user['inv_eliminar'], 'inv_asignaciones' => (bool)$user['inv_asignaciones'],
                 'inv_licencias' => (bool)$user['inv_licencias'], 'inv_bajas' => (bool)$user['inv_bajas'],
+                'inv_topology' => (bool)$user['inv_topology'],
                 'tk_ver_global' => (bool)$user['tk_ver_global'], 'tk_responder' => (bool)$user['tk_responder'],
                 'tk_asignar_otros' => (bool)$user['tk_asignar_otros'], 'tk_mantenimientos' => (bool)$user['tk_mantenimientos'],
                 'tk_crear' => (bool)$user['tk_crear'], 'usr_ver' => (bool)$user['usr_ver'],

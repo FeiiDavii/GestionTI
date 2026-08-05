@@ -137,4 +137,9 @@ export const permissionAPI = {
   importBackup: (formData) => axios.post('/api/permissions/import-backup', formData, { withCredentials: true }),
 };
 
+export const topologyAPI = {
+  data: () => api.get('/topology/data'),
+  save: (data) => api.post('/topology/save', data)
+};
+
 export default api;

@@ -15,6 +15,7 @@ import Mantenimientos from './pages/Mantenimientos';
 import Configuracion from './pages/Configuracion';
 import Reportes from './pages/Reportes';
 import Perfil from './pages/Perfil';
+import Topology from './pages/Topology';
 
 function ProtectedRoute({ children, requiredPermiso }) {
   const { user, loading, hasPermission } = useAuth();
@@ -71,6 +72,7 @@ export default function App() {
       <Route path="/tickets" element={<ProtectedRoute><AppLayout><Tickets /></AppLayout></ProtectedRoute>} />
       <Route path="/gestion-tickets" element={<ProtectedRoute requiredPermiso="tk_ver_global"><AppLayout><GestionTickets /></AppLayout></ProtectedRoute>} />
       <Route path="/equipos" element={<ProtectedRoute requiredPermiso="inv_ver"><AppLayout><Equipos /></AppLayout></ProtectedRoute>} />
+      <Route path="/topology" element={<ProtectedRoute requiredPermiso="inv_topology"><AppLayout><Topology /></AppLayout></ProtectedRoute>} />
       <Route path="/asignaciones" element={<ProtectedRoute requiredPermiso="inv_asignaciones"><AppLayout><Asignaciones /></AppLayout></ProtectedRoute>} />
       <Route path="/licencias" element={<ProtectedRoute requiredPermiso="inv_licencias"><AppLayout><Licencias /></AppLayout></ProtectedRoute>} />
       <Route path="/bajas" element={<ProtectedRoute requiredPermiso="inv_bajas"><AppLayout><Bajas /></AppLayout></ProtectedRoute>} />

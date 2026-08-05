@@ -6,6 +6,7 @@ import { searchAPI, notificationAPI, auxAPI } from '../../api/client';
 import Swal from 'sweetalert2';
 import { showToast } from '../../core/toast';
 import DOMPurify from 'dompurify';
+import SearchableSelect from '../common/SearchableSelect';
 
 // ─── Sanitiza HTML del mensaje y convierte links del sistema original ─────────
 // El backend almacena HTML con links como /gestion-tickets?ticket_id=X
@@ -134,7 +135,15 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
   const loadUsers = async () => {
     try {
       const res = await auxAPI.users();
-      if (res.data.success) setUsers(res.data.data.users || []);
+      if (res.data.success) {
+        const rawUsers = res.data.data?.users || res.data.data || [];
+        // El backend alias: nombre_completo → nombre. Normalizamos ambos casos.
+        const normalized = rawUsers.map(u => ({
+          ...u,
+          nombre_completo: u.nombre_completo || u.nombre || u.username || `Usuario #${u.id}`,
+        }));
+        setUsers(normalized);
+      }
     } catch { /* ignore */ }
   };
 
@@ -406,14 +415,13 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
               {sendForm.tipo === 'personal' && (
                 <div className="form-group">
                   <label><i className="fa-solid fa-user-check" style={{ marginRight: '5px', color: 'var(--primary-color)' }}></i>Destinatario <span style={{ color: 'var(--error-color)' }}>*</span></label>
-                  <select className="form-control" required
-                    value={sendForm.id_destinatario}
-                    onChange={(e) => setSendForm({ ...sendForm, id_destinatario: e.target.value })}>
-                    <option value="">-- Seleccione un usuario --</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.nombre_completo}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    options={users.map(u => ({ value: u.id, label: u.nombre_completo }))}
+                    value={sendForm.id_destinatario !== '' ? Number(sendForm.id_destinatario) : null}
+                    onChange={(val) => setSendForm({ ...sendForm, id_destinatario: val ?? '' })}
+                    placeholder="-- Buscar usuario --"
+                    isClearable={true}
+                  />
                 </div>
               )}
               <div className="form-group">
