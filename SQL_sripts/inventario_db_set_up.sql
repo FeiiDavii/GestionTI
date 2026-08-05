@@ -408,17 +408,18 @@ CREATE TABLE `roles` (
   `conf_basica` tinyint(1) NOT NULL DEFAULT 0,
   `conf_roles` tinyint(1) NOT NULL DEFAULT 0,
   `conf_avanzada` tinyint(1) NOT NULL DEFAULT 0,
-  `conf_sla` tinyint(1) DEFAULT 0
+  `conf_sla` tinyint(1) DEFAULT 0,
+  `inv_topology` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `roles`
 --
 
-INSERT INTO `roles` (`id`, `nombre_rol`, `descripcion`, `creado_en`, `inv_ver`, `inv_crear_editar`, `inv_eliminar`, `inv_asignaciones`, `inv_licencias`, `inv_bajas`, `tk_ver_global`, `tk_responder`, `tk_asignar_otros`, `tk_mantenimientos`, `tk_crear`, `usr_ver`, `usr_gestionar`, `rep_generar`, `conf_basica`, `conf_roles`, `conf_avanzada`, `conf_sla`) VALUES
-(1, 'Administrador', 'Acceso completo al sistema', '2026-05-25 14:27:37', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-(2, 'Avanzado', 'Puede gestionar equipos y asignaciones', '2026-05-26 14:31:10', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1),
-(4, 'Funcionario', 'Solo creación y consulta de tickets', '2026-06-16 15:28:49', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+INSERT INTO `roles` (`id`, `nombre_rol`, `descripcion`, `creado_en`, `inv_ver`, `inv_crear_editar`, `inv_eliminar`, `inv_asignaciones`, `inv_licencias`, `inv_bajas`, `tk_ver_global`, `tk_responder`, `tk_asignar_otros`, `tk_mantenimientos`, `tk_crear`, `usr_ver`, `usr_gestionar`, `rep_generar`, `conf_basica`, `conf_roles`, `conf_avanzada`, `conf_sla`, `inv_topology`) VALUES
+(1, 'Administrador', 'Acceso completo al sistema', '2026-05-25 14:27:37', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+(2, 'Avanzado', 'Puede gestionar equipos y asignaciones', '2026-05-26 14:31:10', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1),
+(4, 'Funcionario', 'Solo creación y consulta de tickets', '2026-06-16 15:28:49', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -527,7 +528,8 @@ CREATE TABLE `tickets` (
   `fecha_vencimiento_resolucion` datetime DEFAULT NULL COMMENT 'Plazo l??mite resoluci??n',
   `fecha_primera_respuesta` datetime DEFAULT NULL COMMENT 'Cu??ndo se dio la primera respuesta t??cnica',
   `sla_respuesta_cumplido` tinyint(1) DEFAULT NULL COMMENT '1=cumplido, 0=incumplido, NULL=pendiente',
-  `sla_resolucion_cumplido` tinyint(1) DEFAULT NULL COMMENT '1=cumplido, 0=incumplido, NULL=pendiente'
+  `sla_resolucion_cumplido` tinyint(1) DEFAULT NULL COMMENT '1=cumplido, 0=incumplido, NULL=pendiente',
+  `concepto_tecnico` text DEFAULT NULL COMMENT 'Solución o concepto técnico registrado al resolver el ticket'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -569,11 +571,57 @@ CREATE TABLE `tickets_trazabilidad` (
 CREATE TABLE `ticket_eventos` (
   `id` int(11) NOT NULL,
   `ticket_id` int(11) NOT NULL,
-  `tipo` enum('creacion','asignacion','escalacion','estado','calificacion','reapertura') NOT NULL,
+  `tipo` enum('creacion','asignacion','escalacion','estado','calificacion','reapertura','resolucion') NOT NULL,
   `descripcion` varchar(500) NOT NULL,
   `usuario_id` int(11) DEFAULT NULL,
   `fecha` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `topology_nodes`
+--
+
+CREATE TABLE IF NOT EXISTS `topology_nodes` (
+  `id` varchar(50) NOT NULL,
+  `parent_id` varchar(50) DEFAULT NULL COMMENT 'Nodo contenedor padre',
+  `type` varchar(50) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `x` float NOT NULL DEFAULT 0,
+  `y` float NOT NULL DEFAULT 0,
+  `status` enum('online','maintenance','offline') NOT NULL DEFAULT 'online',
+  `criticality` enum('low','medium','high','critical') NOT NULL DEFAULT 'medium',
+  `metadata` longtext DEFAULT NULL CHECK (json_valid(`metadata`) OR `metadata` IS NULL),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_topology_nodes_parent` (`parent_id`),
+  KEY `idx_topology_nodes_status` (`status`),
+  KEY `idx_topology_nodes_type` (`type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `topology_edges`
+--
+
+CREATE TABLE IF NOT EXISTS `topology_edges` (
+  `id` varchar(50) NOT NULL,
+  `source` varchar(50) NOT NULL,
+  `target` varchar(50) NOT NULL,
+  `type` varchar(50) NOT NULL DEFAULT 'physical',
+  `status` enum('active','inactive','degraded') NOT NULL DEFAULT 'active',
+  `label` varchar(255) DEFAULT NULL,
+  `color` varchar(30) DEFAULT NULL,
+  `speed` varchar(50) DEFAULT NULL,
+  `metadata` longtext DEFAULT NULL CHECK (json_valid(`metadata`) OR `metadata` IS NULL),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_topology_edges_source` (`source`),
+  KEY `idx_topology_edges_target` (`target`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1218,6 +1266,17 @@ ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_usuarios_funcionarios` FOREIGN KEY (`id_funcionario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_usuarios_roles` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `topology_nodes` y `topology_edges`
+--
+ALTER TABLE `topology_nodes`
+  ADD CONSTRAINT `fk_topology_nodes_parent` FOREIGN KEY (`parent_id`) REFERENCES `topology_nodes` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `topology_edges`
+  ADD CONSTRAINT `fk_topology_edges_source` FOREIGN KEY (`source`) REFERENCES `topology_nodes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_topology_edges_target` FOREIGN KEY (`target`) REFERENCES `topology_nodes` (`id`) ON DELETE CASCADE;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

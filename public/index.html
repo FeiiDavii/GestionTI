@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GestionTI - Sistema de Gestión de Inventario TI</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Aplica tema y sidebar ANTES de que React cargue para evitar flash -->
+    <script>
+      (function () {
+        try {
+          var dark = localStorage.getItem('darkMode') === 'true';
+          var compact = localStorage.getItem('sidebarCompact') === 'true';
+          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+          if (compact) document.documentElement.classList.add('sidebar-compact-pending');
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-4U1VvIRz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cf_ypgrC.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

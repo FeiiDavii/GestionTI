@@ -306,6 +306,7 @@ class TicketController {
         $categoria = $input['categoria'] ?? '';
         $tecnico_id = isset($input['tecnico_id']) && $input['tecnico_id'] !== '' && $input['tecnico_id'] !== 'null'
             ? (int)$input['tecnico_id'] : null;
+        $concepto_tecnico = $input['concepto_tecnico'] ?? null;
 
         $categoriasValidas = ['Software','Software Core','Hardware','Usuarios','Otros'];
         if ($categoria && !in_array($categoria, $categoriasValidas)) $categoria = '';
@@ -320,6 +321,7 @@ class TicketController {
         if ($estado)    { $updates[] = 'estado=?';    $params[] = $estado; }
         if ($categoria) { $updates[] = 'categoria=?'; $params[] = $categoria; }
         if ($tecnico_id !== null) { $updates[] = 'tecnico_id=?'; $params[] = $tecnico_id; }
+        if ($concepto_tecnico !== null) { $updates[] = 'concepto_tecnico=?'; $params[] = $concepto_tecnico; }
 
         if (!empty($updates)) {
             $params[] = $ticket_id;
@@ -333,6 +335,12 @@ class TicketController {
                 $this->pdo->prepare(
                     "INSERT INTO ticket_eventos (ticket_id, tipo, descripcion, usuario_id) VALUES (?,?,?,?)"
                 )->execute([$ticket_id, 'estado', "Estado cambiado a: $estado", $_SESSION['user_id']]);
+
+                if ($estado === 'Resuelto' && $concepto_tecnico) {
+                    $this->pdo->prepare(
+                        "INSERT INTO ticket_eventos (ticket_id, tipo, descripcion, usuario_id) VALUES (?,?,?,?)"
+                    )->execute([$ticket_id, 'resolucion', "Resolución: " . $concepto_tecnico, $_SESSION['user_id']]);
+                }
 
                 $this->pdo->prepare(
                     "INSERT INTO acciones (tabla, descripcion, usuario_id) VALUES ('tickets', ?, ?)"

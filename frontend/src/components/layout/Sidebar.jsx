@@ -15,11 +15,11 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
 
   const isActive = (path) => currentPage === path || location.pathname.startsWith('/' + path);
 
-  const showActivos = permisos.inv_ver || permisos.inv_asignaciones || permisos.inv_licencias || permisos.inv_bajas;
+  const showActivos = permisos.inv_ver || permisos.inv_asignaciones || permisos.inv_licencias || permisos.inv_bajas || permisos.inv_topology;
   const showSoporte = permisos.tk_ver_global || permisos.tk_responder || permisos.tk_mantenimientos || permisos.tk_crear;
   const showAdmin = permisos.rep_generar || permisos.conf_basica || permisos.conf_roles || permisos.usr_ver || permisos.conf_sla;
 
-  const activosOpen = ['equipos', 'asignaciones', 'licencias', 'bajas'].includes(currentPage);
+  const activosOpen = ['equipos', 'topology', 'asignaciones', 'licencias', 'bajas'].includes(currentPage);
   const soporteOpen = ['tickets', 'gestion-tickets', 'mantenimientos'].includes(currentPage);
   const adminOpen = ['reportes', 'configuracion'].includes(currentPage);
 
@@ -71,6 +71,11 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
                     {permisos.inv_ver && (
                       <li><Link to="/equipos" className={isActive('equipos') ? 'active' : ''} title="Inventario General">
                         <i className="fa-solid fa-desktop"></i> <span>Inventario General</span>
+                      </Link></li>
+                    )}
+                    {permisos.inv_topology && (
+                      <li><Link to="/topology" className={isActive('topology') ? 'active' : ''} title="Topología de Red">
+                        <i className="fa-solid fa-network-wired"></i> <span>Topología de Red</span>
                       </Link></li>
                     )}
                     {permisos.inv_asignaciones && (
