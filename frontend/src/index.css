@@ -2602,6 +2602,120 @@ input:checked + .slider:before {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE TABLAS — contención en cards + scroll horizontal
+   ══════════════════════════════════════════════════════════════ */
+
+/* Contenedores de cards: evitar que las tablas empujen el layout */
+.settings-card,
+.chart-card,
+.list-card,
+.inv-tab-content,
+.ticket-container {
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Main content: prevenir scroll horizontal del body */
+.main-content {
+  overflow-x: hidden;
+  min-width: 0;
+}
+
+/* Tabla scroll: ya tiene overflow:auto, reforzar comportamiento */
+.table-scroll,
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  min-width: 0;
+}
+
+/* Ajustar data-table para que se adapte al contenedor */
+.data-table {
+  min-width: 0;
+}
+
+/* Modern table (gestión de tickets) */
+.modern-table {
+  min-width: 0;
+}
+
+/* Responsive intermedio: 1200px ≈ zoom 125-150% en pantalla 1920px */
+@media (max-width: 1200px) {
+  .main-content {
+    padding: 0 25px 25px;
+  }
+  .top-bar {
+    margin: 0 -25px 20px;
+    padding: 14px 25px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .modern-table th,
+  .modern-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Responsive tablet: 992px ≈ zoom 150-175% en pantalla 1920px */
+@media (max-width: 992px) {
+  .main-content {
+    padding: 0 18px 18px;
+  }
+  .top-bar {
+    margin: 0 -18px 15px;
+    padding: 12px 18px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .modern-table th,
+  .modern-table td {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .table-scroll {
+    max-height: 480px;
+  }
+  .inv-tab-content .table-scroll {
+    max-height: 520px;
+  }
+}
+
+/* Responsive mobile: 768px ≈ zoom 200%+ */
+@media (max-width: 768px) {
+  .data-table th,
+  .data-table td {
+    padding: 7px 8px;
+    font-size: 10px;
+    white-space: normal;
+    min-width: 0;
+  }
+  .modern-table th,
+  .modern-table td {
+    padding: 7px 8px;
+    font-size: 10px;
+    white-space: normal;
+    min-width: 0;
+  }
+  .table-scroll {
+    max-height: 400px;
+  }
+  .settings-card,
+  .chart-card,
+  .list-card,
+  .inv-tab-content,
+  .ticket-container {
+    border-radius: 12px;
+  }
+}
+
 @media (max-width: 480px) {
   .permisos-grid {
     grid-template-columns: 1fr;
