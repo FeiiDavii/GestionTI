@@ -7,6 +7,13 @@ import Swal from 'sweetalert2';
 import { showToast } from '../../core/toast';
 import DOMPurify from 'dompurify';
 import SearchableSelect from '../common/SearchableSelect';
+import { avatarUrl } from '../../config';
+
+// Iniciales locales cuando no hay proveedor de avatar configurado (VITE_AVATAR_URL)
+function getInitials(name) {
+  if (!name) return 'U';
+  return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+}
 
 // ─── Sanitiza HTML del mensaje y convierte links del sistema original ─────────
 // El backend almacena HTML con links como /gestion-tickets?ticket_id=X
@@ -121,7 +128,7 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
     setShowReadModal(true);
     setShowNotif(false);
     // Marcar como leída en background y actualizar estado local
-    if (notif.leido == 0 && notif.tipo !== 'global') {
+    if (notif.leido == 0) {
       try {
         await notificationAPI.markRead(notif.id);
         setNotifications(prev =>
@@ -309,11 +316,22 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
             <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{user?.nombre || 'Usuario'}</h4>
             <small style={{ color: '#888', fontSize: '11px' }}>{user?.username}</small>
           </div>
-          <img
-            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'U')}&background=random&color=fff&size=128`}
-            alt="Avatar"
-            style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
-          />
+          {avatarUrl(user?.nombre || 'U', 128) ? (
+            <img
+              src={avatarUrl(user?.nombre || 'U', 128)}
+              alt="Avatar"
+              style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+            />
+          ) : (
+            <div
+              style={{ width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '18px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--info-color))',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
+            >
+              {getInitials(user?.nombre)}
+            </div>
+          )}
           <i className="fa-solid fa-chevron-down" style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}></i>
 
           {showProfile && (

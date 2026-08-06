@@ -45,6 +45,9 @@ class AuthController {
     public function me() {
         Auth::requireLogin();
         Auth::checkForceLogout($this->pdo);
+        // Refrescar permisos desde BD: evita servir permisos estancados en sesión
+        // cuando un admin modifica la matriz de un rol.
+        $permisos = Auth::getPermissions($this->pdo);
         $user = Auth::getUser($this->pdo);
         if (!$user) json_error('Usuario no encontrado', 404);
         // Obtener ultimo_acceso directamente
@@ -60,7 +63,7 @@ class AuthController {
             'role' => $user['role'],
             'estado' => $user['estado'],
             'ultimo_acceso' => $ultimo_acceso,
-            'permisos' => $_SESSION['permisos'] ?? []
+            'permisos' => $permisos
         ]);
     }
 
@@ -108,7 +111,7 @@ class AuthController {
         $stmt->execute([$_SESSION['user_id']]);
         $db_pass = $stmt->fetchColumn();
 
-        if (!($current === $db_pass || password_verify($current, $db_pass)))
+        if (!password_verify($current, $db_pass))
             json_error('La contraseña actual ingresada es incorrecta. Por favor verifique e intente nuevamente.', 401);
         if ($new !== $confirm) json_error('La nueva contraseña y la confirmación no coinciden. Por favor asegúrese de que sean iguales.', 400);
         if ($current === $new) json_error('La nueva contraseña no puede ser igual a la actual. Por favor ingrese una contraseña diferente.', 400);

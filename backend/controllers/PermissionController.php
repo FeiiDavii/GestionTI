@@ -1,9 +1,13 @@
 <?php
 class PermissionController {
     private $pdo;
-    private $permisosList = ['inv_ver', 'inv_crear_editar', 'inv_eliminar', 'inv_asignaciones', 'inv_licencias', 'inv_bajas', 'tk_ver_global', 'tk_responder', 'tk_asignar_otros', 'tk_mantenimientos', 'tk_crear', 'usr_ver', 'usr_gestionar', 'rep_generar', 'conf_basica', 'conf_roles', 'conf_avanzada', 'conf_sla'];
+    private $permisosList;
 
-    public function __construct($pdo) { $this->pdo = $pdo; }
+    public function __construct($pdo) {
+        $this->pdo = $pdo;
+        // Fuente única de verdad: Auth::PERMISSIONS (19 flags).
+        $this->permisosList = Auth::PERMISSIONS;
+    }
 
     public function roles() {
         Auth::requireLogin();

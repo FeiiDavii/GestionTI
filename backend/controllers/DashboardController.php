@@ -55,7 +55,7 @@ class DashboardController {
                         'licArea' => $dataLicArea,
                     ],
                 ];
-            } catch (Exception $e) { $result['inventory_error'] = $e->getMessage(); }
+            } catch (Exception $e) { $result['inventory_error'] = get_friendly_error($e); }
         }
 
         // ── SOPORTE ───────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ class DashboardController {
                         'ticketsArea' => $dataTicketsArea,
                     ],
                 ];
-            } catch (Exception $e) { $result['support_error'] = $e->getMessage(); }
+            } catch (Exception $e) { $result['support_error'] = get_friendly_error($e); }
         }
 
         // ── AUDITORÍA ─────────────────────────────────────────────────────────

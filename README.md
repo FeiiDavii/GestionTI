@@ -43,7 +43,7 @@
 |---|---|
 | 📦 **Inventario** | Registro, clasificación y seguimiento de equipos de cómputo, monitores, impresoras, teléfonos IP y otros activos |
 | 🎫 **Mesa de Servicios** | Gestión de tickets de soporte con SLA, chat en tiempo real y escalamiento técnico |
-| 🔒 **Control de acceso** | Sistema PBAC con 18 permisos individuales por rol |
+| 🔒 **Control de acceso** | Sistema PBAC con 19 permisos individuales por rol |
 | 📊 **Dashboard** | Widgets arrastrables y personalizables con KPIs e indicadores en tiempo real |
 | 📄 **Reportes** | Exportación a PDF y CSV de inventario, tickets, bajas, licencias y logs |
 | ⚙️ **Configuración** | Gestión de usuarios, roles, SLAs, palabras clave de prioridad y backup de BD |
@@ -238,7 +238,7 @@ GestionTI/
 ```
 ┌─── USUARIOS Y ROLES ──────────┐   ┌─── INVENTARIO ─────────────────────┐
 │ usuarios                      │   │ equipos_de_computo                 │
-│ roles (18 flags de permiso)   │   │ monitores                          │
+│ roles (19 flags de permiso)   │   │ monitores                          │
 │ funcionarios                  │   │ impresoras_escaneres                │
 └───────────────────────────────┘   │ telefonos                          │
                                     │ otros                              │
@@ -288,7 +288,7 @@ GestionTI/
 | `id` | `int` PK | Identificador |
 | `nombre_rol` | `varchar(50)` | Nombre del rol |
 | `descripcion` | `text` | Descripción del rol |
-| `inv_ver` … `conf_sla` | `tinyint(1)` ×18 | Flags de permiso PBAC (ver sección permisos) |
+| `inv_ver` … `conf_sla`, `inv_topology` | `tinyint(1)` ×19 | Flags de permiso PBAC (ver sección permisos) |
 
 #### `equipos_de_computo`
 
@@ -438,9 +438,7 @@ El directorio `dist/` generado puede copiarse a `htdocs/GestionTI/` y servirse d
 
 | Usuario | Rol | Acceso |
 |---|---|---|
-| `FREIDERD` | Administrador | Acceso completo a todos los módulos |
-| `ADMIN` | Avanzado | Acceso a configuración sin operaciones destructivas |
-| `JHOND` | Funcionario | Solo mesa de servicios (`/tickets`) |
+| `ADMIN` | Administrador | Acceso completo a todos los módulos |
 
 Las contraseñas de cada usuario se encuentran en el script SQL de inicialización.
 
@@ -448,9 +446,9 @@ Las contraseñas de cada usuario se encuentran en el script SQL de inicializaci�
 
 ## 🔐 Autenticación y permisos (PBAC)
 
-El sistema implementa **Permission-Based Access Control (PBAC)**: 18 flags booleanos almacenados directamente como columnas `tinyint(1)` en la tabla `roles`. No existe una tabla intermedia de permisos, lo que simplifica las consultas y acelera la verificación.
+El sistema implementa **Permission-Based Access Control (PBAC)**: 19 flags booleanos almacenados directamente como columnas `tinyint(1)` en la tabla `roles`. No existe una tabla intermedia de permisos, lo que simplifica las consultas y acelera la verificación.
 
-### Los 18 permisos disponibles
+### Los 19 permisos disponibles
 
 #### Inventario
 
@@ -462,6 +460,7 @@ El sistema implementa **Permission-Based Access Control (PBAC)**: 18 flags boole
 | `inv_asignaciones` | Gestionar insumos, repuestos y asignaciones |
 | `inv_licencias` | Gestionar licencias de software |
 | `inv_bajas` | Registrar bajas de activos |
+| `inv_topology` | Ver y editar la topología de red |
 
 #### Tickets y soporte
 
@@ -836,7 +835,7 @@ Seis pestañas protegidas individualmente por permiso:
 | 🎨 Apariencia | — | Modo oscuro y sidebar compacto (80px); persiste en `localStorage` |
 | ⚙️ Sistema | `conf_basica` | Información del sistema, backup/restauración de BD, log de auditoría |
 | 👥 Usuarios | `usr_ver` | Tabla paginada, CRUD de usuarios, toggle activo/inactivo, force logout remoto |
-| 🔐 Roles y Permisos | `conf_roles` | Matriz visual de 18 permisos por rol, crear/editar/eliminar roles |
+| 🔐 Roles y Permisos | `conf_roles` | Matriz visual de 19 permisos por rol, crear/editar/eliminar roles |
 | ⏱️ SLAs | `conf_sla` | Tiempos de respuesta y resolución por prioridad |
 | 🏷️ Prioridades | `conf_sla` | CRUD de palabras clave para asignación automática de prioridad |
 

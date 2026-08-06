@@ -1,6 +1,14 @@
 <?php
-function get_avatar($user_id, $size = 40) {
-    return "https://ui-avatars.com/api/?name=Usuario&background=4a6cf7&color=fff&size={$size}";
+require_once __DIR__ . '/../config/env.php';
+
+function get_avatar($user_id, $size = 40, $name = 'Usuario') {
+    $template = env('AVATAR_URL', '');
+    // Sin proveedor configurado -> sin avatar externo (usar iniciales en el frontend)
+    if ($template === '') return '';
+    return strtr($template, [
+        '{name}' => rawurlencode($name),
+        '{size}' => (int)$size,
+    ]);
 }
 
 function get_role_color($role_id) {

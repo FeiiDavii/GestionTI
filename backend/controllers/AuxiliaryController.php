@@ -87,6 +87,7 @@ class AuxiliaryController {
 
         try {
             if ($user_id) {
+                if (Auth::isSuperAdmin($user_id)) json_error('El usuario Administrador no puede ser editado.');
                 if ($user_id == $_SESSION['user_id']) json_error('No puedes editar tu propio usuario desde este panel. Ve a Perfil.');
                 $old_rol = $this->pdo->query("SELECT id_rol FROM usuarios WHERE id=$user_id")->fetchColumn();
                 if ($password && strlen($password) >= 6) {
@@ -120,6 +121,7 @@ class AuxiliaryController {
         Permission::require('usr_gestionar');
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
         $id = $input['id'] ?? 0;
+        if (Auth::isSuperAdmin($id)) json_error('No puedes desactivar la cuenta de Administrador.');
         if ($id == $_SESSION['user_id']) json_error('No puedes desactivar tu propia cuenta.');
         // Soporta activo (React) o toggle automático (legacy)
         if (isset($input['activo'])) {
@@ -141,6 +143,7 @@ class AuxiliaryController {
         Permission::require('usr_gestionar');
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
         $id = $input['id'] ?? 0;
+        if (Auth::isSuperAdmin($id)) json_error('No puedes forzar el cierre de sesión del Administrador.');
         $uName = $this->pdo->query("SELECT username FROM usuarios WHERE id = " . (int)$id)->fetchColumn();
         $this->pdo->prepare("UPDATE usuarios SET force_logout=1 WHERE id=?")->execute([$id]);
         registrar_log($this->pdo, $_SESSION['user_id'], 'usuarios', "Forzado cierre de sesión para el usuario: $uName (ID: $id)");

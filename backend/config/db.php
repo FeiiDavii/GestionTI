@@ -1,10 +1,12 @@
 <?php
 date_default_timezone_set('America/Bogota');
 
-$host = 'localhost';
-$db   = 'inventario_db';
-$user = 'root';
-$pass = '';
+require_once __DIR__ . '/env.php';
+
+$host = env('DB_HOST', 'localhost');
+$db   = env('DB_NAME', 'inventario_db');
+$user = env('DB_USER', 'root');
+$pass = env('DB_PASS', '');
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";

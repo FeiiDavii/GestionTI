@@ -65,7 +65,7 @@ class TopologyController {
                 'edges' => $edges
             ]);
         } catch (Exception $e) {
-            json_error("Error al cargar datos de topología: " . $e->getMessage());
+            json_error("Error al cargar datos de topología: " . get_friendly_error($e));
         }
     }
 
@@ -191,7 +191,7 @@ class TopologyController {
             if ($this->pdo->inTransaction()) {
                 $this->pdo->rollBack();
             }
-            json_error("Error al guardar la topología: " . $e->getMessage());
+            json_error("Error al guardar la topología: " . get_friendly_error($e));
         }
     }
 }

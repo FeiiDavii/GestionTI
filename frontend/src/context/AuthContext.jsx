@@ -9,6 +9,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const authCheckRef = useRef(false);
 
+  // Normaliza a booleans: evita que lleguen 0/1 (o '0'/'1') y que React
+  // renderice un "0" literal en condiciones como {permisos.X && ...}.
+  const normalizePermisos = (obj = {}) => {
+    const out = {};
+    Object.keys(obj).forEach(k => { out[k] = !!obj[k]; });
+    return out;
+  };
+
   const checkAuth = useCallback(async () => {
     if (authCheckRef.current) return;
     authCheckRef.current = true;
@@ -16,7 +24,7 @@ export function AuthProvider({ children }) {
       const res = await authAPI.me();
       if (res.data.success && res.data.data) {
         setUser(res.data.data);
-        setPermisos(res.data.data.permisos || {});
+        setPermisos(normalizePermisos(res.data.data.permisos));
       } else {
         setUser(null);
         setPermisos({});
@@ -43,7 +51,7 @@ export function AuthProvider({ children }) {
     const res = await authAPI.login(username, password);
     if (res.data.success) {
       setUser(res.data.data);
-      setPermisos(res.data.data.permisos || {});
+      setPermisos(normalizePermisos(res.data.data.permisos));
       return res.data;
     }
     throw new Error(res.data.message || 'Credenciales incorrectas');
