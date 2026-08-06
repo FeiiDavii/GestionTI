@@ -12,14 +12,23 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 
+require_once __DIR__ . '/config/env.php';
+
+// CORS dinámico desde configuración (APP_ORIGINS en .env / variables de entorno)
+$corsOrigin = cors_origin();
+if ($corsOrigin) {
+    header('Access-Control-Allow-Origin: ' . $corsOrigin);
+    header('Access-Control-Allow-Credentials: true');
+    header('Access-Control-Allow-Methods: GET, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Cache-Control');
+}
+
 // ── SESIÓN (antes de cualquier header) ───────────────────────────────────
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     header('Content-Type: application/json');
-    header('Access-Control-Allow-Origin: http://localhost:5173');
-    header('Access-Control-Allow-Credentials: true');
     echo json_encode(['error' => 'No autorizado']);
     exit;
 }
@@ -32,14 +41,6 @@ $puede_responder  = !empty($permisos['tk_responder']);
 // Liberar el lock de sesión ANTES del loop para no bloquear
 // otras peticiones del mismo usuario
 session_write_close();
-
-// ── CORS ──────────────────────────────────────────────────────────────────
-$origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
-$allowed = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowed) ? $origin : 'http://localhost:5173'));
-header('Access-Control-Allow-Credentials: true');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Cache-Control');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -138,11 +139,11 @@ while (true) {
              WHERE n.id > ?
                AND (
                    (n.tipo = 'personal' AND n.id_destinatario = ?)
-                   OR (n.tipo = 'global' AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+                   OR (n.tipo = 'global' AND n.id_destinatario = ? AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY))
                )
              ORDER BY n.id ASC"
         );
-        $s->execute([$lastNotifId, $userId]);
+        $s->execute([$lastNotifId, $userId, $userId]);
         $newNotifs = $s->fetchAll(PDO::FETCH_ASSOC);
 
         if (!empty($newNotifs)) {
@@ -153,7 +154,7 @@ while (true) {
         // Contador de no leídas (solo enviar si cambió)
         $s = $pdo->prepare(
             "SELECT COUNT(*) FROM notificaciones
-             WHERE tipo = 'personal' AND id_destinatario = ? AND leido = 0"
+             WHERE id_destinatario = ? AND leido = 0"
         );
         $s->execute([$userId]);
         $currentUnread = (int)$s->fetchColumn();

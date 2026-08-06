@@ -321,7 +321,7 @@ class ReportController {
                     json_error('Tipo de reporte no válido');
             }
         } catch (Exception $e) {
-            json_error('Error al generar reporte: ' . $e->getMessage());
+            json_error('Error al generar reporte: ' . get_friendly_error($e));
         }
 
         // Registrar log de descarga/generación de reporte

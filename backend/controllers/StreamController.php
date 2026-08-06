@@ -94,11 +94,11 @@ class StreamController {
                      WHERE n.id > ?
                        AND (
                            (n.tipo = 'personal' AND n.id_destinatario = ?)
-                           OR (n.tipo = 'global' AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY))
+                           OR (n.tipo = 'global' AND n.id_destinatario = ? AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY))
                        )
                      ORDER BY n.id ASC"
                 );
-                $stmt->execute([$lastNotifId, $userId]);
+                $stmt->execute([$lastNotifId, $userId, $userId]);
                 $newNotifs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 if (!empty($newNotifs)) {
@@ -109,7 +109,7 @@ class StreamController {
                 // Contador de no leídas (solo si cambió)
                 $stmt = $pdo->prepare(
                     "SELECT COUNT(*) FROM notificaciones
-                     WHERE tipo = 'personal' AND id_destinatario = ? AND leido = 0"
+                     WHERE id_destinatario = ? AND leido = 0"
                 );
                 $stmt->execute([$userId]);
                 $currentUnread = (int)$stmt->fetchColumn();
