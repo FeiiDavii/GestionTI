@@ -17,25 +17,30 @@ const TABS = [
 ];
 
 const PERMISOS_LISTA = [
-  { key: 'inv_ver', label: 'Inventario - Ver' },
-  { key: 'inv_crear_editar', label: 'Inventario - Crear/Editar' },
-  { key: 'inv_eliminar', label: 'Inventario - Eliminar' },
-  { key: 'inv_asignaciones', label: 'Inventario - Asignaciones' },
-  { key: 'inv_licencias', label: 'Inventario - Licencias' },
-  { key: 'inv_bajas', label: 'Inventario - Bajas' },
-  { key: 'tk_ver_global', label: 'Tickets - Ver Global' },
-  { key: 'tk_responder', label: 'Tickets - Responder' },
-  { key: 'tk_asignar_otros', label: 'Tickets - Asignar a Otros' },
-  { key: 'tk_mantenimientos', label: 'Tickets - Mantenimientos' },
-  { key: 'tk_crear', label: 'Tickets - Crear' },
-  { key: 'usr_ver', label: 'Usuarios - Ver' },
-  { key: 'usr_gestionar', label: 'Usuarios - Gestionar' },
-  { key: 'rep_generar', label: 'Reportes - Generar' },
-  { key: 'conf_basica', label: 'Configuración - Básica' },
-  { key: 'conf_roles', label: 'Configuración - Roles' },
-  { key: 'conf_avanzada', label: 'Configuración - Avanzada' },
-  { key: 'conf_sla', label: 'Configuración - SLA' }
+  { key: 'inv_ver',            label: 'Ver inventario',                  descripcion: 'Consulta el inventario general de equipos y activos (PC, impresoras, monitores, teléfonos, etc.).' },
+  { key: 'inv_crear_editar',   label: 'Crear / editar equipos',          descripcion: 'Registra y modifica equipos y otros activos del inventario.' },
+  { key: 'inv_eliminar',       label: 'Eliminar equipos',                descripcion: 'Elimina registros de equipos del inventario.' },
+  { key: 'inv_asignaciones',   label: 'Asignaciones y repuestos',        descripcion: 'Gestiona el catálogo de insumos y repuestos, y las asignaciones a funcionarios, áreas o equipos.' },
+  { key: 'inv_licencias',      label: 'Licencias de software',           descripcion: 'Registra, edita y elimina licencias de software y su asignación.' },
+  { key: 'inv_bajas',          label: 'Archivo de bajas',                descripcion: 'Da de baja activos e insumos (desvinculando periféricos y licencias) y consulta el historial de bajas.' },
+  { key: 'inv_topology',       label: 'Topología de red',                descripcion: 'Visualiza y edita el mapa visual (topología) de la red.' },
+  { key: 'tk_ver_global',      label: 'Ver todos los tickets',           descripcion: 'Consulta los tickets de todos los usuarios del sistema, no solo los propios.' },
+  { key: 'tk_responder',       label: 'Atender tickets (técnico)',       descripcion: 'Responde mensajes, cambia el estado y cierra tickets como técnico de soporte.' },
+  { key: 'tk_asignar_otros',   label: 'Reasignar tickets',               descripcion: 'Cambia el técnico asignado de un ticket a otro compañero.' },
+  { key: 'tk_mantenimientos',  label: 'Hojas de vida y mantenimientos',  descripcion: 'Consulta las fichas técnicas de los equipos y registra mantenimientos preventivos o correctivos.' },
+  { key: 'tk_crear',           label: 'Crear tickets',                   descripcion: 'Crea solicitudes de soporte en la mesa de servicios.' },
+  { key: 'usr_ver',            label: 'Ver usuarios',                    descripcion: 'Consulta el listado de usuarios registrados en el sistema.' },
+  { key: 'usr_gestionar',      label: 'Gestionar usuarios',              descripcion: 'Crea, edita y activa/desactiva cuentas de usuario.' },
+  { key: 'rep_generar',        label: 'Generar reportes',                descripcion: 'Genera y exporta reportes del sistema a CSV o PDF.' },
+  { key: 'conf_basica',        label: 'Configuración general',           descripcion: 'Accede a la configuración general del sistema y al log de auditoría.' },
+  { key: 'conf_roles',         label: 'Gestionar roles',                 descripcion: 'Crea, edita y elimina roles con su matriz de permisos.' },
+  { key: 'conf_avanzada',      label: 'Configuración avanzada',          descripcion: 'Realiza backup y restauración de la base de datos, y limpia logs.' },
+  { key: 'conf_sla',           label: 'Configurar SLA',                  descripcion: 'Configura los tiempos de respuesta y resolución por prioridad, y las palabras clave de prioridad automática.' }
 ];
+
+// El usuario Administrador (id 1 o username admin) es inalterable
+const esUsuarioAdmin = (u) => !!(u && (u.id === 1 || u.user_id === 1 || String(u.username || '').toLowerCase() === 'admin'));
+const esRolAdmin = (r) => !!(r && (r.id === 1 || r.rol_id === 1 || String(r.nombre || '').toLowerCase() === 'administrador'));
 
 const SLA_DEFAULTS = [
   { id: 1, prioridad: 'Crítica', respuesta: 1, resolucion: 4 },
@@ -511,7 +516,7 @@ export default function Configuracion() {
   const abrirModalUsuario = (usuario = null) => {
     if (usuario) {
       // Proteger ADMIN
-      if (usuario.username === 'admin' || usuario.username === 'ADMIN') {
+      if (esUsuarioAdmin(usuario)) {
         showToast('No se puede editar la cuenta de Administrador', 'warning');
         return;
       }
@@ -565,7 +570,7 @@ export default function Configuracion() {
 
   const handleToggleUsuario = async (usuario) => {
     // Proteger usuario ADMIN
-    if (usuario.username === 'admin' || usuario.username === 'ADMIN') {
+    if (esUsuarioAdmin(usuario)) {
       showToast('No se puede desactivar la cuenta de Administrador', 'warning');
       return;
     }
@@ -1210,32 +1215,32 @@ export default function Configuracion() {
                           </td>
                           <td>
                             <div className="action-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
-                              <div className="switch-container" title={usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (usr.username === 'admin' || usr.username === 'ADMIN' ? 'Protegido' : (usr.activo == 1 ? 'Desactivar' : 'Activar'))}>
-                                <label className="switch" style={(usr.id === user?.id || usr.user_id === user?.id) || (usr.username === 'admin' || usr.username === 'ADMIN') ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
+                              <div className="switch-container" title={esUsuarioAdmin(usr) ? 'Protegido' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (usr.activo == 1 ? 'Desactivar' : 'Activar'))}>
+                                <label className="switch" style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
                                   <input
                                     type="checkbox"
                                     checked={usr.activo == 1 || usr.activo === true}
                                     onChange={() => handleToggleUsuario(usr)}
-                                    disabled={usr.username === 'admin' || usr.username === 'ADMIN'}
+                                    disabled={esUsuarioAdmin(usr)}
                                   />
                                   <span className="slider round"></span>
                                 </label>
                               </div>
                               <button
                                 className="action-btn"
-                                title={usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario'}
+                                title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario')}
                                 onClick={() => abrirModalUsuario(usr)}
-                                disabled={(usr.id === user?.id || usr.user_id === user?.id) || (usr.username === 'admin' || usr.username === 'ADMIN')}
-                                style={(usr.id === user?.id || usr.user_id === user?.id) || (usr.username === 'admin' || usr.username === 'ADMIN') ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                disabled={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id)}
+                                style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                               >
                                 <i className="fa-solid fa-pen-to-square"></i>
                               </button>
                               <button
                                 className="action-btn"
-                                title={usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión'}
+                                title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión')}
                                 onClick={() => handleForceLogoutUsuario(usr)}
-                                disabled={(usr.id === user?.id || usr.user_id === user?.id) || (usr.username === 'admin' || usr.username === 'ADMIN')}
-                                style={(usr.id === user?.id || usr.user_id === user?.id) || (usr.username === 'admin' || usr.username === 'ADMIN') ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                disabled={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id)}
+                                style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                               >
                                 <i className="fa-solid fa-right-from-bracket"></i>
                               </button>
@@ -1336,17 +1341,19 @@ export default function Configuracion() {
                               <div className="action-buttons" style={{ justifyContent: 'center' }}>
                                 <button
                                   className="action-btn"
-                                  title="Editar Rol"
+                                  title={esRolAdmin(rol) ? 'El rol Administrador no se puede modificar' : 'Editar Rol'}
                                   onClick={() => abrirModalRol(rol)}
+                                  disabled={esRolAdmin(rol)}
+                                  style={esRolAdmin(rol) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                                 >
                                   <i className="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <button
                                   className="action-btn"
                                   onClick={() => handleDeleteRol(rol)}
-                                  style={{ color: 'var(--error-color)' }}
-                                  disabled={rol.nombre === 'Administrador' || rol.nombre === 'admin' || rol.total_usuarios > 0}
-                                  title={rol.total_usuarios > 0 ? `Tiene ${rol.total_usuarios} usuario(s) asignado(s)` : 'Eliminar Rol'}
+                                  style={{ color: 'var(--error-color)', ...(esRolAdmin(rol) ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }}
+                                  disabled={esRolAdmin(rol) || rol.total_usuarios > 0}
+                                  title={esRolAdmin(rol) ? 'El rol Administrador no se puede eliminar' : (rol.total_usuarios > 0 ? `Tiene ${rol.total_usuarios} usuario(s) asignado(s)` : 'Eliminar Rol')}
                                 >
                                   <i className="fa-solid fa-trash"></i>
                                 </button>
@@ -1823,7 +1830,10 @@ export default function Configuracion() {
                             <span className="slider round"></span>
                           </label>
                         </div>
-                        <span className="permiso-label">{perm.label}</span>
+                        <div className="permiso-info">
+                          <span className="permiso-label">{perm.label}</span>
+                          {perm.descripcion && <small className="permiso-desc">{perm.descripcion}</small>}
+                        </div>
                       </div>
                     ))}
                   </div>

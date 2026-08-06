@@ -4,9 +4,12 @@
  * GestionTI - Sistema de Gestión de Inventario TI
  */
 
-// CORS: solo aplicar desde PHP cuando no viene de Apache (que ya los pone via .htaccess)
-if (empty($_SERVER['SERVER_SOFTWARE']) || strpos($_SERVER['SERVER_SOFTWARE'], 'Apache') === false) {
-    header('Access-Control-Allow-Origin: http://localhost:5173');
+// CORS dinámico desde configuración (APP_ORIGINS en .env / variables de entorno)
+require_once __DIR__ . '/config/env.php';
+
+$corsOrigin = cors_origin();
+if ($corsOrigin) {
+    header('Access-Control-Allow-Origin: ' . $corsOrigin);
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Cache-Control');

@@ -2500,12 +2500,25 @@ body.modal-open { overflow: hidden; }
   background: rgba(74, 108, 247, 0.04);
 }
 
+.permiso-info {
+  flex: 1;
+  min-width: 0;
+}
+
 .permiso-label {
+  display: block;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-color);
-  flex: 1;
   line-height: 1.3;
+}
+
+.permiso-desc {
+  display: block;
+  font-size: 10.5px;
+  color: var(--gray-text);
+  line-height: 1.35;
+  margin-top: 2px;
 }
 
 /* ── Toggle Switch ── */

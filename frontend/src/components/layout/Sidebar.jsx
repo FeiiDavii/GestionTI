@@ -15,9 +15,9 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
 
   const isActive = (path) => currentPage === path || location.pathname.startsWith('/' + path);
 
-  const showActivos = permisos.inv_ver || permisos.inv_asignaciones || permisos.inv_licencias || permisos.inv_bajas || permisos.inv_topology;
-  const showSoporte = permisos.tk_ver_global || permisos.tk_responder || permisos.tk_mantenimientos || permisos.tk_crear;
-  const showAdmin = permisos.rep_generar || permisos.conf_basica || permisos.conf_roles || permisos.usr_ver || permisos.conf_sla;
+  const showActivos = !!(permisos.inv_ver || permisos.inv_asignaciones || permisos.inv_licencias || permisos.inv_bajas || permisos.inv_topology);
+  const showSoporte = !!(permisos.tk_ver_global || permisos.tk_responder || permisos.tk_mantenimientos || permisos.tk_crear);
+  const showAdmin = !!(permisos.rep_generar || permisos.conf_basica || permisos.conf_roles || permisos.usr_ver || permisos.conf_sla);
 
   const activosOpen = ['equipos', 'topology', 'asignaciones', 'licencias', 'bajas'].includes(currentPage);
   const soporteOpen = ['tickets', 'gestion-tickets', 'mantenimientos'].includes(currentPage);
