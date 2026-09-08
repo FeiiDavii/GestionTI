@@ -10,6 +10,7 @@ class Auth {
         'tk_ver_global', 'tk_responder', 'tk_asignar_otros', 'tk_mantenimientos', 'tk_crear',
         'usr_ver', 'usr_gestionar', 'rep_generar',
         'conf_basica', 'conf_roles', 'conf_avanzada', 'conf_sla',
+        'ai_usar',
     ];
 
     /** ID del usuario superadministrador: inalterable y con todos los permisos siempre */

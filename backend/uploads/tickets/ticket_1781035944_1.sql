@@ -1,0 +1,1477 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Servidor: 127.0.0.1
+-- Tiempo de generación: 09-06-2026 a las 20:14:42
+-- Versión del servidor: 10.4.32-MariaDB
+-- Versión de PHP: 8.0.30
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Base de datos: `inventario_db`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `acciones`
+--
+
+CREATE TABLE `acciones` (
+  `id` int(11) NOT NULL,
+  `tabla` varchar(100) NOT NULL,
+  `descripcion` text NOT NULL,
+  `usuario_id` int(11) NOT NULL,
+  `fecha` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `acciones`
+--
+
+INSERT INTO `acciones` (`id`, `tabla`, `descripcion`, `usuario_id`, `fecha`) VALUES
+(1, 'tickets', 'Creó ticket #1', 1, '2026-06-06 16:26:36'),
+(2, 'tickets', 'Actualizó ticket #1 a Resuelto', 1, '2026-06-06 16:27:24'),
+(3, 'tickets', 'Calificó y cerró ticket #1', 1, '2026-06-06 16:27:36'),
+(4, 'tickets', 'Creó ticket #2', 1, '2026-06-06 16:28:53'),
+(5, 'tickets', 'Creó ticket #3', 1, '2026-06-06 16:29:03'),
+(6, 'tickets', 'Actualizó ticket #3 a Resuelto', 1, '2026-06-06 16:30:12'),
+(7, 'tickets', 'Actualizó ticket #2 a Resuelto', 1, '2026-06-06 16:30:33'),
+(8, 'tickets', 'Calificó y cerró ticket #3', 1, '2026-06-06 16:30:45'),
+(9, 'tickets', 'Calificó y cerró ticket #2', 1, '2026-06-06 16:30:50'),
+(10, 'tickets', 'Creó ticket #4', 1, '2026-06-06 16:32:26'),
+(11, 'tickets', 'Ticket #4 pasó a En Proceso', 1, '2026-06-06 16:41:25'),
+(12, 'tickets', 'Actualizó ticket #4 a Resuelto', 1, '2026-06-06 16:43:25'),
+(13, 'tickets', 'Reabrió ticket #4', 1, '2026-06-06 16:43:41'),
+(14, 'tickets', 'Creó ticket #5', 1, '2026-06-06 16:57:46'),
+(15, 'tickets', 'Actualizó ticket #5 a En Proceso', 1, '2026-06-06 17:03:57'),
+(16, 'tickets', 'Actualizó ticket #4 a Resuelto', 1, '2026-06-06 17:04:34'),
+(17, 'tickets', 'Actualizó ticket #5 a Resuelto', 1, '2026-06-06 17:04:40'),
+(18, 'tickets', 'Calificó y cerró ticket #5', 1, '2026-06-06 17:10:19'),
+(19, 'tickets', 'Calificó y cerró ticket #4', 1, '2026-06-06 17:10:27'),
+(20, 'tickets', 'Creó ticket #6', 1, '2026-06-09 16:56:36'),
+(21, 'tickets', 'Actualizó ticket #6 a En Proceso', 1, '2026-06-09 16:56:57'),
+(22, 'tickets', 'Actualizó ticket #6 a Resuelto', 1, '2026-06-09 16:59:12'),
+(23, 'tickets', 'Reabrió ticket #6', 1, '2026-06-09 16:59:35'),
+(24, 'tickets', 'Escaló ticket #6 a Mauricio Alexander Correa Vargas', 1, '2026-06-09 16:59:58'),
+(25, 'tickets', 'Actualizó ticket #6 a Resuelto', 1, '2026-06-09 17:00:38'),
+(26, 'tickets', 'Calificó y cerró ticket #6', 1, '2026-06-09 17:00:51'),
+(27, 'tickets', 'Creó ticket #10', 11, '2026-06-09 17:49:56'),
+(28, 'tickets', 'Ticket #10 pasó a En Proceso', 1, '2026-06-09 17:50:32'),
+(29, 'tickets', 'Actualizó ticket #10 a Resuelto', 1, '2026-06-09 17:51:00'),
+(30, 'tickets', 'Reabrió ticket #10', 11, '2026-06-09 17:51:25'),
+(31, 'tickets', 'Actualizó ticket #10 a Resuelto', 1, '2026-06-09 17:51:43'),
+(32, 'tickets', 'Calificó y cerró ticket #10', 11, '2026-06-09 17:51:55'),
+(33, 'tickets', 'Creó ticket #12', 11, '2026-06-09 18:02:12');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `areas`
+--
+
+CREATE TABLE `areas` (
+  `id` int(11) NOT NULL,
+  `nombre_area` varchar(255) NOT NULL,
+  `codigo_area` varchar(50) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `areas`
+--
+
+INSERT INTO `areas` (`id`, `nombre_area`, `codigo_area`) VALUES
+(1, 'Información y tecnología', '0001');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `articulos`
+--
+
+CREATE TABLE `articulos` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `modelo` varchar(255) DEFAULT NULL,
+  `articulo_modelo` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci GENERATED ALWAYS AS (concat(`nombre`,' ',`modelo`)) VIRTUAL,
+  `caracteristicas` text DEFAULT NULL,
+  `cantidad_disponible` int(11) NOT NULL DEFAULT 0,
+  `cantidad_asignada` int(11) NOT NULL DEFAULT 0,
+  `cantidad_total` int(11) GENERATED ALWAYS AS (`cantidad_disponible` - -`cantidad_asignada`) VIRTUAL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `articulos`
+--
+
+INSERT INTO `articulos` (`id`, `nombre`, `id_marca`, `modelo`, `caracteristicas`, `cantidad_disponible`, `cantidad_asignada`) VALUES
+(1, 'RAM', 6, 'SODIM', 'DDR4 16GB', 99, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `asignaciones`
+--
+
+CREATE TABLE `asignaciones` (
+  `id` int(11) NOT NULL,
+  `id_articulo` int(11) DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `id_area` int(11) DEFAULT NULL,
+  `id_equipo` int(11) DEFAULT NULL,
+  `fecha_asignacion` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `bajas`
+--
+
+CREATE TABLE `bajas` (
+  `id` int(11) NOT NULL,
+  `tipo_activo` enum('Activo Fijo','Insumo/Generico') NOT NULL,
+  `categoria` varchar(100) NOT NULL COMMENT 'Ej: PC, Monitor, Teclado, RAM',
+  `marca` varchar(100) DEFAULT NULL,
+  `modelo` varchar(100) DEFAULT NULL,
+  `serial` varchar(100) DEFAULT NULL,
+  `serial_interno` varchar(100) DEFAULT NULL,
+  `motivo` text NOT NULL,
+  `cantidad` int(11) DEFAULT 1,
+  `origen_tabla` varchar(50) DEFAULT NULL COMMENT 'Tabla de donde se borró (si aplica)',
+  `id_origen` int(11) DEFAULT NULL COMMENT 'ID original (referencia)',
+  `usuario_responsable_id` int(11) NOT NULL,
+  `fecha_baja` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `bajas`
+--
+
+INSERT INTO `bajas` (`id`, `tipo_activo`, `categoria`, `marca`, `modelo`, `serial`, `serial_interno`, `motivo`, `cantidad`, `origen_tabla`, `id_origen`, `usuario_responsable_id`, `fecha_baja`) VALUES
+(1, 'Activo Fijo', 'SISTEMAS1', 'LENOVO', 'HP 240 G7 Notebook PC', 'MJ0LP113', 'adadasfasgsf', 'Daño irrpatable', 1, '', NULL, 1, '2026-06-06 16:25:40');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `configuraciones`
+--
+
+CREATE TABLE `configuraciones` (
+  `id` int(11) NOT NULL,
+  `ram_rom` varchar(100) NOT NULL,
+  `descripcion` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `configuraciones`
+--
+
+INSERT INTO `configuraciones` (`id`, `ram_rom`, `descripcion`) VALUES
+(1, '8GB / 512GB', 'Estandar');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `config_prioridades`
+--
+
+CREATE TABLE `config_prioridades` (
+  `id` int(11) NOT NULL,
+  `palabra_clave` varchar(50) NOT NULL,
+  `prioridad_asignada` enum('Baja','Media','Alta','Crítica') NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `config_prioridades`
+--
+
+INSERT INTO `config_prioridades` (`id`, `palabra_clave`, `prioridad_asignada`) VALUES
+(1, 'servidor', 'Crítica'),
+(2, 'caído', 'Crítica'),
+(3, 'hackeado', 'Crítica'),
+(4, 'robo', 'Crítica'),
+(5, 'incendio', 'Crítica'),
+(6, 'virus', 'Crítica'),
+(7, 'seguridad', 'Crítica'),
+(8, 'perdida de datos', 'Crítica'),
+(9, 'no arranca', 'Crítica'),
+(10, 'pantalla azul', 'Crítica'),
+(11, 'internet', 'Alta'),
+(12, 'wifi', 'Alta'),
+(13, 'correo', 'Alta'),
+(14, 'impresora', 'Alta'),
+(15, 'no guarda', 'Alta'),
+(16, 'error', 'Alta'),
+(17, 'licencia vencida', 'Alta'),
+(18, 'office', 'Alta'),
+(19, 'sin acceso', 'Alta'),
+(20, 'lento', 'Media'),
+(21, 'mouse', 'Media'),
+(22, 'teclado', 'Media'),
+(23, 'monitor', 'Media'),
+(24, 'parpadea', 'Media'),
+(25, 'ruido', 'Media'),
+(26, 'actualizar', 'Media'),
+(27, 'programar', 'Media'),
+(28, 'consulta', 'Baja'),
+(29, 'duda', 'Baja'),
+(30, 'instalar', 'Baja'),
+(31, 'clave', 'Baja'),
+(32, 'password', 'Baja'),
+(33, 'toner', 'Baja'),
+(34, 'papel', 'Baja'),
+(35, 'solicitud', 'Baja'),
+(36, 'permiso', 'Baja'),
+(37, 'urgencia', 'Baja'),
+(38, 'caída', 'Baja'),
+(39, 'detenido', 'Baja'),
+(40, 'no funciona', 'Baja'),
+(41, 'producción', 'Baja'),
+(42, 'critico', 'Baja'),
+(43, 'critica', 'Baja'),
+(44, 'emergencia', 'Baja'),
+(45, 'apagon', 'Baja'),
+(46, 'no enciende', 'Baja'),
+(47, 'contraseña', 'Baja'),
+(48, 'olvide', 'Baja'),
+(49, 'instalación', 'Baja'),
+(50, 'configurar', 'Baja'),
+(51, 'nuevo', 'Baja'),
+(52, 'revisión', 'Baja'),
+(53, 'falla', 'Baja'),
+(54, 'fallo', 'Baja'),
+(55, 'problema', 'Baja'),
+(56, 'soporte', 'Baja'),
+(57, 'ayuda', 'Baja'),
+(58, 'red', 'Baja');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `config_slas`
+--
+
+CREATE TABLE `config_slas` (
+  `id` int(11) NOT NULL,
+  `prioridad` enum('Baja','Media','Alta','Cr??tica') NOT NULL,
+  `horas_respuesta` int(11) NOT NULL DEFAULT 24 COMMENT 'Horas m??ximas para primera respuesta',
+  `horas_resolucion` int(11) NOT NULL DEFAULT 72 COMMENT 'Horas m??ximas para resoluci??n',
+  `activo` tinyint(1) NOT NULL DEFAULT 1,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `config_slas`
+--
+
+INSERT INTO `config_slas` (`id`, `prioridad`, `horas_respuesta`, `horas_resolucion`, `activo`, `updated_at`) VALUES
+(1, 'Cr??tica', 1, 4, 1, '2026-05-22 04:47:06'),
+(2, 'Alta', 4, 24, 1, '2026-05-22 04:47:06'),
+(3, 'Media', 8, 48, 1, '2026-05-22 04:47:06'),
+(4, 'Baja', 24, 72, 1, '2026-05-22 04:47:06');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `equipos_de_computo`
+--
+
+CREATE TABLE `equipos_de_computo` (
+  `id` int(11) NOT NULL,
+  `nombre_equipo` varchar(255) NOT NULL,
+  `modelo` varchar(255) DEFAULT NULL,
+  `procesador` varchar(255) DEFAULT NULL,
+  `sistema_operativo` varchar(100) DEFAULT NULL,
+  `teamviewer_id` varchar(50) DEFAULT NULL,
+  `teamviewer_version` varchar(50) DEFAULT NULL,
+  `serial` varchar(255) NOT NULL,
+  `serial_interno` varchar(255) DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `id_area` int(11) DEFAULT NULL,
+  `id_tipo` int(11) DEFAULT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `id_configuracion` int(11) DEFAULT NULL,
+  `fecha_compra` date DEFAULT NULL,
+  `precio_compra` decimal(10,2) DEFAULT NULL,
+  `creado_por` int(11) DEFAULT NULL,
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `nivel_clasificacion` enum('Público','Interno','Confidencial','Restringido') NOT NULL DEFAULT 'Interno',
+  `prot_cifrado` tinyint(1) NOT NULL DEFAULT 0,
+  `prot_antivirus` tinyint(1) NOT NULL DEFAULT 0,
+  `prot_firewall` tinyint(1) NOT NULL DEFAULT 0,
+  `estado` enum('Activo','En mantenimiento','De baja') NOT NULL DEFAULT 'Activo',
+  `fecha_actualizacion` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
+  `fecha_baja` date DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `equipos_de_computo`
+--
+
+INSERT INTO `equipos_de_computo` (`id`, `nombre_equipo`, `modelo`, `procesador`, `sistema_operativo`, `teamviewer_id`, `teamviewer_version`, `serial`, `serial_interno`, `id_usuario`, `id_area`, `id_tipo`, `id_marca`, `id_configuracion`, `fecha_compra`, `precio_compra`, `creado_por`, `fecha_creacion`, `nivel_clasificacion`, `prot_cifrado`, `prot_antivirus`, `prot_firewall`, `estado`, `fecha_actualizacion`, `fecha_baja`) VALUES
+(1, 'SISTEMAS16', 'Think Centre 2', 'Intel core I7', 'Windows 10', '11112223332221', '15.17.9', 'adc123', 'adc123xyz', 2, 1, 1, 1, 1, '2026-06-06', 3458956.00, 1, '2026-06-06 15:59:39', 'Público', 0, 1, 0, 'Activo', '2026-06-06 17:29:59', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `funcionarios`
+--
+
+CREATE TABLE `funcionarios` (
+  `id` int(11) NOT NULL,
+  `apellido` varchar(255) NOT NULL,
+  `nombre` varchar(255) NOT NULL,
+  `celular` varchar(50) DEFAULT NULL,
+  `id_area` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `funcionarios`
+--
+
+INSERT INTO `funcionarios` (`id`, `apellido`, `nombre`, `celular`, `id_area`) VALUES
+(1, 'De la cruz', 'Freider David', '3148395940', 1),
+(2, 'Corra Vargas', 'Mauricio Alexander', '3148395940', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `historial_equipos`
+--
+
+CREATE TABLE `historial_equipos` (
+  `id` int(11) NOT NULL,
+  `id_equipo` int(11) DEFAULT NULL,
+  `tipo_accion` enum('Mantenimiento Preventivo','Mantenimiento Correctivo','Repotenciacion','Actualizacion de Datos') NOT NULL,
+  `fecha` date NOT NULL,
+  `usuario_id` int(11) NOT NULL COMMENT 'Usuario del sistema que registra la acción',
+  `razon` varchar(255) DEFAULT NULL COMMENT 'Para correctivos/repotenciación',
+  `observaciones` text NOT NULL,
+  `detalles_cambio` text DEFAULT NULL COMMENT 'JSON o texto describiendo el cambio (Ej: Area IT -> RRHH)',
+  `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `historial_equipos`
+--
+
+INSERT INTO `historial_equipos` (`id`, `id_equipo`, `tipo_accion`, `fecha`, `usuario_id`, `razon`, `observaciones`, `detalles_cambio`, `fecha_registro`) VALUES
+(1, 1, 'Mantenimiento Preventivo', '2026-06-06', 1, '', 'Limpieza de partes', NULL, '2026-06-06 17:25:29'),
+(2, 1, 'Actualizacion de Datos', '2026-06-06', 1, NULL, 'Actualización de datos', 'SO modificado, TeamViewer ID: \'\' -> \'11112223332221\', TeamViewer Ver: \'\' -> \'15.17.9\', Funcionario: \'Freider David De la cruz\' -> \'Mauricio Alexander Corra Vargas\'', '2026-06-06 17:29:59');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `impresoras_escaneres`
+--
+
+CREATE TABLE `impresoras_escaneres` (
+  `id` int(11) NOT NULL,
+  `modelo` varchar(255) NOT NULL,
+  `serial` varchar(255) NOT NULL,
+  `serial_interno` varchar(255) DEFAULT NULL,
+  `id_tipo` int(11) DEFAULT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `id_equipo` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `impresoras_escaneres`
+--
+
+INSERT INTO `impresoras_escaneres` (`id`, `modelo`, `serial`, `serial_interno`, `id_tipo`, `id_marca`, `id_equipo`) VALUES
+(1, 'Laser Jet Pro M12w', 'adc123', 'abx123xyz', 2, 2, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `licencias`
+--
+
+CREATE TABLE `licencias` (
+  `id` int(11) NOT NULL,
+  `nombre_software` varchar(100) NOT NULL COMMENT 'Ej: Office 2019, Windows 10',
+  `tipo_edicion` varchar(50) DEFAULT NULL COMMENT 'Ej: Home, Pro, Standard',
+  `serial_key` varchar(255) NOT NULL,
+  `id_area` int(11) DEFAULT NULL,
+  `id_equipo` int(11) DEFAULT NULL,
+  `observaciones` text DEFAULT NULL,
+  `fecha_creacion` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `licencias`
+--
+
+INSERT INTO `licencias` (`id`, `nombre_software`, `tipo_edicion`, `serial_key`, `id_area`, `id_equipo`, `observaciones`, `fecha_creacion`) VALUES
+(1, 'Office 2010', 'Home', '22V66-4MVM4-2YVGM-7QP9V-YWDJ4', 1, 1, NULL, '2026-06-06 11:15:03');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `marcas`
+--
+
+CREATE TABLE `marcas` (
+  `id` int(11) NOT NULL,
+  `nombre_marca` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `marcas`
+--
+
+INSERT INTO `marcas` (`id`, `nombre_marca`) VALUES
+(6, 'Crucial'),
+(3, 'Fanvil'),
+(2, 'HP'),
+(1, 'Lenovo'),
+(4, 'Samsung');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `modulos`
+--
+
+CREATE TABLE `modulos` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `icono` varchar(50) DEFAULT NULL,
+  `ruta` varchar(100) DEFAULT NULL,
+  `orden` int(11) DEFAULT 0,
+  `activo` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `modulos`
+--
+
+INSERT INTO `modulos` (`id`, `nombre`, `descripcion`, `icono`, `ruta`, `orden`, `activo`) VALUES
+(1, 'Dashboard', 'Panel principal de estadísticas', 'fa-gauge', 'dashboard.php', 1, 1),
+(2, 'Inventario', 'Gestión de equipos y artículos', 'fa-laptop', 'equipos.php', 2, 1),
+(3, 'Funcionarios', 'Gestión de personal y áreas', 'fa-users', 'funcionarios.php', 3, 1),
+(4, 'Reportes', 'Generación de informes y logs', 'fa-file-lines', 'reportes.php', 4, 1),
+(5, 'Configuración', 'Ajustes globales del sistema', 'fa-sliders', 'configuracion.php', 99, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `monitores`
+--
+
+CREATE TABLE `monitores` (
+  `id` int(11) NOT NULL,
+  `modelo` varchar(255) NOT NULL,
+  `serial` varchar(255) NOT NULL,
+  `serial_interno` varchar(255) DEFAULT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `id_equipo` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `monitores`
+--
+
+INSERT INTO `monitores` (`id`, `modelo`, `serial`, `serial_interno`, `id_marca`, `id_equipo`) VALUES
+(1, 'ThinkVision', 'adc123', 'adc123xyz', 1, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `notificaciones`
+--
+
+CREATE TABLE `notificaciones` (
+  `id` int(11) NOT NULL,
+  `parent_id` int(11) DEFAULT NULL,
+  `titulo` varchar(100) NOT NULL,
+  `mensaje` text NOT NULL,
+  `tipo` enum('global','personal') NOT NULL,
+  `id_destinatario` int(11) DEFAULT NULL COMMENT 'Null si es global',
+  `id_remitente` int(11) NOT NULL,
+  `leido` tinyint(1) DEFAULT 0,
+  `fecha` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `notificaciones`
+--
+
+INSERT INTO `notificaciones` (`id`, `parent_id`, `titulo`, `mensaje`, `tipo`, `id_destinatario`, `id_remitente`, `leido`, `fecha`) VALUES
+(1, NULL, 'Salida del sistema', 'Se solicita la salida del sistema de manera inmediata por cambios', 'global', 1, 1, 0, '2026-06-06 11:14:28'),
+(2, 1, 'Actualización Ticket #1', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=1\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:27:24'),
+(3, 3, 'Actualización Ticket #3', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=3\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:30:12'),
+(4, 2, 'Actualización Ticket #2', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=2\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:30:33'),
+(5, 4, 'Actualización Ticket #4', 'Estado actualizado a <b>En Proceso</b>.<br><br><a href=\'/tickets?ticket_id=4\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:41:25'),
+(6, 4, 'Actualización Ticket #4', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=4\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:43:25'),
+(7, 4, 'Ticket Reabierto #4', 'El usuario reabrió el caso.<br><br><a href=\'/gestion-tickets?ticket_id=4\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 11:43:41'),
+(8, 5, 'Actualización Ticket #5', 'Estado cambiado a: <b>En Proceso</b>.<br><br><a href=\'/tickets?ticket_id=5\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 12:03:57'),
+(9, 4, 'Actualización Ticket #4', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=4\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 12:04:34'),
+(10, 5, 'Actualización Ticket #5', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=5\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-06 12:04:40'),
+(11, NULL, 'Solicitud de recuperación de contraseña', 'El usuario Mauricio Alexander Correa Vargas (MAURICIOC) ha solicitado recuperar su contraseña. Por favor, gestione el cambio.', 'personal', 1, 10, 1, '2026-06-09 10:36:47'),
+(12, 6, 'Nuevo Ticket #6', 'Nuevo Ticket #6 (Auto-asignado). Prioridad: <b>Alta</b>.<br><br><a href=\'/gestion-tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 10, 1, 0, '2026-06-09 11:56:36'),
+(13, 6, 'Actualización Ticket #6', 'Estado cambiado a: <b>En Proceso</b>.<br><br><a href=\'/tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-09 11:56:57'),
+(14, 6, 'Actualización Ticket #6', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-09 11:59:12'),
+(15, 6, 'Ticket Reabierto #6', 'El usuario reabrió el caso.<br><br><a href=\'/gestion-tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-09 11:59:35'),
+(16, 6, 'Ticket Escalado #6', 'Se te ha escalado un caso. Motivo: sdfsdgsdgsd<br><br><a href=\'/gestion-tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 10, 1, 0, '2026-06-09 11:59:58'),
+(17, 6, 'Ticket Escalado #6', 'Tu caso fue escalado para atención especializada.<br><br><a href=\'/tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-09 11:59:58'),
+(18, 6, 'Actualización Ticket #6', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=6\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 1, 1, '2026-06-09 12:00:38'),
+(19, 10, 'Nuevo Ticket #10', 'Nuevo Ticket #10. Prioridad: <b>Baja</b>. Creado por usuario.<br><br><a href=\'/gestion-tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 11, 1, '2026-06-09 12:49:56'),
+(20, 10, 'Nuevo Ticket #10', 'Nuevo Ticket #10. Prioridad: <b>Baja</b>. Creado por usuario.<br><br><a href=\'/gestion-tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 10, 11, 0, '2026-06-09 12:49:56'),
+(21, 10, 'Actualización Ticket #10', 'Estado actualizado a <b>En Proceso</b>.<br><br><a href=\'/tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 11, 1, 1, '2026-06-09 12:50:32'),
+(22, 10, 'Nueva respuesta Ticket #10', 'Soporte respondió a tu solicitud.<br><br><a href=\'/tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 11, 1, 1, '2026-06-09 12:50:32'),
+(23, 10, 'Actualización Ticket #10', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 11, 1, 1, '2026-06-09 12:51:00'),
+(24, 10, 'Ticket Reabierto #10', 'El usuario reabrió el caso.<br><br><a href=\'/gestion-tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 11, 1, '2026-06-09 12:51:25'),
+(25, 10, 'Actualización Ticket #10', 'Estado cambiado a: <b>Resuelto</b>.<br><br><a href=\'/tickets?ticket_id=10\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 11, 1, 1, '2026-06-09 12:51:43'),
+(26, 12, 'Nuevo Ticket #12', 'Nuevo Ticket #12. Prioridad: <b>Baja</b>. Creado por usuario.<br><br><a href=\'/gestion-tickets?ticket_id=12\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 1, 11, 1, '2026-06-09 13:02:12'),
+(27, 12, 'Nuevo Ticket #12', 'Nuevo Ticket #12. Prioridad: <b>Baja</b>. Creado por usuario.<br><br><a href=\'/gestion-tickets?ticket_id=12\' style=\'display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;\'>Ver Ticket <i class=\'fa-solid fa-arrow-right\'></i></a>', 'personal', 10, 11, 0, '2026-06-09 13:02:12');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `otros`
+--
+
+CREATE TABLE `otros` (
+  `id` int(11) NOT NULL,
+  `modelo` varchar(255) NOT NULL,
+  `serial` varchar(255) NOT NULL,
+  `id_tipo` int(11) DEFAULT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `id_area` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `otros`
+--
+
+INSERT INTO `otros` (`id`, `modelo`, `serial`, `id_tipo`, `id_marca`, `id_area`) VALUES
+(1, 'DU7000', 'adc123', 3, 4, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `roles`
+--
+
+CREATE TABLE `roles` (
+  `id` int(11) NOT NULL,
+  `nombre_rol` varchar(50) NOT NULL,
+  `descripcion` text NOT NULL,
+  `creado_en` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `inv_ver` tinyint(1) NOT NULL DEFAULT 0,
+  `inv_crear_editar` tinyint(1) NOT NULL DEFAULT 0,
+  `inv_eliminar` tinyint(1) NOT NULL DEFAULT 0,
+  `inv_asignaciones` tinyint(1) NOT NULL DEFAULT 0,
+  `inv_licencias` tinyint(1) NOT NULL DEFAULT 0,
+  `inv_bajas` tinyint(1) NOT NULL DEFAULT 0,
+  `tk_ver_global` tinyint(1) NOT NULL DEFAULT 0,
+  `tk_responder` tinyint(1) NOT NULL DEFAULT 0,
+  `tk_asignar_otros` tinyint(1) NOT NULL DEFAULT 0,
+  `tk_mantenimientos` tinyint(1) NOT NULL DEFAULT 0,
+  `tk_crear` tinyint(1) DEFAULT 0,
+  `usr_ver` tinyint(1) NOT NULL DEFAULT 0,
+  `usr_gestionar` tinyint(1) NOT NULL DEFAULT 0,
+  `rep_generar` tinyint(1) NOT NULL DEFAULT 0,
+  `conf_basica` tinyint(1) NOT NULL DEFAULT 0,
+  `conf_roles` tinyint(1) NOT NULL DEFAULT 0,
+  `conf_avanzada` tinyint(1) NOT NULL DEFAULT 0,
+  `conf_sla` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `roles`
+--
+
+INSERT INTO `roles` (`id`, `nombre_rol`, `descripcion`, `creado_en`, `inv_ver`, `inv_crear_editar`, `inv_eliminar`, `inv_asignaciones`, `inv_licencias`, `inv_bajas`, `tk_ver_global`, `tk_responder`, `tk_asignar_otros`, `tk_mantenimientos`, `tk_crear`, `usr_ver`, `usr_gestionar`, `rep_generar`, `conf_basica`, `conf_roles`, `conf_avanzada`, `conf_sla`) VALUES
+(1, 'Administrador', 'Acceso completo al sistema', '2026-05-25 14:27:37', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+(2, 'Avanzado', 'Puede gestionar equipos y asignaciones', '2026-05-26 14:31:10', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1),
+(4, 'Funcionario', 'Solo creación y consulta de tickets', '2026-06-09 17:38:31', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `shared_widget_configs`
+--
+
+CREATE TABLE `shared_widget_configs` (
+  `id` int(11) NOT NULL,
+  `widget_id` varchar(100) NOT NULL,
+  `config_name` varchar(100) NOT NULL,
+  `config_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`config_data`)),
+  `created_by` int(11) NOT NULL,
+  `is_public` tinyint(1) DEFAULT 0,
+  `usage_count` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sla_config`
+--
+
+CREATE TABLE `sla_config` (
+  `id` int(11) NOT NULL,
+  `nombre` varchar(100) NOT NULL,
+  `descripcion` text DEFAULT NULL,
+  `prioridad_ticket` enum('Crítica','Alta','Media','Baja') NOT NULL,
+  `tiempo_respuesta_minutos` int(11) NOT NULL DEFAULT 60,
+  `tiempo_resolucion_minutos` int(11) NOT NULL DEFAULT 240,
+  `activo` tinyint(1) DEFAULT 1,
+  `fecha_creacion` datetime DEFAULT current_timestamp(),
+  `fecha_actualizacion` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sla_registros`
+--
+
+CREATE TABLE `sla_registros` (
+  `id` int(11) NOT NULL,
+  `ticket_id` int(11) NOT NULL,
+  `sla_config_id` int(11) NOT NULL,
+  `fecha_inicio` datetime NOT NULL,
+  `fecha_limite_respuesta` datetime DEFAULT NULL,
+  `fecha_limite_resolucion` datetime DEFAULT NULL,
+  `fecha_respuesta_real` datetime DEFAULT NULL,
+  `fecha_resolucion_real` datetime DEFAULT NULL,
+  `estado_respuesta` enum('Pendiente','Cumplido','Incumplido') DEFAULT 'Pendiente',
+  `estado_resolucion` enum('Pendiente','Cumplido','Incumplido') DEFAULT 'Pendiente',
+  `porcentaje_cumplimiento` decimal(5,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `telefonos`
+--
+
+CREATE TABLE `telefonos` (
+  `id` int(11) NOT NULL,
+  `serial` varchar(255) NOT NULL,
+  `ip` varchar(45) DEFAULT NULL,
+  `extension` varchar(50) DEFAULT NULL,
+  `id_marca` int(11) DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `telefonos`
+--
+
+INSERT INTO `telefonos` (`id`, `serial`, `ip`, `extension`, `id_marca`, `id_usuario`) VALUES
+(1, 'adc123xyz', '172.31.252.84', '7119', 3, 1);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tickets`
+--
+
+CREATE TABLE `tickets` (
+  `id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL COMMENT 'El funcionario que reporta',
+  `tecnico_id` int(11) DEFAULT NULL COMMENT 'El admin/avanzado que atiende',
+  `titulo` varchar(150) NOT NULL,
+  `descripcion` text NOT NULL,
+  `categoria` enum('Software','Software Core','Hardware','Usuarios','Otros') DEFAULT NULL,
+  `prioridad` enum('Baja','Media','Alta','Crítica') NOT NULL DEFAULT 'Baja',
+  `estado` enum('Abierto','En Proceso','Resuelto','Cerrado') NOT NULL DEFAULT 'Abierto',
+  `nivel_servicio` enum('Nivel 1','Nivel 2','Nivel 3','Proveedor') DEFAULT 'Nivel 1',
+  `calificacion` int(1) DEFAULT NULL COMMENT 'Estrellas 1 a 5',
+  `feedback_usuario` text DEFAULT NULL COMMENT 'Opinión del servicio',
+  `fecha_creacion` timestamp NOT NULL DEFAULT current_timestamp(),
+  `fecha_cierre` datetime DEFAULT NULL,
+  `archivo_adjunto` varchar(255) DEFAULT NULL,
+  `fecha_calificacion` datetime DEFAULT NULL,
+  `fecha_vencimiento_respuesta` datetime DEFAULT NULL COMMENT 'Plazo l??mite primera respuesta',
+  `fecha_vencimiento_resolucion` datetime DEFAULT NULL COMMENT 'Plazo l??mite resoluci??n',
+  `fecha_primera_respuesta` datetime DEFAULT NULL COMMENT 'Cu??ndo se dio la primera respuesta t??cnica',
+  `sla_respuesta_cumplido` tinyint(1) DEFAULT NULL COMMENT '1=cumplido, 0=incumplido, NULL=pendiente',
+  `sla_resolucion_cumplido` tinyint(1) DEFAULT NULL COMMENT '1=cumplido, 0=incumplido, NULL=pendiente'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `tickets`
+--
+
+INSERT INTO `tickets` (`id`, `usuario_id`, `tecnico_id`, `titulo`, `descripcion`, `categoria`, `prioridad`, `estado`, `nivel_servicio`, `calificacion`, `feedback_usuario`, `fecha_creacion`, `fecha_cierre`, `archivo_adjunto`, `fecha_calificacion`, `fecha_vencimiento_respuesta`, `fecha_vencimiento_resolucion`, `fecha_primera_respuesta`, `sla_respuesta_cumplido`, `sla_resolucion_cumplido`) VALUES
+(1, 1, 1, 'sdgfgafADGSDSDFFSDGS', 'sdgfgafADGSDSDFFSDGS', 'Software Core', 'Baja', 'Cerrado', 'Nivel 1', 5, '', '2026-06-06 16:26:36', NULL, 'ticket_1780763196_1.sql', '2026-06-06 11:27:36', NULL, NULL, NULL, NULL, NULL),
+(2, 1, 1, 'ghdgdsgsegsdgsdgdsg', 'ghdgdsgsegsdgsdgdsg', 'Otros', 'Baja', 'Cerrado', 'Nivel 1', 5, '', '2026-06-06 16:28:53', NULL, 'ticket_1780763333_1.png', '2026-06-06 11:30:50', NULL, NULL, NULL, NULL, NULL),
+(3, 1, 1, 'dfsafsdfafdfafafsfafadfsdfasdfasfassfa', 'dfsafsdfafdfafafsfafadfsdfasdfasfassfa', 'Otros', 'Baja', 'Cerrado', 'Nivel 1', 5, '', '2026-06-06 16:29:03', NULL, NULL, '2026-06-06 11:30:45', NULL, NULL, NULL, NULL, NULL),
+(4, 1, 1, 'sffafsafafsagafasfasfasfasfasfas', 'sffafsafafsagafasfasfasfasfasfas', 'Otros', 'Baja', 'Cerrado', 'Nivel 1', 1, '', '2026-06-06 16:32:26', NULL, 'ticket_1780763546_1.png', '2026-06-06 12:10:27', NULL, NULL, NULL, NULL, NULL),
+(5, 1, 1, 'NEcesito ayuda, este archivo esta corrupto y necesito trabajar con el', 'NEcesito ayuda, este archivo esta corrupto y necesito trabajar con el', 'Otros', 'Baja', 'Cerrado', 'Nivel 1', 3, '', '2026-06-06 16:57:46', NULL, 'ticket_1780765066_1.xlsx', '2026-06-06 12:10:19', NULL, NULL, NULL, NULL, NULL),
+(6, 1, 10, 'No tengo internet', 'No tengo internet', 'Otros', 'Alta', 'Cerrado', 'Nivel 1', 2, '', '2026-06-09 16:56:36', NULL, NULL, '2026-06-09 12:00:51', NULL, NULL, NULL, NULL, NULL),
+(10, 11, 1, 'cfaasdasdasdasdasdasdas', 'cfaasdasdasdasdasdasdas', 'Otros', 'Baja', 'Cerrado', 'Nivel 1', 2, '', '2026-06-09 17:49:56', NULL, NULL, '2026-06-09 12:51:55', NULL, NULL, NULL, NULL, NULL),
+(12, 11, 1, 'xfvzafvasfvasgfafasfasdf', 'xfvzafvasfvasgfafasfasdf', 'Otros', 'Baja', 'Abierto', 'Nivel 1', NULL, NULL, '2026-06-09 18:02:12', NULL, 'ticket_1781028132_11.webp', NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tickets_chat`
+--
+
+CREATE TABLE `tickets_chat` (
+  `id` int(11) NOT NULL,
+  `ticket_id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL COMMENT 'Quien escribe el mensaje',
+  `mensaje` text NOT NULL,
+  `fecha` timestamp NOT NULL DEFAULT current_timestamp(),
+  `es_tecnico` tinyint(1) NOT NULL DEFAULT 0 COMMENT '1 si es respuesta de soporte, 0 si es el usuario'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `tickets_chat`
+--
+
+INSERT INTO `tickets_chat` (`id`, `ticket_id`, `usuario_id`, `mensaje`, `fecha`, `es_tecnico`) VALUES
+(1, 4, 1, 'Hola, buenos días', '2026-06-06 16:32:36', 0),
+(2, 4, 1, 'Hola buenas', '2026-06-06 16:41:25', 1),
+(3, 4, 1, '[SISTEMA] Caso reabierto por el usuario. Motivo: No funciono', '2026-06-06 16:43:41', 0),
+(4, 6, 1, '[SISTEMA] Caso reabierto por el usuario. Motivo: NO funciono, sigo sin internet', '2026-06-09 16:59:34', 0),
+(5, 10, 1, 'Hola, buenos días', '2026-06-09 17:50:32', 1),
+(6, 10, 11, '[SISTEMA] Caso reabierto por el usuario. Motivo: No funciono', '2026-06-09 17:51:25', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tickets_trazabilidad`
+--
+
+CREATE TABLE `tickets_trazabilidad` (
+  `id` int(11) NOT NULL,
+  `ticket_id` int(11) NOT NULL,
+  `usuario_id` int(11) NOT NULL,
+  `accion` varchar(100) NOT NULL,
+  `detalles` text DEFAULT NULL,
+  `fecha` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `ticket_eventos`
+--
+
+CREATE TABLE `ticket_eventos` (
+  `id` int(11) NOT NULL,
+  `ticket_id` int(11) NOT NULL,
+  `tipo` enum('creacion','asignacion','escalacion','estado','calificacion','reapertura') NOT NULL,
+  `descripcion` varchar(500) NOT NULL,
+  `usuario_id` int(11) DEFAULT NULL,
+  `fecha` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `ticket_eventos`
+--
+
+INSERT INTO `ticket_eventos` (`id`, `ticket_id`, `tipo`, `descripcion`, `usuario_id`, `fecha`) VALUES
+(1, 1, 'creacion', 'Ticket creado', 1, '2026-06-06 16:26:36'),
+(2, 1, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 16:27:24'),
+(3, 1, 'calificacion', 'Calificado con 5 estrellas', 1, '2026-06-06 16:27:36'),
+(4, 2, 'creacion', 'Ticket creado', 1, '2026-06-06 16:28:53'),
+(5, 3, 'creacion', 'Ticket creado', 1, '2026-06-06 16:29:03'),
+(6, 3, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 16:30:12'),
+(7, 2, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 16:30:33'),
+(8, 3, 'calificacion', 'Calificado con 5 estrellas', 1, '2026-06-06 16:30:45'),
+(9, 2, 'calificacion', 'Calificado con 5 estrellas', 1, '2026-06-06 16:30:50'),
+(10, 4, 'creacion', 'Ticket creado', 1, '2026-06-06 16:32:26'),
+(11, 4, 'estado', 'Estado cambiado a: En Proceso', 1, '2026-06-06 16:41:25'),
+(12, 4, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 16:43:25'),
+(13, 4, 'reapertura', 'Reabierto: No funciono', 1, '2026-06-06 16:43:41'),
+(14, 5, 'creacion', 'Ticket creado', 1, '2026-06-06 16:57:46'),
+(15, 5, 'estado', 'Estado cambiado a: En Proceso', 1, '2026-06-06 17:03:57'),
+(16, 4, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 17:04:34'),
+(17, 5, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-06 17:04:40'),
+(18, 5, 'calificacion', 'Calificado con 3 estrellas', 1, '2026-06-06 17:10:19'),
+(19, 4, 'calificacion', 'Calificado con 1 estrellas', 1, '2026-06-06 17:10:27'),
+(20, 6, 'creacion', 'Ticket creado', 1, '2026-06-09 16:56:36'),
+(21, 6, 'estado', 'Estado cambiado a: En Proceso', 1, '2026-06-09 16:56:57'),
+(22, 6, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-09 16:59:12'),
+(23, 6, 'reapertura', 'Reabierto: NO funciono, sigo sin internet', 1, '2026-06-09 16:59:34'),
+(24, 6, 'escalacion', 'Escalado a: Mauricio Alexander Correa Vargas — Motivo: sdfsdgsdgsd', 1, '2026-06-09 16:59:58'),
+(25, 6, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-09 17:00:38'),
+(26, 6, 'calificacion', 'Calificado con 2 estrellas', 1, '2026-06-09 17:00:51'),
+(27, 10, 'creacion', 'Ticket creado', 11, '2026-06-09 17:49:56'),
+(28, 10, 'estado', 'Estado cambiado a: En Proceso', 1, '2026-06-09 17:50:32'),
+(29, 10, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-09 17:51:00'),
+(30, 10, 'reapertura', 'Reabierto: No funciono', 11, '2026-06-09 17:51:25'),
+(31, 10, 'estado', 'Estado cambiado a: Resuelto', 1, '2026-06-09 17:51:43'),
+(32, 10, 'calificacion', 'Calificado con 2 estrellas', 11, '2026-06-09 17:51:55'),
+(33, 12, 'creacion', 'Ticket creado', 11, '2026-06-09 18:02:12');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `tipos`
+--
+
+CREATE TABLE `tipos` (
+  `id` int(11) NOT NULL,
+  `tipo` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `tipos`
+--
+
+INSERT INTO `tipos` (`id`, `tipo`) VALUES
+(2, 'Impresora laser'),
+(1, 'PC'),
+(3, 'TV');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuarios`
+--
+
+CREATE TABLE `usuarios` (
+  `id` int(11) NOT NULL,
+  `username` varchar(100) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `nombre_completo` varchar(255) NOT NULL,
+  `id_rol` int(11) DEFAULT 3,
+  `estado` tinyint(1) DEFAULT 1 COMMENT '1: Activo, 0: Inactivo',
+  `ultimo_acceso` timestamp NULL DEFAULT NULL,
+  `id_funcionario` int(11) DEFAULT NULL,
+  `dashboard_config` longtext DEFAULT NULL COMMENT 'JSON de configuración del dashboard personalizable (widgets, posiciones, estilos)',
+  `force_logout` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `usuarios`
+--
+
+INSERT INTO `usuarios` (`id`, `username`, `password`, `nombre_completo`, `id_rol`, `estado`, `ultimo_acceso`, `id_funcionario`, `dashboard_config`, `force_logout`) VALUES
+(1, 'ADMIN', '$2y$10$rxCjAjP0txyIbypgc.kdxucwhbxivynV/AJdRM/nuBBOAZ70XenTu', 'Administrador principal del sistema', 1, 1, '2026-06-09 18:07:40', NULL, '{\"version\":1,\"widgets\":[{\"id\":\"w_17807613684201\",\"type\":\"kpi_pcs\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":0,\"config\":[],\"rowStart\":1},{\"id\":\"w_17807613684203\",\"type\":\"kpi_impresoras\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":2,\"config\":[],\"rowStart\":1},{\"id\":\"w_17807613684202\",\"type\":\"kpi_portatiles\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":1,\"config\":[],\"rowStart\":1},{\"id\":\"w_17807613684204\",\"type\":\"kpi_licencias\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":3,\"config\":[],\"rowStart\":1},{\"id\":\"w_17807613684205\",\"type\":\"chart_area\",\"colStart\":1,\"colSpan\":6,\"rowSpan\":2,\"order\":4,\"config\":[],\"rowStart\":2},{\"id\":\"w_17807613684206\",\"type\":\"chart_asign\",\"colStart\":7,\"colSpan\":6,\"rowSpan\":2,\"order\":5,\"config\":[],\"rowStart\":2},{\"id\":\"w_17807613684207\",\"type\":\"kpi_tickets_abiertos\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":6,\"config\":[],\"rowStart\":4},{\"id\":\"w_17807613684208\",\"type\":\"kpi_tickets_proceso\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":7,\"config\":[],\"rowStart\":4},{\"id\":\"w_17807613684209\",\"type\":\"kpi_tickets_hoy\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":8,\"config\":[],\"rowStart\":4},{\"id\":\"w_178076136842010\",\"type\":\"kpi_satisfaccion\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":9,\"config\":[],\"rowStart\":4},{\"id\":\"w_178076136842011\",\"type\":\"list_auditoria\",\"colStart\":1,\"colSpan\":12,\"rowSpan\":2,\"order\":10,\"config\":[],\"rowStart\":5}]}', 0),
+(9, 'FREIDERD', '$2y$10$HW8NbWHiD5gd5HgOg8piI.BvzpT6032DOqIEmROAl87ikqst2Bs1W', 'Freider David De la cruz Teherán', 1, 0, '2026-06-09 15:17:57', 1, '{\"version\":1,\"savedAt\":\"2026-06-09 10:24:30\",\"widgets\":[{\"id\":\"w_17810186659211\",\"type\":\"kpi_pcs\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":0,\"config\":[]},{\"id\":\"w_17810186659212\",\"type\":\"kpi_portatiles\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":1,\"config\":[]},{\"id\":\"w_17810186659213\",\"type\":\"kpi_impresoras\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":2,\"config\":[]},{\"id\":\"w_17810186659214\",\"type\":\"kpi_licencias\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":3,\"config\":[]},{\"id\":\"w_17810186659215\",\"type\":\"chart_area\",\"colStart\":1,\"colSpan\":6,\"rowSpan\":2,\"order\":4,\"config\":[]},{\"id\":\"w_17810186659216\",\"type\":\"chart_asign\",\"colStart\":7,\"colSpan\":6,\"rowSpan\":2,\"order\":5,\"config\":[]},{\"id\":\"w_17810186659217\",\"type\":\"kpi_tickets_abiertos\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":6,\"config\":[]},{\"id\":\"w_17810186659218\",\"type\":\"kpi_tickets_proceso\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":7,\"config\":[]},{\"id\":\"w_17810186659219\",\"type\":\"kpi_tickets_hoy\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":8,\"config\":[]},{\"id\":\"w_178101866592110\",\"type\":\"kpi_satisfaccion\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":9,\"config\":[]},{\"id\":\"w_178101866592111\",\"type\":\"list_auditoria\",\"colStart\":1,\"colSpan\":12,\"rowSpan\":2,\"order\":10,\"config\":[]}]}', 1),
+(10, 'MAURICIOC', '$2y$10$zCj5BbOTt9S10CgjkVoGTuoQIrVtsO1xSA0mKVesy2zBptD/7Xi5W', 'Mauricio Alexander Correa Vargas', 2, 1, '2026-06-09 15:37:21', 2, '{\"version\":1,\"savedAt\":\"2026-06-09 11:01:44\",\"widgets\":[{\"id\":\"w_17810209031431\",\"type\":\"kpi_pcs\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":0,\"config\":[]},{\"id\":\"w_17810209031432\",\"type\":\"kpi_portatiles\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":1,\"config\":[]},{\"id\":\"w_17810209031433\",\"type\":\"kpi_impresoras\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":2,\"config\":[]},{\"id\":\"w_17810209031434\",\"type\":\"kpi_licencias\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":3,\"config\":[]},{\"id\":\"w_17810209031435\",\"type\":\"chart_area\",\"colStart\":1,\"colSpan\":6,\"rowSpan\":2,\"order\":4,\"config\":[]},{\"id\":\"w_17810209031436\",\"type\":\"chart_asign\",\"colStart\":7,\"colSpan\":6,\"rowSpan\":2,\"order\":5,\"config\":[]},{\"id\":\"w_17810209031437\",\"type\":\"kpi_tickets_abiertos\",\"colStart\":1,\"colSpan\":3,\"rowSpan\":1,\"order\":6,\"config\":[]},{\"id\":\"w_17810209031438\",\"type\":\"kpi_tickets_proceso\",\"colStart\":4,\"colSpan\":3,\"rowSpan\":1,\"order\":7,\"config\":[]},{\"id\":\"w_17810209031439\",\"type\":\"kpi_tickets_hoy\",\"colStart\":7,\"colSpan\":3,\"rowSpan\":1,\"order\":8,\"config\":[]},{\"id\":\"w_178102090314310\",\"type\":\"kpi_satisfaccion\",\"colStart\":10,\"colSpan\":3,\"rowSpan\":1,\"order\":9,\"config\":[]},{\"id\":\"w_178102090314311\",\"type\":\"list_auditoria\",\"colStart\":1,\"colSpan\":12,\"rowSpan\":2,\"order\":10,\"config\":[]}]}', 0),
+(11, 'JHOND', '$2y$10$/cgKwSQfZ8Yl6IDPe5DXG.AgSX0v8s.RGeEpGvORdtVF0qcVuHbDa', 'Jhon Doe', 4, 1, '2026-06-09 17:38:59', NULL, NULL, 0);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `widget_templates`
+--
+
+CREATE TABLE `widget_templates` (
+  `id` int(11) NOT NULL,
+  `widget_type` varchar(50) NOT NULL,
+  `widget_name` varchar(100) NOT NULL,
+  `widget_description` text DEFAULT NULL,
+  `default_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`default_config`)),
+  `data_source` varchar(100) DEFAULT NULL,
+  `permissions_required` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`permissions_required`)),
+  `icon_class` varchar(100) DEFAULT NULL,
+  `category` varchar(50) DEFAULT 'general',
+  `is_active` tinyint(1) DEFAULT 1,
+  `sort_order` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Volcado de datos para la tabla `widget_templates`
+--
+
+INSERT INTO `widget_templates` (`id`, `widget_type`, `widget_name`, `widget_description`, `default_config`, `data_source`, `permissions_required`, `icon_class`, `category`, `is_active`, `sort_order`, `created_at`, `updated_at`) VALUES
+(1, 'kpi', 'KPI Básico', 'Tarjeta de indicador clave de rendimiento con valor y tendencia', '{\"title\": \"KPI\", \"value\": 0, \"trend\": \"up\", \"trend_value\": 0, \"color\": \"primary\", \"show_progress\": false, \"progress_value\": 0}', 'dynamic', '[]', 'fas fa-tachometer-alt', 'metrics', 1, 1, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(2, 'bar_chart', 'Gráfico de Barras', 'Gráfico de barras para datos categóricos', '{\"title\": \"Gráfico de Barras\", \"chart_type\": \"bar\", \"height\": 250, \"show_legend\": true, \"colors\": [\"#4a6cf7\", \"#686bf7\", \"#3db9dc\"], \"max_items\": 5}', 'dynamic', '[]', 'fas fa-chart-bar', 'charts', 1, 2, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(3, 'line_chart', 'Gráfico de Líneas', 'Gráfico de líneas para tendencias temporales', '{\"title\": \"Gráfico de Líneas\", \"chart_type\": \"line\", \"height\": 250, \"show_legend\": true, \"smooth\": true, \"fill\": false, \"colors\": [\"#4a6cf7\", \"#686bf7\"]}', 'dynamic', '[]', 'fas fa-chart-line', 'charts', 1, 3, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(4, 'doughnut_chart', 'Gráfico Circular', 'Gráfico de donut para proporciones', '{\"title\": \"Gráfico Circular\", \"chart_type\": \"doughnut\", \"height\": 250, \"show_legend\": true, \"cutout\": \"65%\", \"colors\": [\"#4a6cf7\", \"#686bf7\", \"#3db9dc\", \"#fccb90\", \"#ff9f43\"]}', 'dynamic', '[]', 'fas fa-chart-pie', 'charts', 1, 4, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(5, 'data_table', 'Tabla de Datos', 'Tabla configurable con datos dinámicos', '{\"title\": \"Tabla de Datos\", \"height\": 300, \"pagination\": true, \"page_size\": 10, \"sortable\": true, \"searchable\": false}', 'dynamic', '[]', 'fas fa-table', 'data', 1, 5, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(6, 'activity_feed', 'Feed de Actividad', 'Feed de actividades recientes del sistema', '{\"title\": \"Actividad Reciente\", \"height\": 350, \"max_items\": 10, \"show_timestamp\": true, \"show_user\": true}', 'dynamic', '[\"rep_generar\", \"conf_basica\", \"usr_ver\"]', 'fas fa-history', 'activity', 1, 6, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(7, 'goal_progress', 'Progreso de Metas', 'Barras de progreso para objetivos', '{\"title\": \"Metas\", \"height\": 250, \"show_percentage\": true, \"animated\": true, \"color_scheme\": \"primary\"}', 'dynamic', '[]', 'fas fa-bullseye', 'metrics', 1, 7, '2026-05-09 14:59:57', '2026-05-09 14:59:57'),
+(8, 'text_widget', 'Widget de Texto', 'Widget configurable para texto o HTML', '{\"title\": \"Texto\", \"content\": \"Tu texto aquí\", \"height\": 200, \"allow_html\": false, \"text_align\": \"left\"}', 'static', '[]', 'fas fa-font', 'content', 1, 8, '2026-05-09 14:59:57', '2026-05-09 14:59:57');
+
+--
+-- Índices para tablas volcadas
+--
+
+--
+-- Indices de la tabla `acciones`
+--
+ALTER TABLE `acciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `usuario_id` (`usuario_id`);
+
+--
+-- Indices de la tabla `areas`
+--
+ALTER TABLE `areas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre_area` (`nombre_area`),
+  ADD UNIQUE KEY `codigo_area` (`codigo_area`);
+
+--
+-- Indices de la tabla `articulos`
+--
+ALTER TABLE `articulos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_marca` (`id_marca`);
+
+--
+-- Indices de la tabla `asignaciones`
+--
+ALTER TABLE `asignaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_articulo` (`id_articulo`),
+  ADD KEY `id_usuario` (`id_usuario`),
+  ADD KEY `id_area` (`id_area`),
+  ADD KEY `id_equipo` (`id_equipo`);
+
+--
+-- Indices de la tabla `bajas`
+--
+ALTER TABLE `bajas`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `usuario_responsable_id` (`usuario_responsable_id`);
+
+--
+-- Indices de la tabla `configuraciones`
+--
+ALTER TABLE `configuraciones`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `config_prioridades`
+--
+ALTER TABLE `config_prioridades`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `config_slas`
+--
+ALTER TABLE `config_slas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `prioridad` (`prioridad`);
+
+--
+-- Indices de la tabla `equipos_de_computo`
+--
+ALTER TABLE `equipos_de_computo`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_usuario` (`id_usuario`),
+  ADD KEY `id_area` (`id_area`),
+  ADD KEY `id_tipo` (`id_tipo`),
+  ADD KEY `id_marca` (`id_marca`),
+  ADD KEY `id_configuracion` (`id_configuracion`),
+  ADD KEY `fk_equipos_creador` (`creado_por`);
+
+--
+-- Indices de la tabla `funcionarios`
+--
+ALTER TABLE `funcionarios`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_area` (`id_area`);
+
+--
+-- Indices de la tabla `historial_equipos`
+--
+ALTER TABLE `historial_equipos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_equipo` (`id_equipo`),
+  ADD KEY `usuario_id` (`usuario_id`);
+
+--
+-- Indices de la tabla `impresoras_escaneres`
+--
+ALTER TABLE `impresoras_escaneres`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `serial` (`serial`),
+  ADD KEY `id_tipo` (`id_tipo`),
+  ADD KEY `id_marca` (`id_marca`),
+  ADD KEY `id_equipo` (`id_equipo`);
+
+--
+-- Indices de la tabla `licencias`
+--
+ALTER TABLE `licencias`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_area` (`id_area`),
+  ADD KEY `id_equipo` (`id_equipo`);
+
+--
+-- Indices de la tabla `marcas`
+--
+ALTER TABLE `marcas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre_marca` (`nombre_marca`);
+
+--
+-- Indices de la tabla `modulos`
+--
+ALTER TABLE `modulos`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `monitores`
+--
+ALTER TABLE `monitores`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `serial` (`serial`),
+  ADD KEY `id_marca` (`id_marca`),
+  ADD KEY `id_equipo` (`id_equipo`);
+
+--
+-- Indices de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_remitente` (`id_remitente`),
+  ADD KEY `id_destinatario` (`id_destinatario`),
+  ADD KEY `parent_id` (`parent_id`);
+
+--
+-- Indices de la tabla `otros`
+--
+ALTER TABLE `otros`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `serial` (`serial`),
+  ADD KEY `id_tipo` (`id_tipo`),
+  ADD KEY `id_marca` (`id_marca`),
+  ADD KEY `id_area` (`id_area`);
+
+--
+-- Indices de la tabla `roles`
+--
+ALTER TABLE `roles`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `shared_widget_configs`
+--
+ALTER TABLE `shared_widget_configs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `idx_widget_id` (`widget_id`),
+  ADD KEY `idx_public` (`is_public`),
+  ADD KEY `idx_usage` (`usage_count`);
+
+--
+-- Indices de la tabla `sla_config`
+--
+ALTER TABLE `sla_config`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nombre` (`nombre`),
+  ADD KEY `idx_prioridad` (`prioridad_ticket`),
+  ADD KEY `idx_activo` (`activo`);
+
+--
+-- Indices de la tabla `sla_registros`
+--
+ALTER TABLE `sla_registros`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ticket` (`ticket_id`),
+  ADD KEY `idx_sla_config` (`sla_config_id`),
+  ADD KEY `idx_estados` (`estado_respuesta`,`estado_resolucion`);
+
+--
+-- Indices de la tabla `telefonos`
+--
+ALTER TABLE `telefonos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `serial` (`serial`),
+  ADD KEY `id_marca` (`id_marca`),
+  ADD KEY `id_usuario` (`id_usuario`);
+
+--
+-- Indices de la tabla `tickets`
+--
+ALTER TABLE `tickets`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `usuario_id` (`usuario_id`),
+  ADD KEY `tecnico_id` (`tecnico_id`),
+  ADD KEY `idx_sla_respuesta` (`sla_respuesta_cumplido`),
+  ADD KEY `idx_sla_resolucion` (`sla_resolucion_cumplido`),
+  ADD KEY `idx_fecha_venc_resp` (`fecha_vencimiento_respuesta`),
+  ADD KEY `idx_fecha_venc_resol` (`fecha_vencimiento_resolucion`);
+
+--
+-- Indices de la tabla `tickets_chat`
+--
+ALTER TABLE `tickets_chat`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ticket_id` (`ticket_id`);
+
+--
+-- Indices de la tabla `tickets_trazabilidad`
+--
+ALTER TABLE `tickets_trazabilidad`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `ticket_id` (`ticket_id`);
+
+--
+-- Indices de la tabla `ticket_eventos`
+--
+ALTER TABLE `ticket_eventos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ticket` (`ticket_id`);
+
+--
+-- Indices de la tabla `tipos`
+--
+ALTER TABLE `tipos`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `tipo` (`tipo`);
+
+--
+-- Indices de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `id_rol` (`id_rol`),
+  ADD KEY `fk_usuarios_funcionarios` (`id_funcionario`);
+
+--
+-- Indices de la tabla `widget_templates`
+--
+ALTER TABLE `widget_templates`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_type` (`widget_type`),
+  ADD KEY `idx_category` (`category`),
+  ADD KEY `idx_active` (`is_active`),
+  ADD KEY `idx_sort` (`sort_order`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `acciones`
+--
+ALTER TABLE `acciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+
+--
+-- AUTO_INCREMENT de la tabla `areas`
+--
+ALTER TABLE `areas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `articulos`
+--
+ALTER TABLE `articulos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `asignaciones`
+--
+ALTER TABLE `asignaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `bajas`
+--
+ALTER TABLE `bajas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `configuraciones`
+--
+ALTER TABLE `configuraciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `config_prioridades`
+--
+ALTER TABLE `config_prioridades`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+
+--
+-- AUTO_INCREMENT de la tabla `config_slas`
+--
+ALTER TABLE `config_slas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `equipos_de_computo`
+--
+ALTER TABLE `equipos_de_computo`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `funcionarios`
+--
+ALTER TABLE `funcionarios`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `historial_equipos`
+--
+ALTER TABLE `historial_equipos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `impresoras_escaneres`
+--
+ALTER TABLE `impresoras_escaneres`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `licencias`
+--
+ALTER TABLE `licencias`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `marcas`
+--
+ALTER TABLE `marcas`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `modulos`
+--
+ALTER TABLE `modulos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT de la tabla `monitores`
+--
+ALTER TABLE `monitores`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+
+--
+-- AUTO_INCREMENT de la tabla `otros`
+--
+ALTER TABLE `otros`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `roles`
+--
+ALTER TABLE `roles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT de la tabla `shared_widget_configs`
+--
+ALTER TABLE `shared_widget_configs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `sla_config`
+--
+ALTER TABLE `sla_config`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `sla_registros`
+--
+ALTER TABLE `sla_registros`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `telefonos`
+--
+ALTER TABLE `telefonos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `tickets`
+--
+ALTER TABLE `tickets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+
+--
+-- AUTO_INCREMENT de la tabla `tickets_chat`
+--
+ALTER TABLE `tickets_chat`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `tickets_trazabilidad`
+--
+ALTER TABLE `tickets_trazabilidad`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `ticket_eventos`
+--
+ALTER TABLE `ticket_eventos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+
+--
+-- AUTO_INCREMENT de la tabla `tipos`
+--
+ALTER TABLE `tipos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+
+--
+-- AUTO_INCREMENT de la tabla `widget_templates`
+--
+ALTER TABLE `widget_templates`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `acciones`
+--
+ALTER TABLE `acciones`
+  ADD CONSTRAINT `acciones_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `articulos`
+--
+ALTER TABLE `articulos`
+  ADD CONSTRAINT `fk_articulos_marca` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `asignaciones`
+--
+ALTER TABLE `asignaciones`
+  ADD CONSTRAINT `fk_asignaciones_area` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_asignaciones_articulo` FOREIGN KEY (`id_articulo`) REFERENCES `articulos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_asignaciones_equipo` FOREIGN KEY (`id_equipo`) REFERENCES `equipos_de_computo` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_asignaciones_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `bajas`
+--
+ALTER TABLE `bajas`
+  ADD CONSTRAINT `fk_bajas_usuario` FOREIGN KEY (`usuario_responsable_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `equipos_de_computo`
+--
+ALTER TABLE `equipos_de_computo`
+  ADD CONSTRAINT `equipos_de_computo_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `equipos_de_computo_ibfk_2` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `equipos_de_computo_ibfk_3` FOREIGN KEY (`id_tipo`) REFERENCES `tipos` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `equipos_de_computo_ibfk_4` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `equipos_de_computo_ibfk_5` FOREIGN KEY (`id_configuracion`) REFERENCES `configuraciones` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_equipos_creador` FOREIGN KEY (`creado_por`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `funcionarios`
+--
+ALTER TABLE `funcionarios`
+  ADD CONSTRAINT `funcionarios_ibfk_1` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `historial_equipos`
+--
+ALTER TABLE `historial_equipos`
+  ADD CONSTRAINT `fk_hist_equipo` FOREIGN KEY (`id_equipo`) REFERENCES `equipos_de_computo` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_hist_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`);
+
+--
+-- Filtros para la tabla `impresoras_escaneres`
+--
+ALTER TABLE `impresoras_escaneres`
+  ADD CONSTRAINT `impresoras_escaneres_ibfk_1` FOREIGN KEY (`id_tipo`) REFERENCES `tipos` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `impresoras_escaneres_ibfk_2` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `impresoras_escaneres_ibfk_3` FOREIGN KEY (`id_equipo`) REFERENCES `equipos_de_computo` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `licencias`
+--
+ALTER TABLE `licencias`
+  ADD CONSTRAINT `licencias_ibfk_1` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `licencias_ibfk_2` FOREIGN KEY (`id_equipo`) REFERENCES `equipos_de_computo` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `monitores`
+--
+ALTER TABLE `monitores`
+  ADD CONSTRAINT `monitores_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `monitores_ibfk_2` FOREIGN KEY (`id_equipo`) REFERENCES `equipos_de_computo` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `notificaciones`
+--
+ALTER TABLE `notificaciones`
+  ADD CONSTRAINT `notificaciones_ibfk_1` FOREIGN KEY (`id_remitente`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `notificaciones_ibfk_2` FOREIGN KEY (`id_destinatario`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `otros`
+--
+ALTER TABLE `otros`
+  ADD CONSTRAINT `otros_ibfk_1` FOREIGN KEY (`id_tipo`) REFERENCES `tipos` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `otros_ibfk_2` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `otros_ibfk_3` FOREIGN KEY (`id_area`) REFERENCES `areas` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `shared_widget_configs`
+--
+ALTER TABLE `shared_widget_configs`
+  ADD CONSTRAINT `shared_widget_configs_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `sla_registros`
+--
+ALTER TABLE `sla_registros`
+  ADD CONSTRAINT `sla_registros_ibfk_1` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `sla_registros_ibfk_2` FOREIGN KEY (`sla_config_id`) REFERENCES `sla_config` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `telefonos`
+--
+ALTER TABLE `telefonos`
+  ADD CONSTRAINT `telefonos_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `marcas` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `telefonos_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `tickets`
+--
+ALTER TABLE `tickets`
+  ADD CONSTRAINT `fk_ticket_tecnico` FOREIGN KEY (`tecnico_id`) REFERENCES `usuarios` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_ticket_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuarios` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `tickets_chat`
+--
+ALTER TABLE `tickets_chat`
+  ADD CONSTRAINT `fk_chat_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD CONSTRAINT `fk_usuarios_funcionarios` FOREIGN KEY (`id_funcionario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_usuarios_roles` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON DELETE SET NULL;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

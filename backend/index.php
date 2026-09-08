@@ -177,6 +177,9 @@ $routes = [
     '/permissions/logs'       => ['PermissionController', 'logs'],
     '/permissions/clear-logs' => ['PermissionController', 'clearLogs'],
     '/permissions/import-backup' => ['PermissionController', 'importBackup'],
+
+    // AI Assistant
+    '/ai/chat' => ['AIController', 'chat'],
 ];
 
 // Match routes
