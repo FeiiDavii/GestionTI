@@ -1,13 +1,15 @@
 import React from 'react';
 import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 
 export default function SearchableSelect({
-  options,
+  options = [],
   value,
   onChange,
   placeholder = '-- Seleccionar --',
   isClearable = true,
   isDisabled = false,
+  isCreatable = false,
   className = '',
 }) {
   const customStyles = {
@@ -84,7 +86,7 @@ export default function SearchableSelect({
   };
 
   // Convert generic options array to { value, label } if not already in that format
-  const formattedOptions = options.map((opt) => {
+  const formattedOptions = (options || []).map((opt) => {
     if (opt.value !== undefined && opt.label !== undefined) return opt;
     // Default to id and nombre if properties exist
     return {
@@ -93,10 +95,18 @@ export default function SearchableSelect({
     };
   });
 
-  const selectedValue = formattedOptions.find((opt) => opt.value === value) || null;
+  let selectedValue = formattedOptions.find((opt) => String(opt.value) === String(value)) || null;
+  if (!selectedValue && value != null && value !== '') {
+    selectedValue = { value: value, label: String(value) };
+    if (isCreatable) {
+      formattedOptions.unshift(selectedValue);
+    }
+  }
+
+  const SelectComponent = isCreatable ? CreatableSelect : Select;
 
   return (
-    <Select
+    <SelectComponent
       value={selectedValue}
       onChange={(selected) => onChange(selected ? selected.value : '')}
       options={formattedOptions}
@@ -107,6 +117,7 @@ export default function SearchableSelect({
       className={`searchable-select ${className}`}
       classNamePrefix="react-select"
       noOptionsMessage={() => 'No se encontraron resultados'}
+      formatCreateLabel={(inputValue) => `Usar "${inputValue}"`}
     />
   );
 }

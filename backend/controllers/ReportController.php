@@ -32,6 +32,7 @@ class ReportController {
 
         $data  = [];
         $total = 0;
+        $baseSelect = '';
 
         try {
             switch ($type) {

@@ -54,6 +54,20 @@ const TABS = [
   { key: 'configuraciones', label: 'Configuraciones', icon: 'fa-gear' },
 ];
 
+const SISTEMAS_OPERATIVOS = [
+  { id: 'Windows 11', nombre: 'Windows 11' },
+  { id: 'Windows 10', nombre: 'Windows 10' },
+  { id: 'Windows 8', nombre: 'Windows 8' },
+  { id: 'Windows 7', nombre: 'Windows 7' },
+  { id: 'Windows Server', nombre: 'Windows Server' },
+  { id: 'MAC OS', nombre: 'MAC OS' },
+  { id: 'LINUX', nombre: 'LINUX' },
+  { id: 'WIN10', nombre: 'WIN10' },
+  { id: 'WIN 10', nombre: 'WIN 10' },
+  { id: 'WIN 11', nombre: 'WIN 11' },
+  { id: 'Otro', nombre: 'Otro' },
+];
+
 /* Dense and consolidated columns to match the legacy PHP layout */
 const COLUMNS = {
   equipos: [
@@ -310,10 +324,12 @@ export default function Equipos() {
         return {
           nombre_equipo: '',
           procesador: '',
+          modelo: '',
+          sistema_operativo: '',
+          teamviewer_id: '',
           id_tipo: '',
           id_configuracion: '',
           id_marca: '',
-          modelo: '',
           serial: '',
           serial_interno: '',
           id_area: '',
@@ -564,6 +580,7 @@ export default function Equipos() {
 
   const getOptionLabel = (opt, field) => {
     if (!opt) return '';
+    if (field === 'sistema_operativo') return opt.nombre || opt.label || opt.value || opt.id || '';
     if (field === 'id_marca' || field === 'marca_id') return opt.nombre_marca || opt.nombre;
     if (field === 'id_tipo' || field === 'tipo') return opt.tipo || opt.nombre;
     if (field === 'id_area' || field === 'area_id') return opt.nombre_area || opt.nombre;
@@ -584,8 +601,42 @@ export default function Equipos() {
       case 'nombre_info':
         return (
           <>
-            <strong>{row.nombre_equipo || row.nombre || '-'}</strong>
-            <br />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <strong>{row.nombre_equipo || row.nombre || '-'}</strong>
+              {row.sistema_operativo && (
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    color: 'var(--primary-color)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    fontWeight: 600
+                  }}
+                  title={`Sistema Operativo: ${row.sistema_operativo}`}
+                >
+                  {row.sistema_operativo}
+                </span>
+              )}
+              {row.teamviewer_id && (
+                <span
+                  style={{
+                    fontSize: '10.5px',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    color: '#059669',
+                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                    fontWeight: 500
+                  }}
+                  title={`TeamViewer ID: ${row.teamviewer_id}`}
+                >
+                  <i className="fa-solid fa-desktop" style={{ marginRight: '3px' }}></i>
+                  {row.teamviewer_id}
+                </span>
+              )}
+            </div>
             <small className="text-gray-text">{row.procesador || ''}</small>
           </>
         );
@@ -662,7 +713,7 @@ export default function Equipos() {
   };
 
   const renderFormField = (field, label, options = {}) => {
-    const { type = 'text', required = false, placeholder = '', options: selectOptions = [] } = options;
+    const { type = 'text', required = false, placeholder = '', isCreatable = false, options: selectOptions = [] } = options;
 
     const showQuickAdd = options.quickAddType && canCrearEditar;
 
@@ -675,9 +726,11 @@ export default function Equipos() {
               <SearchableSelect
                 value={formData[field] || ''}
                 onChange={(val) => handleFormChange(field, val)}
+                placeholder={placeholder || '-- Seleccionar --'}
+                isCreatable={isCreatable}
                 options={selectOptions.map(opt => ({
-                  value: opt.id,
-                  label: getOptionLabel(opt, field)
+                  value: opt.value !== undefined ? opt.value : opt.id,
+                  label: opt.label !== undefined ? opt.label : getOptionLabel(opt, field)
                 }))}
               />
             </div>
@@ -778,6 +831,17 @@ export default function Equipos() {
               <div className="form-row">
                 {renderFormField('procesador', 'Procesador', { placeholder: 'Ej: Intel Core i7' })}
                 {renderFormField('modelo', 'Modelo', { placeholder: 'Modelo' })}
+              </div>
+              <div className="form-row">
+                {renderFormField('sistema_operativo', 'Sistema Operativo', {
+                  type: 'select',
+                  options: SISTEMAS_OPERATIVOS,
+                  isCreatable: true,
+                  placeholder: 'Seleccionar o escribir S.O.'
+                })}
+                {renderFormField('teamviewer_id', 'TeamViewer ID', {
+                  placeholder: 'Ej: 1 234 567 890'
+                })}
               </div>
             </FormSection>
 
