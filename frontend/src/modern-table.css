@@ -1,0 +1,37 @@
+﻿/* ── Modern Technical Table ── */
+.modern-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+  border-spacing: 0;
+}
+.modern-table th {
+  background: var(--input-bg);
+  color: var(--gray-text);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+  text-align: left;
+  white-space: nowrap;
+}
+.modern-table td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+.modern-table tr {
+  transition: background-color 0.15s ease;
+}
+.modern-table tr:hover {
+  background-color: var(--hover-bg);
+}
+.modern-table td.text-muted {
+  color: var(--gray-text);
+}
