@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Dashboard.jsx
  * Réplica fiel del motor dashboard-engine.js del sistema IAV2.
  * Usa HTML5 native DnD + CSS variables (--w-col-start, --w-col, etc.)
@@ -23,37 +23,37 @@ ChartJS.register(
   CategoryScale, LinearScale, BarElement, PointElement,
   LineElement, ArcElement, Title, Tooltip, Legend, Filler
 );
-ChartJS.defaults.font.family = "'Poppins', sans-serif";
-ChartJS.defaults.color = '#666';
+ChartJS.defaults.font.family = "'Inter', sans-serif";
+ChartJS.defaults.color = '#94a3b8';
 
-// ─── CATÁLOGO (idéntico al original) ─────────────────────────────────────────
+// ─── CATÁLOGO (idéntico al original, con colores industriales técnicos) ─────────────────────────────────────────
 const WIDGET_CATALOG = {
-  kpi_pcs:              { name:'PCs Escritorio',         icon:'fa-desktop',                type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#84fab0', bgIcon:'rgba(132,250,176,0.15)' },
-  kpi_portatiles:       { name:'Portátiles',             icon:'fa-laptop',                 type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#a18cd1', bgIcon:'rgba(161,140,209,0.15)' },
-  kpi_impresoras:       { name:'Imp. y Escáneres',       icon:'fa-print',                  type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#fccb90', bgIcon:'rgba(252,203,144,0.15)' },
-  kpi_licencias:        { name:'Licencias',              icon:'fa-key',                    type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#17a2b8', bgIcon:'rgba(23,162,184,0.15)'  },
+  kpi_pcs:              { name:'PCs Escritorio',         icon:'fa-desktop',                type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#3b82f6', bgIcon:'rgba(59,130,246,0.12)' },
+  kpi_portatiles:       { name:'Portátiles',             icon:'fa-laptop',                 type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#6366f1', bgIcon:'rgba(99,102,241,0.12)' },
+  kpi_impresoras:       { name:'Imp. y Escáneres',       icon:'fa-print',                  type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#0891b2', bgIcon:'rgba(8,145,178,0.12)' },
+  kpi_licencias:        { name:'Licencias',              icon:'fa-key',                    type:'kpi',   colSpan:3,  rowSpan:1, req:'inv_ver',        defColor:'#22d3ee', bgIcon:'rgba(34,211,238,0.12)'  },
   chart_area:           { name:'Top 5 Áreas (Equipos)',  icon:'fa-chart-bar',              type:'chart', colSpan:6,  rowSpan:2, req:'inv_ver',        chartType:'bar'     },
   chart_asign:          { name:'Asignaciones Activas',   icon:'fa-chart-pie',              type:'chart', colSpan:6,  rowSpan:2, req:'inv_ver',        chartType:'pie'     },
   chart_impresoras:     { name:'Top Marcas Impresión',   icon:'fa-chart-pie',              type:'chart', colSpan:6,  rowSpan:2, req:'inv_ver',        chartType:'doughnut'},
   chart_licarea:        { name:'Licencias por Área',     icon:'fa-chart-pie',              type:'chart', colSpan:6,  rowSpan:2, req:'inv_ver',        chartType:'pie'     },
   chart_software:       { name:'Distribución Software',  icon:'fa-chart-bar',              type:'chart', colSpan:12, rowSpan:2, req:'inv_ver',        chartType:'bar'     },
-  kpi_tickets_abiertos: { name:'Tickets Abiertos',       icon:'fa-triangle-exclamation',   type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#e74a3b', bgIcon:'rgba(231,74,59,0.12)'   },
-  kpi_tickets_proceso:  { name:'En Proceso',             icon:'fa-spinner',                type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#ffc107', bgIcon:'rgba(255,193,7,0.12)'   },
-  kpi_tickets_hoy:      { name:'Creados Hoy',            icon:'fa-calendar-plus',          type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#1cc88a', bgIcon:'rgba(28,200,138,0.12)'  },
-  kpi_satisfaccion:     { name:'Satisfacción',           icon:'fa-star',                   type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#ffc107', bgIcon:'rgba(255,193,7,0.12)'   },
+  kpi_tickets_abiertos: { name:'Tickets Abiertos',       icon:'fa-triangle-exclamation',   type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#ef4444', bgIcon:'rgba(239,68,68,0.12)'   },
+  kpi_tickets_proceso:  { name:'En Proceso',             icon:'fa-spinner',                type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#f59e0b', bgIcon:'rgba(245,158,11,0.12)'   },
+  kpi_tickets_hoy:      { name:'Creados Hoy',            icon:'fa-calendar-plus',          type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#10b981', bgIcon:'rgba(16,185,129,0.12)'  },
+  kpi_satisfaccion:     { name:'Satisfacción',           icon:'fa-star',                   type:'kpi',   colSpan:3,  rowSpan:1, req:'tk_ver_global',  defColor:'#eab308', bgIcon:'rgba(234,179,8,0.12)'   },
   chart_tickets:        { name:'Estado de Tickets',      icon:'fa-chart-pie',              type:'chart', colSpan:6,  rowSpan:2, req:'tk_ver_global',  chartType:'doughnut'},
   chart_tickets_area:   { name:'Tickets por Área',       icon:'fa-chart-bar',              type:'chart', colSpan:6,  rowSpan:2, req:'tk_ver_global',  chartType:'bar'     },
-  kpi_sla_cumplimiento: { name:'Cumplimiento SLA',       icon:'fa-check-circle',           type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#28a745', bgIcon:'rgba(40,167,69,0.12)'   },
-  kpi_sla_vencidos:     { name:'SLA Vencidos',           icon:'fa-clock',                  type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#dc3545', bgIcon:'rgba(220,53,69,0.12)'   },
-  kpi_sla_pendientes:   { name:'SLA Pendientes',         icon:'fa-hourglass-half',         type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#ffc107', bgIcon:'rgba(255,193,7,0.12)'   },
+  kpi_sla_cumplimiento: { name:'Cumplimiento SLA',       icon:'fa-check-circle',           type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#22c55e', bgIcon:'rgba(34,197,94,0.12)'   },
+  kpi_sla_vencidos:     { name:'SLA Vencidos',           icon:'fa-clock',                  type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#dc2626', bgIcon:'rgba(220,38,38,0.12)'   },
+  kpi_sla_pendientes:   { name:'SLA Pendientes',         icon:'fa-hourglass-half',         type:'kpi',   colSpan:3,  rowSpan:1, req:'conf_basica',    defColor:'#f59e0b', bgIcon:'rgba(245,158,11,0.12)'   },
   chart_sla_prioridad:  { name:'SLA por Prioridad',      icon:'fa-chart-bar',              type:'chart', colSpan:6,  rowSpan:2, req:'conf_basica',    chartType:'bar'     },
   list_sla_proximos:    { name:'SLA Próximos a Vencer',  icon:'fa-clock',                  type:'list',  colSpan:6,  rowSpan:2, req:'conf_basica'                         },
   list_auditoria:       { name:'Actividad Reciente',     icon:'fa-clipboard-list',         type:'list',  colSpan:12, rowSpan:2, req:'rep_generar'                         },
   widget_texto:         { name:'Nota / Texto',           icon:'fa-font',                   type:'texto', colSpan:6,  rowSpan:1, req:'any'                                 },
 };
 
-const CHART_COLORS_PIE  = ['#ff9f43','#fccb90','#e74a3b','#1cc88a','#4a6cf7','#3db9dc'];
-const CHART_COLOR_BAR   = '#4a6cf7';
+const CHART_COLORS_PIE  = ['#3b82f6', '#22d3ee', '#f59e0b', '#10b981', '#6366f1', '#ec4899'];
+const CHART_COLOR_BAR   = '#3b82f6';
 
 // ─── PERMISOS ─────────────────────────────────────────────────────────────────
 function hasPermission(req, permisos) {

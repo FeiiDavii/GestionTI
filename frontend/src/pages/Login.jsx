@@ -113,71 +113,86 @@ export default function Login() {
       <div className="login-wrapper">
         <div className="login-left">
           <div className="login-header">
-            <h2>Login</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <i className="fa-solid fa-microchip" style={{ color: 'var(--primary-color)', fontSize: '18px' }}></i>
+              <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>GestionTI OPS</span>
+            </div>
+            <h2>Iniciar Sesión</h2>
+            <p className="login-subtitle">Ingresa tus credenciales para acceder a la consola central.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Usuario o Correo"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required minLength={3}
-              />
+            <div className="form-group">
+              <label style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Usuario o Identificador</label>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <input
+                  type="text"
+                  placeholder="ej. operador.ti"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required minLength={3}
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                />
+              </div>
             </div>
 
-            <div className="input-group">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required minLength={4}
-              />
-              <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ cursor: 'pointer' }}></i>
+            <div className="form-group" style={{ marginTop: '14px' }}>
+              <label style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contraseña</label>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required minLength={4}
+                />
+                <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ cursor: 'pointer' }}></i>
+              </div>
             </div>
 
-            <div className="form-actions">
+            <div className="form-actions" style={{ marginTop: '16px' }}>
               <a href="#" className="forgot-pass"
                 onClick={(e) => { e.preventDefault(); setShowRecovery(true); }}>
-                ¿Olvidaste tu contraseña?
+                ¿Problemas de acceso?
               </a>
             </div>
 
             <button type="submit" className="btn-login" disabled={loading}>
-              {loading ? 'Ingresando...' : 'Ingresar'}
+              {loading ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Autenticando...</> : 'Acceder al Sistema'}
             </button>
 
             <div className="signup-link">
-              Sistema de Gestión de Inventario v3.10.0
+              GESTION TI // ENTERPRISE CORE v3.10.0
             </div>
           </form>
         </div>
 
         <div className="login-right">
-          <div className="illustration" style={{
-            width: '80%', maxWidth: '300px', marginBottom: '20px',
-            animation: 'float 6s ease-in-out infinite',
-          }}>
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="40" y="30" width="120" height="140" rx="8" fill="#4a6cf7" opacity="0.15"/>
-              <rect x="50" y="40" width="100" height="80" rx="4" fill="#4a6cf7" opacity="0.3"/>
-              <circle cx="100" cy="95" r="25" fill="#4a6cf7" opacity="0.2"/>
-              <circle cx="100" cy="95" r="12" fill="#4a6cf7"/>
-              <rect x="55" y="135" width="30" height="4" rx="2" fill="#4a6cf7" opacity="0.4"/>
-              <rect x="55" y="145" width="60" height="4" rx="2" fill="#4a6cf7" opacity="0.3"/>
-              <rect x="55" y="155" width="45" height="4" rx="2" fill="#4a6cf7" opacity="0.2"/>
-            </svg>
-          </div>
-          <h3>Gestión Centralizada</h3>
-          <p>Control total de equipos, asignaciones y auditoría en una sola plataforma.</p>
-          <div style={{ marginTop: '20px', display: 'flex', gap: '5px' }}>
-            <span style={{ width: '25px', height: '4px', background: '#4a6cf7', borderRadius: '2px' }}></span>
-            <span style={{ width: '25px', height: '4px', background: '#dfe3f8', borderRadius: '2px' }}></span>
-            <span style={{ width: '25px', height: '4px', background: '#dfe3f8', borderRadius: '2px' }}></span>
+          <div className="login-right-content">
+            <div style={{
+              width: '84px',
+              height: '84px',
+              margin: '0 auto 20px',
+              background: 'var(--primary-light)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--primary-color)',
+              fontSize: '36px'
+            }}>
+              <i className="fa-solid fa-network-wired"></i>
+            </div>
+            <h3>Operaciones & Infraestructura</h3>
+            <p>Monitoreo unificado de inventario tecnológico, ciclo de vida de tickets y topología de red en tiempo real.</p>
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '8px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-tertiary)' }}>
+              <span style={{ border: '1px solid var(--border-color)', padding: '3px 8px', borderRadius: '4px' }}>ITSM 2.0</span>
+              <span style={{ border: '1px solid var(--border-color)', padding: '3px 8px', borderRadius: '4px' }}>ITAM CORE</span>
+              <span style={{ border: '1px solid var(--border-color)', padding: '3px 8px', borderRadius: '4px' }}>SSE TELEMETRY</span>
+            </div>
           </div>
         </div>
       </div>

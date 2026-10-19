@@ -33,8 +33,9 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       )}
       <aside className={`sidebar ${mobileOpen ? 'mobile-active' : ''}`}>
         <div className="brand">
-          <i className="fa-solid fa-layer-group"></i>
-          <span>GestionTI</span>
+          <i className="fa-solid fa-microchip"></i>
+          <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>GestionTI</span>
+          <span className="brand-badge">OPS</span>
         </div>
 
         <ul className="nav-links">

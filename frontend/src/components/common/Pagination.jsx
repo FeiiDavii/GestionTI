@@ -4,16 +4,17 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
   if (totalPages <= 1) return null;
 
   const btnPageStyle = (active) => ({
-    padding: '6px 12px',
-    borderRadius: '8px',
-    border: active ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: active ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
     background: active ? 'var(--primary-color)' : 'transparent',
     color: active ? '#fff' : 'var(--text-color)',
     cursor: 'pointer',
-    fontWeight: active ? 700 : 500,
-    fontSize: '13px',
-    minWidth: '34px',
-    transition: 'all 0.15s'
+    fontWeight: active ? 600 : 500,
+    fontSize: '12px',
+    minWidth: '28px',
+    fontFamily: 'var(--font-mono)',
+    transition: 'all 0.12s ease'
   });
 
   const maxButtons = 7;
@@ -27,27 +28,27 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: '15px',
+      marginTop: '12px',
       flexWrap: 'wrap',
-      gap: '10px',
-      padding: '10px 15px',
-      background: 'var(--input-bg)',
-      borderRadius: '12px',
+      gap: '8px',
+      padding: '8px 12px',
+      background: 'var(--surface-secondary)',
+      borderRadius: '6px',
       border: '1px solid var(--border-color)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         <button
           className="action-btn btn-prev"
           disabled={page <= 1}
           onClick={() => setPage(page - 1)}
-          style={{ opacity: page <= 1 ? 0.4 : 1, padding: '5px 10px', fontSize: '12px' }}
+          style={{ padding: '4px 8px', fontSize: '11px' }}
         >
           <i className="fa-solid fa-chevron-left" /> Anterior
         </button>
         {start > 1 && (
           <>
             <button style={btnPageStyle(false)} onClick={() => setPage(1)}>1</button>
-            <span style={{ color: 'var(--gray-text)', fontSize: '12px', padding: '0 2px' }}>...</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '11px', padding: '0 2px' }}>...</span>
           </>
         )}
         {pages.map(p => (
@@ -55,7 +56,7 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
         ))}
         {end < totalPages && (
           <>
-            <span style={{ color: 'var(--gray-text)', fontSize: '12px', padding: '0 2px' }}>...</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '11px', padding: '0 2px' }}>...</span>
             <button style={btnPageStyle(false)} onClick={() => setPage(totalPages)}>{totalPages}</button>
           </>
         )}
@@ -63,14 +64,15 @@ export default function Pagination({ page, setPage, totalPages, totalItems, page
           className="action-btn btn-next"
           disabled={page >= totalPages}
           onClick={() => setPage(page + 1)}
-          style={{ opacity: page >= totalPages ? 0.4 : 1, padding: '5px 10px', fontSize: '12px' }}
+          style={{ padding: '4px 8px', fontSize: '11px' }}
         >
           Siguiente <i className="fa-solid fa-chevron-right" />
         </button>
       </div>
-      <span style={{ fontSize: '13px', color: 'var(--gray-text)' }}>
+      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
         {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalItems)} de {totalItems}
       </span>
     </div>
   );
 }
+

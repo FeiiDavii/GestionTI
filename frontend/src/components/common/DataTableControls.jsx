@@ -16,27 +16,29 @@ export default function DataTableControls({
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: '15px',
+      marginBottom: '12px',
       flexWrap: 'wrap',
-      gap: '15px',
-      padding: '10px 15px',
-      background: 'var(--input-bg)',
-      borderRadius: '12px',
+      gap: '12px',
+      padding: '8px 12px',
+      background: 'var(--surface-secondary)',
+      borderRadius: '6px',
       border: '1px solid var(--border-color)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         {showPageSize && (
-          <div className="rows-per-page" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <label style={{ fontSize: '13px', color: 'var(--gray-text)', fontWeight: 500 }}>Mostrar</label>
+          <div className="rows-per-page" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Mostrar</label>
             <select
               style={{
-                padding: '6px 12px',
-                borderRadius: '8px',
+                padding: '4px 8px',
+                borderRadius: '4px',
                 border: '1px solid var(--border-color)',
-                background: 'var(--card-bg)',
+                background: 'var(--surface-primary)',
                 color: 'var(--text-color)',
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontFamily: 'var(--font-mono)'
               }}
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
@@ -47,27 +49,27 @@ export default function DataTableControls({
               <option value={100}>100</option>
               <option value={9999}>Todos</option>
             </select>
-            <label style={{ fontSize: '13px', color: 'var(--gray-text)', fontWeight: 500 }}>registros</label>
+            <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>registros</label>
           </div>
         )}
 
-        <div className="table-info" style={{ fontSize: '13px', color: 'var(--gray-text)' }}>
-          Mostrando {filteredItemsCount} de {totalItems} registros
+        <div className="table-info" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+          Mostrando <strong style={{ color: 'var(--text-color)', fontFamily: 'var(--font-mono)' }}>{filteredItemsCount}</strong> de <strong style={{ color: 'var(--text-color)', fontFamily: 'var(--font-mono)' }}>{totalItems}</strong> registros
         </div>
       </div>
 
       {showSearch && (
         <div className="search-box-modern" style={{
-          background: 'var(--card-bg)',
-          borderRadius: '20px',
-          padding: '6px 16px',
+          background: 'var(--surface-primary)',
+          borderRadius: '4px',
+          padding: '5px 10px',
           display: 'flex',
           alignItems: 'center',
-          width: '260px',
+          width: '240px',
           border: '1px solid var(--border-color)',
-          transition: 'all 0.3s'
+          transition: 'all 0.15s'
         }}>
-          <i className="fa-solid fa-search" style={{ color: 'var(--gray-text)', fontSize: '14px' }}></i>
+          <i className="fa-solid fa-search" style={{ color: 'var(--text-muted)', fontSize: '12px' }}></i>
           <input
             type="text"
             placeholder={searchPlaceholder}
@@ -78,9 +80,9 @@ export default function DataTableControls({
               background: 'transparent',
               outline: 'none',
               width: '100%',
-              marginLeft: '10px',
+              marginLeft: '8px',
               color: 'var(--text-color)',
-              fontSize: '13.5px'
+              fontSize: '12.5px'
             }}
           />
         </div>
@@ -88,3 +90,4 @@ export default function DataTableControls({
     </div>
   );
 }
+

@@ -1,37 +1,47 @@
-﻿/* ── Modern Technical Table ── */
+/* ── Modern Technical Table (Industrial Enterprise) ── */
 .modern-table {
   width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  font-variant-numeric: tabular-nums;
+  border-collapse: separate;
   border-spacing: 0;
+  table-layout: auto;
+  font-variant-numeric: tabular-nums;
 }
 .modern-table th {
-  background: var(--input-bg);
-  color: var(--gray-text);
-  font-weight: 700;
-  font-size: 0.75rem;
+  background: var(--surface-secondary);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 10px 16px;
-  border-bottom: 2px solid var(--border-color);
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-color);
   border-top: 1px solid var(--border-color);
   text-align: left;
   white-space: nowrap;
 }
 .modern-table td {
-  padding: 12px 16px;
-  font-size: 0.85rem;
+  padding: 10px 14px;
+  font-size: 13px;
   color: var(--text-color);
   border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
 }
 .modern-table tr {
-  transition: background-color 0.15s ease;
+  transition: background-color 0.12s ease;
 }
-.modern-table tr:hover {
+.modern-table tr:hover td {
   background-color: var(--hover-bg);
 }
 .modern-table td.text-muted {
-  color: var(--gray-text);
+  color: var(--text-muted);
 }
+.modern-table code, .modern-table .technical-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-color);
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+

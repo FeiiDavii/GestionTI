@@ -245,14 +245,38 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-[15px]">
-        <div style={{ cursor: 'pointer', position: 'relative' }} title="Atajos de teclado (Alt+Shift+K)" onClick={onOpenShortcuts}>
-          <i className="fa-regular fa-keyboard" style={{ fontSize: '18px', color: '#555', marginTop: '4px' }}></i>
-        </div>
+      <div className="flex items-center gap-[10px]">
+        {/* Toggle de Tema Rápido (Oscuro / Claro) */}
+        <button
+          type="button"
+          className="action-btn"
+          style={{ width: '34px', height: '34px', padding: 0 }}
+          title="Alternar Modo Oscuro / Claro"
+          onClick={() => {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            const next = !isDark;
+            document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+            localStorage.setItem('darkMode', next);
+            window.dispatchEvent(new Event('themechange'));
+          }}
+        >
+          <i className="fa-solid fa-circle-half-stroke" style={{ fontSize: '14px' }}></i>
+        </button>
+
+        <button
+          type="button"
+          className="action-btn"
+          style={{ height: '34px', padding: '0 10px', gap: '6px' }}
+          title="Atajos de teclado (Alt + ?)"
+          onClick={onOpenShortcuts}
+        >
+          <i className="fa-regular fa-keyboard" style={{ fontSize: '13px' }}></i>
+          <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)' }}>Alt+?</span>
+        </button>
 
         <div className="notification-wrapper" ref={notifRef}
-          style={{ marginRight: '15px', position: 'relative', cursor: 'pointer' }}>
-        <i className="fa-regular fa-bell" style={{ fontSize: '20px', color: '#555' }}
+          style={{ position: 'relative', cursor: 'pointer' }}>
+        <i className="fa-regular fa-bell" style={{ fontSize: '17px', color: 'var(--text-muted)' }}
           onClick={() => setShowNotif(!showNotif)}></i>
         {unreadCount > 0 && (
           <span className="badge-notification" style={{ display: 'block' }}>
