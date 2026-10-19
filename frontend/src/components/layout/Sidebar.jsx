@@ -33,9 +33,13 @@ export default function Sidebar({ mobileOpen, onCloseMobile }) {
       )}
       <aside className={`sidebar ${mobileOpen ? 'mobile-active' : ''}`}>
         <div className="brand">
-          <i className="fa-solid fa-microchip"></i>
-          <span style={{ fontWeight: 700, letterSpacing: '0.05em' }}>GestionTI</span>
-          <span className="brand-badge">OPS</span>
+          <div className="brand-icon-wrapper">
+            <i className="fa-solid fa-wave-square"></i>
+          </div>
+          <div className="brand-titles">
+            <span className="brand-name">GestionTI</span>
+            <span className="brand-sub">ITSM & Assets OS</span>
+          </div>
         </div>
 
         <ul className="nav-links">

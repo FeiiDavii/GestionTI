@@ -9,13 +9,19 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Aplica tema y sidebar ANTES de que React cargue para evitar flash -->
+    <!-- Aplica tema IndustryOS (oscuro por defecto) y sidebar ANTES de que React cargue -->
     <script>
       (function () {
         try {
-          var dark = localStorage.getItem('darkMode') === 'true';
+          var dark = localStorage.getItem('darkMode');
+          var isDark = dark === null ? true : dark === 'true';
           var compact = localStorage.getItem('sidebarCompact') === 'true';
-          if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+          if (isDark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            if (dark === null) localStorage.setItem('darkMode', 'true');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
           if (compact) document.documentElement.classList.add('sidebar-compact-pending');
         } catch (e) {}
       })();
