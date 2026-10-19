@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { bajasAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
 import Pagination from '../components/common/Pagination';
@@ -124,16 +123,21 @@ export default function Bajas() {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!formData.motivo?.trim() || formData.motivo.trim().length < 10) {
-      showToast('El mensaje debe tener al menos 6 caracteres', 'warning');
+      showToast('El motivo de la baja debe tener al menos 10 caracteres', 'warning');
+      return;
     }
 
     const confirmMsg = selectedAsset
       ? '¿Confirmar baja? El activo se marcará como "De baja" y desaparecerá del inventario activo.'
       : '¿Confirmar registro de baja manual?';
 
-    const confirmed = await Swal.fire({
-      title: '¿Procesar baja?', text: confirmMsg, icon: 'warning',
-      showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'Sí, procesar',
+    const confirmed = await showConfirm({
+      title: '¿Procesar baja?',
+      text: confirmMsg,
+      icon: 'warning',
+      confirmButtonText: 'Sí, procesar',
+      cancelButtonText: 'Cancelar',
+      confirmVariant: 'danger',
     });
     if (!confirmed.isConfirmed) return;
 
@@ -174,12 +178,12 @@ export default function Bajas() {
 
       const res = await bajasAPI.save(payload);
       if (res.data?.success) {
-        showToast('Baja registrada', 'success');
+        showToast('Baja registrada correctamente', 'success');
         setShowModal(false);
         resetForm();
         loadData();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al registrar la baja', 'error');
       }
     } catch (err) {
       showToast('Error de conexión', 'error');
@@ -288,7 +292,7 @@ export default function Bajas() {
         ) : (
           <div className="table-wrapper">
             <div style={{ padding: '12px 20px', fontSize: '13px', color: 'var(--gray-text)', borderBottom: '1px solid var(--border-color)' }}>
-              <i className="fa-solid fa-info-circle"></i> Sumatoria de bajas de elementos genéricos/insumos.
+              <i className="fa-solid fa-info-circle" style={{ marginRight: '6px' }}></i> Sumatoria de bajas de elementos genéricos/insumos.
             </div>
             <DataTableControls
               pageSize={pageSize}
@@ -319,7 +323,9 @@ export default function Bajas() {
                       <tr key={i}>
                         <td><strong>{c.categoria || ''}</strong></td>
                         <td>{c.marca || 'Genérico'}</td>
-                        <td style={{ color: '#dc3545', fontWeight: 700 }}>{c.total || c.cantidad_total || 0}</td>
+                        <td>
+                          <span className="ui-pill pill-rose">{c.total || c.cantidad_total || 0}</span>
+                        </td>
                         <td style={{ color: 'var(--gray-text)' }}>{c.ultimo || c.ultima ? new Date(c.ultimo || c.ultima).toLocaleDateString('es-CO') : '-'}</td>
                       </tr>
                     ));
@@ -342,18 +348,18 @@ export default function Bajas() {
       {/* Modal */}
       {showModal && (
         <div className="modal-overlay active" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '680px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
-                <i className="fa-solid fa-skull-crossbones" style={{ color: '#dc3545', marginRight: '8px' }}></i>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px', width: '92%' }}>
+            <div className="modal-header">
+              <h3>
+                <i className="fa-solid fa-skull-crossbones" style={{ color: 'var(--error-color)', marginRight: '8px' }}></i>
                 Registrar Baja
               </h3>
-              <button className="action-btn" onClick={() => setShowModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowModal(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleSave}>
-              <div style={{ padding: '25px' }}>
+              <div className="modal-body">
                 {/* Tipo de Elemento */}
                 <div className="form-group">
                   <label>Tipo de Elemento</label>
@@ -375,21 +381,23 @@ export default function Bajas() {
                     {/* Búsqueda */}
                     <div className="form-group">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <label>Buscar en Inventario</label>
-                        <button type="button" onClick={enableManualMode} style={{ fontSize: '12px', color: 'var(--primary-color)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>
+                        <label style={{ margin: 0 }}>Buscar en Inventario</label>
+                        <button type="button" onClick={enableManualMode} className="btn btn-ghost btn-sm" style={{ color: 'var(--primary-color)' }}>
                           <i className="fa-solid fa-pen-to-square"></i> Registrar externo
                         </button>
                       </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ position: 'relative', display: 'flex', gap: '6px' }}>
                         <input type="text" className="form-control" placeholder="Serial, Nombre o Modelo..." value={searchTerm}
                           onChange={(e) => handleSearch(e.target.value)} />
-                        {searching && <i className="fa-solid fa-circle-notch fa-spin" style={{ position: 'absolute', right: '50px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-text)' }}></i>}
+                        {searching && <i className="fa-solid fa-circle-notch fa-spin" style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--gray-text)' }}></i>}
                       </div>
                       {searchResults.length > 0 && (
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '6px', background: 'var(--card-bg)' }}>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '6px', background: 'var(--surface-primary)' }}>
                           {searchResults.map((item, i) => (
                             <div key={i} className="search-result-item" onClick={() => selectAsset(item)}
-                              style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontSize: '13px' }}>
+                              style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-color)', cursor: 'pointer', fontSize: '13px', transition: 'background 0.15s ease' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-bg)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                               <strong style={{ color: 'var(--text-color)' }}>{item.nombre || 'Activo'}</strong>
                               <span style={{ color: 'var(--gray-text)', marginLeft: '8px' }}>{item.nombre_marca || ''} {item.modelo || ''} ({item.serial || ''})</span>
                             </div>
@@ -400,9 +408,15 @@ export default function Bajas() {
 
                     {/* Detalles del activo */}
                     {(selectedAsset || manualMode) && (
-                      <div style={{ background: manualMode ? '#fff3cd' : 'var(--input-bg)', padding: '16px', borderRadius: '10px', border: manualMode ? '1px solid #ffc107' : 'none', marginTop: '10px' }}>
+                      <div style={{
+                        background: manualMode ? 'var(--warning-bg)' : 'var(--input-bg)',
+                        padding: '16px',
+                        borderRadius: '10px',
+                        border: manualMode ? '1px solid var(--warning-border)' : '1px solid var(--border-color)',
+                        marginTop: '10px'
+                      }}>
                         {manualMode && (
-                          <div style={{ marginBottom: '12px', fontSize: '13px', color: '#856404' }}>
+                          <div style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--warning-color)' }}>
                             <strong><i className="fa-solid fa-triangle-exclamation"></i> Modo Manual / Externo</strong><br />
                             Este elemento no se eliminará del inventario actual. Ingrese los datos para el registro histórico.
                           </div>
@@ -480,9 +494,9 @@ export default function Bajas() {
                 </div>
               </div>
 
-              <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-                <button type="button" className="action-btn" onClick={() => setShowModal(false)} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={saving} style={{ padding: '10px 20px', background: '#dc3545' }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-danger" disabled={saving}>
                   {saving ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Procesando...</> : <><i className="fa-solid fa-check"></i> Procesar Baja</>}
                 </button>
               </div>
@@ -490,12 +504,6 @@ export default function Bajas() {
           </div>
         </div>
       )}
-
-      <style>{`
-        .search-result-item:hover {
-          background: #f0f7ff !important;
-        }
-      `}</style>
     </div>
   );
 }

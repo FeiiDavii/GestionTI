@@ -96,6 +96,7 @@ export const notificationAPI = {
   list: () => api.get('/notifications'),
   send: (data) => api.post('/notifications/send', data),
   markRead: (id) => api.post('/notifications/mark-read', { id }),
+  markAllRead: () => api.post('/notifications/mark-all-read'),
   markReadByRelated: (data) => api.post('/notifications/mark-read-by-related', data)
 };
 

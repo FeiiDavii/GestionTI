@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { equipmentAPI, auxAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
 import Pagination from '../components/common/Pagination';
@@ -464,7 +463,7 @@ export default function Equipos() {
      Eliminar
      ----------------------------------------------------------------------- */
 
-  const handleDelete = async (item) => {
+  const handleDelete = (item) => {
     if (!canEliminar) {
       showToast('Sin permiso: No tienes permisos para eliminar registros.', 'warning');
       return;
@@ -472,32 +471,27 @@ export default function Equipos() {
 
     const valLabel = item.nombre_equipo || item.modelo || item.nombre_marca || item.nombre_area || item.tipo || item.ram_rom || item.serial || item.nombre || item.id;
 
-    const result = await Swal.fire({
+    showConfirm({
       title: '¿Eliminar registro?',
       text: `¿Estás seguro de eliminar "${valLabel}"? Esta acción no se puede deshacer.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#dc3545',
-      cancelButtonColor: '#6c757d',
+      icon: 'warning',
+      confirmVariant: 'danger',
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
-      reverseButtons: true,
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const res = await equipmentAPI.delete(item.id, activeTab);
-      const data_ = res.data;
-      if (data_.success) {
-        showToast('Eliminado correctamente', 'success');
-        loadAll();
-      } else {
-        showToast('Error: ' + (data_.message || 'No se pudo eliminar el registro.'), 'error');
+    }, async () => {
+      try {
+        const res = await equipmentAPI.delete(item.id, activeTab);
+        const data_ = res.data;
+        if (data_.success) {
+          showToast('Eliminado correctamente', 'success');
+          loadAll();
+        } else {
+          showToast('Error: ' + (data_.message || 'No se pudo eliminar el registro.'), 'error');
+        }
+      } catch (err) {
+        showToast('Error: ' + (err.response?.data?.message || 'Error al eliminar el registro.'), 'error');
       }
-    } catch (err) {
-      showToast('Error: ' + (err.response?.data?.message || 'Error al eliminar el registro.'), 'error');
-    }
+    });
   };
 
   /* -----------------------------------------------------------------------
@@ -605,15 +599,8 @@ export default function Equipos() {
               <strong>{row.nombre_equipo || row.nombre || '-'}</strong>
               {row.sistema_operativo && (
                 <span
-                  style={{
-                    fontSize: '10.5px',
-                    padding: '1px 6px',
-                    borderRadius: '4px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    color: 'var(--primary-color)',
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                    fontWeight: 600
-                  }}
+                  className="ui-pill pill-blue"
+                  style={{ fontSize: '10.5px', padding: '2px 8px' }}
                   title={`Sistema Operativo: ${row.sistema_operativo}`}
                 >
                   {row.sistema_operativo}
@@ -621,23 +608,16 @@ export default function Equipos() {
               )}
               {row.teamviewer_id && (
                 <span
-                  style={{
-                    fontSize: '10.5px',
-                    padding: '1px 6px',
-                    borderRadius: '4px',
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    color: '#059669',
-                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                    fontWeight: 500
-                  }}
+                  className="ui-pill pill-emerald"
+                  style={{ fontSize: '10.5px', padding: '2px 8px' }}
                   title={`TeamViewer ID: ${row.teamviewer_id}`}
                 >
-                  <i className="fa-solid fa-desktop" style={{ marginRight: '3px' }}></i>
+                  <i className="fa-solid fa-desktop"></i>
                   {row.teamviewer_id}
                 </span>
               )}
             </div>
-            <small className="text-gray-text">{row.procesador || ''}</small>
+            <small className="text-muted">{row.procesador || ''}</small>
           </>
         );
       case 'serial_info':
@@ -645,7 +625,7 @@ export default function Equipos() {
           <>
             <span>S: {row.serial || '-'}</span>
             <br />
-            <small className="text-gray-text">Int: {row.serial_interno || '-'}</small>
+            <small className="text-muted">Int: {row.serial_interno || '-'}</small>
           </>
         );
       case 'marca_modelo':
@@ -653,7 +633,7 @@ export default function Equipos() {
           <>
             <span>{row.nombre_marca || '-'}</span>
             <br />
-            <small className="text-gray-text">{row.modelo || ''}</small>
+            <small className="text-muted">{row.modelo || ''}</small>
           </>
         );
       case 'ubicacion':
@@ -663,7 +643,7 @@ export default function Equipos() {
           <>
             <span>{row.tipo || '-'}</span>
             <br />
-            <small className="text-gray-text">{row.ram_rom || ''}</small>
+            <small className="text-muted">{row.ram_rom || ''}</small>
           </>
         );
       case 'ubicacion_resp':
@@ -683,7 +663,7 @@ export default function Equipos() {
           <>
             <strong>Ext: {row.extension || '-'}</strong>
             <br />
-            <small className="text-gray-text">IP: {row.ip || '-'}</small>
+            <small className="text-muted">IP: {row.ip || '-'}</small>
           </>
         );
       case 'usuario':
@@ -721,7 +701,7 @@ export default function Equipos() {
       return (
         <div className="form-group" key={field}>
           <label>{label}{required && <span className="text-danger"> *</span>}</label>
-          <div className="select-with-quickadd" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className="select-with-quickadd">
             <div style={{ flex: 1, minWidth: 0 }}>
               <SearchableSelect
                 value={formData[field] || ''}
@@ -740,19 +720,6 @@ export default function Equipos() {
                 className="btn-quick-add"
                 title={`Agregar ${options.quickAddLabel || options.quickAddType}`}
                 onClick={() => openQuickAdd(options.quickAddType)}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--border-radius)',
-                  color: 'var(--primary-color)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
               >
                 <i className="fa-solid fa-plus"></i>
               </button>
@@ -1071,10 +1038,10 @@ export default function Equipos() {
 
     return (
       <div className="modal-overlay active" onClick={closeQuickAdd}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
           <div className="modal-header">
             <h3><i className="fa-solid fa-plus-circle"></i> Agregar {label}</h3>
-            <button className="action-btn" onClick={closeQuickAdd}>
+            <button type="button" className="btn-icon btn-ghost" onClick={closeQuickAdd}>
               <i className="fa-solid fa-xmark"></i>
             </button>
           </div>
@@ -1092,10 +1059,10 @@ export default function Equipos() {
             {extraFields}
           </div>
           <div className="modal-footer">
-            <button className="action-btn" onClick={closeQuickAdd}>
-              <i className="fa-solid fa-ban"></i> Cancelar
+            <button type="button" className="btn btn-secondary" onClick={closeQuickAdd}>
+              Cancelar
             </button>
-            <button className="btn-save" onClick={handleQuickAddSave} disabled={quickAddLoading}>
+            <button type="button" className="btn btn-primary" onClick={handleQuickAddSave} disabled={quickAddLoading}>
               {quickAddLoading ? (
                 <><i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...</>
               ) : (
@@ -1117,24 +1084,24 @@ export default function Equipos() {
 
     return (
       <div className="modal-overlay active" onClick={closeModal}>
-        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px' }}>
           <div className="modal-header">
             <h3>
               <i className={`fa-solid ${editingItem ? 'fa-pen-to-square' : 'fa-plus-circle'}`}></i>
               {getModalTitle()}
             </h3>
-            <button className="action-btn" onClick={closeModal}>
-              <i className="fa-solid fa-times"></i>
+            <button type="button" className="btn-icon btn-ghost" onClick={closeModal}>
+              <i className="fa-solid fa-xmark"></i>
             </button>
           </div>
           <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
             {renderFormFields()}
           </div>
           <div className="modal-footer">
-            <button className="action-btn" onClick={closeModal} style={{ padding: '10px 20px' }}>
-              <i className="fa-solid fa-ban"></i> Cancelar
+            <button type="button" className="btn btn-secondary" onClick={closeModal}>
+              Cancelar
             </button>
-            <button className="btn-save" onClick={handleSave} style={{ padding: '10px 20px' }}>
+            <button type="button" className="btn btn-primary" onClick={handleSave}>
               <i className="fa-solid fa-floppy-disk"></i> {editingItem ? 'Actualizar' : 'Guardar'}
             </button>
           </div>
@@ -1154,7 +1121,7 @@ export default function Equipos() {
       return (
         <div className="text-center py-5">
           <i className="fa-solid fa-circle-notch fa-spin text-3xl" style={{ color: 'var(--primary-color)' }}></i>
-          <p style={{ color: 'var(--gray-text)', marginTop: '10px' }}>Cargando datos...</p>
+          <p className="text-muted" style={{ marginTop: '10px' }}>Cargando datos...</p>
         </div>
       );
     }
@@ -1193,7 +1160,7 @@ export default function Equipos() {
               {displayData.length === 0 ? (
                 <tr>
                   <td colSpan={columns.length + (showActions ? 1 : 0)} className="text-center text-muted py-4">
-                    <i className="fa-solid fa-inbox fa-2x mb-2" style={{ display: 'block', color: 'var(--gray-text)' }}></i>
+                    <i className="fa-solid fa-inbox fa-2x mb-2" style={{ display: 'block', color: 'var(--text-muted)' }}></i>
                     No hay registros en esta categoría.
                   </td>
                 </tr>
@@ -1205,24 +1172,28 @@ export default function Equipos() {
                     ))}
                     {showActions && (
                       <td className="td-actions">
-                        {canCrearEditar && (
-                          <button
-                            className="btn-table btn-table-edit"
-                            title="Editar"
-                            onClick={() => openEditModal(row, activeTab)}
-                          >
-                            <i className="fa-solid fa-pen-to-square"></i>
-                          </button>
-                        )}
-                        {canEliminar && (
-                          <button
-                            className="btn-table btn-table-delete"
-                            title="Eliminar"
-                            onClick={() => handleDelete(row)}
-                          >
-                            <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          {canCrearEditar && (
+                            <button
+                              type="button"
+                              className="btn-table btn-table-edit"
+                              title="Editar"
+                              onClick={() => openEditModal(row, activeTab)}
+                            >
+                              <i className="fa-solid fa-pen-to-square"></i>
+                            </button>
+                          )}
+                          {canEliminar && (
+                            <button
+                              type="button"
+                              className="btn-table btn-table-delete"
+                              title="Eliminar"
+                              onClick={() => handleDelete(row)}
+                            >
+                              <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -1300,10 +1271,10 @@ export default function Equipos() {
       </div>
 
       {/* Tabs */}
-          <div className="inventory-tabs">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
+      <div className="inventory-tabs">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
             className={`inv-tab ${activeTab === tab.key ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.key)}
           >

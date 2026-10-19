@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, fireThemedSwal } from '../core/toast';
 import { authAPI } from '../api/client';
 
 export default function Login() {
@@ -18,43 +17,36 @@ export default function Login() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
 
   React.useEffect(() => {
-    // Mapeo de códigos de motivo a mensajes de alerta
     const REASON_MESSAGES = {
       1: {
         title: 'Sesión Finalizada',
         text: 'El administrador ha cerrado tu sesión de forma remota.',
         icon: 'warning',
-        iconColor: '#f6c23e',
       },
       2: {
         title: 'Cuenta Desactivada',
         text: 'Tu cuenta ha sido desactivada por un administrador. Comunícate con el soporte si crees que es un error.',
         icon: 'error',
-        iconColor: '#e74a3b',
       },
       3: {
         title: 'Permisos Actualizados',
         text: 'Tus permisos o rol han sido modificados. Por favor, inicia sesión nuevamente para aplicar los cambios.',
         icon: 'info',
-        iconColor: '#4a6cf7',
       },
     };
 
     const reasonCode = parseInt(searchParams.get('reason'), 10);
     if (reasonCode && REASON_MESSAGES[reasonCode]) {
-      const { title, text, icon, iconColor } = REASON_MESSAGES[reasonCode];
-      Swal.fire({
+      const { title, text, icon } = REASON_MESSAGES[reasonCode];
+      fireThemedSwal({
         icon,
-        iconColor,
         title,
         text,
-        confirmButtonColor: '#4a6cf7',
         confirmButtonText: 'Entendido',
       });
       return;
     }
 
-    // Compatibilidad con parámetro legacy ?error=
     const error = searchParams.get('error');
     if (error) {
       let msg = 'Credenciales incorrectas';
@@ -68,7 +60,7 @@ export default function Login() {
         msg = 'Tu sesión ha expirado. Por favor, ingresa de nuevo.';
         title = 'Sesión Expirada';
       }
-      Swal.fire({ icon, title, text: msg, confirmButtonColor: '#4a6cf7' });
+      fireThemedSwal({ icon, title, text: msg, confirmButtonText: 'Entendido' });
     }
   }, [searchParams]);
 
@@ -113,103 +105,132 @@ export default function Login() {
       <div className="login-wrapper">
         <div className="login-left">
           <div className="login-header">
-            <h2>Login</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+              <div className="brand-icon-wrapper" style={{ width: '34px', height: '34px', borderRadius: '10px', fontSize: '14px' }}>
+                <i className="fa-solid fa-wave-square"></i>
+              </div>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-color)', letterSpacing: '-0.01em' }}>GestionTI</span>
+            </div>
+            <h2>Iniciar Sesión</h2>
+            <p className="login-subtitle">Ingresa tus credenciales para acceder a la consola central.</p>
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Usuario o Correo"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required minLength={3}
-              />
+            <div className="form-group">
+              <label>Usuario o Identificador</label>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <input
+                  type="text"
+                  placeholder="ej. operador.ti"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  minLength={3}
+                />
+              </div>
             </div>
 
-            <div className="input-group">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Contraseña"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required minLength={4}
-              />
-              <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ cursor: 'pointer' }}></i>
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Contraseña</label>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={4}
+                />
+                <i
+                  className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}
+                  onClick={() => setShowPassword(!showPassword)}
+                ></i>
+              </div>
             </div>
 
-            <div className="form-actions">
-              <a href="#" className="forgot-pass"
-                onClick={(e) => { e.preventDefault(); setShowRecovery(true); }}>
-                ¿Olvidaste tu contraseña?
+            <div className="form-actions" style={{ marginTop: '16px' }}>
+              <a
+                href="#"
+                className="forgot-pass"
+                onClick={(e) => { e.preventDefault(); setShowRecovery(true); }}
+              >
+                ¿Problemas de acceso?
               </a>
             </div>
 
             <button type="submit" className="btn-login" disabled={loading}>
-              {loading ? 'Ingresando...' : 'Ingresar'}
+              {loading ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Autenticando...</> : 'Acceder al Sistema'}
             </button>
 
             <div className="signup-link">
-              Sistema de Gestión de Inventario v3.10.0
+              GESTION TI // ENTERPRISE CORE v3.10.0
             </div>
           </form>
         </div>
 
         <div className="login-right">
-          <div className="illustration" style={{
-            width: '80%', maxWidth: '300px', marginBottom: '20px',
-            animation: 'float 6s ease-in-out infinite',
-          }}>
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="40" y="30" width="120" height="140" rx="8" fill="#4a6cf7" opacity="0.15"/>
-              <rect x="50" y="40" width="100" height="80" rx="4" fill="#4a6cf7" opacity="0.3"/>
-              <circle cx="100" cy="95" r="25" fill="#4a6cf7" opacity="0.2"/>
-              <circle cx="100" cy="95" r="12" fill="#4a6cf7"/>
-              <rect x="55" y="135" width="30" height="4" rx="2" fill="#4a6cf7" opacity="0.4"/>
-              <rect x="55" y="145" width="60" height="4" rx="2" fill="#4a6cf7" opacity="0.3"/>
-              <rect x="55" y="155" width="45" height="4" rx="2" fill="#4a6cf7" opacity="0.2"/>
-            </svg>
-          </div>
-          <h3>Gestión Centralizada</h3>
-          <p>Control total de equipos, asignaciones y auditoría en una sola plataforma.</p>
-          <div style={{ marginTop: '20px', display: 'flex', gap: '5px' }}>
-            <span style={{ width: '25px', height: '4px', background: '#4a6cf7', borderRadius: '2px' }}></span>
-            <span style={{ width: '25px', height: '4px', background: '#dfe3f8', borderRadius: '2px' }}></span>
-            <span style={{ width: '25px', height: '4px', background: '#dfe3f8', borderRadius: '2px' }}></span>
+          <div className="login-right-content">
+            <div style={{
+              width: '80px',
+              height: '80px',
+              margin: '0 auto 22px',
+              background: 'var(--surface-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '20px',
+              boxShadow: 'var(--shadow-md)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--accent-emerald)',
+              fontSize: '32px'
+            }}>
+              <i className="fa-solid fa-network-wired"></i>
+            </div>
+            <h3>Operaciones & Infraestructura</h3>
+            <p>Monitoreo unificado de inventario tecnológico, ciclo de vida de tickets y topología de red en tiempo real.</p>
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className="ui-pill pill-emerald">ITSM 2.0</span>
+              <span className="ui-pill pill-blue">ITAM CORE</span>
+              <span className="ui-pill pill-cyan">SSE TELEMETRY</span>
+            </div>
           </div>
         </div>
       </div>
 
       {showRecovery && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowRecovery(false)}>
-          <div className="modal-content" style={{ width: '480px' }}>
+          <div className="modal-content" style={{ width: '480px', maxWidth: '95vw' }}>
             <div className="modal-header">
               <h3>
-                <i className="fa-solid fa-key" style={{ color: 'var(--primary-color)' }}></i> Recuperar Acceso
+                <i className="fa-solid fa-key"></i> Recuperar Acceso
               </h3>
-              <button className="action-btn" onClick={() => setShowRecovery(false)}>
+              <button className="btn-icon" onClick={() => setShowRecovery(false)} aria-label="Cerrar">
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleRecovery}>
               <div className="modal-body">
-                <p style={{ fontSize: '13px', color: 'var(--gray-text)', marginBottom: '20px', lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.55 }}>
                   Ingresa tu nombre de usuario. El sistema enviará una notificación automática a los administradores.
                 </p>
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Nombre de Usuario</label>
-                  <input type="text" className="form-control" value={recoveryUsername}
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={recoveryUsername}
                     onChange={(e) => setRecoveryUsername(e.target.value)}
-                    placeholder="Ej: jperez" required minLength={3} />
+                    placeholder="Ej: jperez"
+                    required
+                    minLength={3}
+                  />
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="action-btn" onClick={() => setShowRecovery(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowRecovery(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-save" disabled={recoveryLoading}>
+                <button type="submit" className="btn btn-primary" disabled={recoveryLoading}>
                   <i className="fa-solid fa-paper-plane"></i> {recoveryLoading ? 'Enviando...' : 'Notificar'}
                 </button>
               </div>

@@ -22,10 +22,10 @@ function ProtectedRoute({ children, requiredPermiso }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-app)' }}>
         <div className="text-center">
-          <i className="fa-solid fa-circle-notch fa-spin text-4xl text-[#4a6cf7]"></i>
-          <p className="mt-4 text-[#888]">Cargando...</p>
+          <i className="fa-solid fa-circle-notch fa-spin text-4xl" style={{ color: 'var(--primary-color)' }}></i>
+          <p className="mt-4 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Cargando...</p>
         </div>
       </div>
     );
@@ -50,10 +50,10 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-app)' }}>
         <div className="text-center">
-          <i className="fa-solid fa-circle-notch fa-spin text-4xl text-[#4a6cf7]"></i>
-          <p className="mt-4 text-[#888]">Inicializando...</p>
+          <i className="fa-solid fa-circle-notch fa-spin text-4xl" style={{ color: 'var(--primary-color)' }}></i>
+          <p className="mt-4 text-sm font-medium" style={{ color: 'var(--text-muted)' }}>Inicializando...</p>
         </div>
       </div>
     );

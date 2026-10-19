@@ -150,6 +150,7 @@ $routes = [
     '/notifications'          => ['NotificationController', 'list'],
     '/notifications/send'     => ['NotificationController', 'send'],
     '/notifications/mark-read' => ['NotificationController', 'markRead'],
+    '/notifications/mark-all-read' => ['NotificationController', 'markAllRead'],
     '/notifications/mark-read-by-related' => ['NotificationController', 'markReadByRelated'],
     '/reports/generate'       => ['ReportController', 'generate'],
     '/reports/listas'         => ['ReportController', 'listas'],

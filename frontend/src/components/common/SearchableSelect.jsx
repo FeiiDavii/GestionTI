@@ -15,28 +15,37 @@ export default function SearchableSelect({
   const customStyles = {
     control: (provided, state) => ({
       ...provided,
-      backgroundColor: 'var(--input-bg)',
-      borderColor: state.isFocused ? 'var(--primary-color)' : 'rgba(255, 255, 255, 0.08)',
-      boxShadow: state.isFocused ? '0 0 0 4px rgba(74, 108, 247, 0.15)' : 'none',
-      borderRadius: '12px',
-      padding: '2px',
-      minHeight: '48px',
-      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+      backgroundColor: state.isFocused ? 'var(--surface-primary)' : 'var(--input-bg)',
+      borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--border-color)',
+      boxShadow: state.isFocused ? '0 0 0 3px var(--primary-light)' : 'none',
+      borderRadius: 'var(--radius-md, 10px)',
+      padding: '0 6px',
+      minHeight: '40px',
+      fontSize: '13.5px',
+      transition: 'background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease',
       cursor: isDisabled ? 'not-allowed' : 'pointer',
       opacity: isDisabled ? 0.6 : 1,
+      '&:hover': {
+        borderColor: state.isFocused ? 'var(--primary-color)' : 'var(--border-strong)',
+      },
+    }),
+    valueContainer: (provided) => ({
+      ...provided,
+      padding: '2px 6px',
     }),
     menu: (provided) => ({
       ...provided,
-      backgroundColor: 'var(--card-bg)',
+      backgroundColor: 'var(--surface-primary)',
       borderRadius: '12px',
       border: '1px solid var(--border-color)',
-      boxShadow: '0 10px 40px var(--shadow-color)',
+      boxShadow: 'var(--shadow-lg)',
       zIndex: 9999,
       overflow: 'hidden',
+      marginTop: '6px',
     }),
     menuList: (provided) => ({
       ...provided,
-      padding: 0,
+      padding: '6px',
     }),
     option: (provided, state) => ({
       ...provided,
@@ -45,50 +54,57 @@ export default function SearchableSelect({
         : state.isFocused
         ? 'var(--hover-bg)'
         : 'transparent',
-      color: state.isSelected ? '#fff' : 'var(--text-color)',
-      padding: '12px 16px',
+      color: state.isSelected ? '#FFFFFF' : 'var(--text-color)',
+      padding: '9px 12px',
+      borderRadius: '8px',
+      fontSize: '13.5px',
+      fontWeight: state.isSelected ? 600 : 500,
       cursor: 'pointer',
-      transition: 'all 0.2s',
+      transition: 'background-color 0.12s ease, color 0.12s ease',
       ':active': {
         backgroundColor: 'var(--primary-color)',
-        color: '#fff',
+        color: '#FFFFFF',
       },
     }),
     singleValue: (provided) => ({
       ...provided,
       color: 'var(--text-color)',
+      fontSize: '13.5px',
+      fontWeight: 500,
     }),
     input: (provided) => ({
       ...provided,
       color: 'var(--text-color)',
+      fontSize: '13.5px',
     }),
     placeholder: (provided) => ({
       ...provided,
-      color: 'var(--gray-text)',
+      color: 'var(--text-tertiary)',
+      fontSize: '13.5px',
     }),
     indicatorSeparator: () => ({
       display: 'none',
     }),
     dropdownIndicator: (provided) => ({
       ...provided,
-      color: 'var(--gray-text)',
+      color: 'var(--text-muted)',
+      padding: '6px',
       ':hover': {
         color: 'var(--primary-color)',
       },
     }),
     clearIndicator: (provided) => ({
       ...provided,
-      color: 'var(--gray-text)',
+      color: 'var(--text-muted)',
+      padding: '6px',
       ':hover': {
         color: 'var(--error-color)',
       },
     }),
   };
 
-  // Convert generic options array to { value, label } if not already in that format
   const formattedOptions = (options || []).map((opt) => {
     if (opt.value !== undefined && opt.label !== undefined) return opt;
-    // Default to id and nombre if properties exist
     return {
       value: opt.id || opt.value || opt,
       label: opt.nombre || opt.nombre_completo || opt.nombre_equipo || opt.nombre_area || opt.nombre_marca || opt.tipo || opt.ram_rom || opt.label || String(opt),

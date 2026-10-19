@@ -3,26 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useRealtime } from '../../context/RealtimeContext';
 import { searchAPI, notificationAPI, auxAPI } from '../../api/client';
-import Swal from 'sweetalert2';
 import { showToast } from '../../core/toast';
 import DOMPurify from 'dompurify';
 import SearchableSelect from '../common/SearchableSelect';
 import { avatarUrl } from '../../config';
 
-// Iniciales locales cuando no hay proveedor de avatar configurado (VITE_AVATAR_URL)
 function getInitials(name) {
   if (!name) return 'U';
   return name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
-// ─── Sanitiza HTML del mensaje y convierte links del sistema original ─────────
-// El backend almacena HTML con links como /gestion-tickets?ticket_id=X
-// DOMPurify elimina scripts/eventos maliciosos pero conserva <a>, <b>, <br>, <i>
 function sanitizeMsg(html) {
   if (!html) return '';
-  // Convertir links del sistema PHP original a rutas React
-  // gestion_tickets.php?ticket_id=X  →  /gestion-tickets?ticket_id=X
-  // tickets.php?ticket_id=X          →  /tickets?ticket_id=X
   let clean = html
     .replace(/href=['"]gestion_tickets\.php\?ticket_id=(\d+)['"]/gi,
              "href='/gestion-tickets?ticket_id=$1' data-react-link='true'")
@@ -34,7 +26,6 @@ function sanitizeMsg(html) {
   });
 }
 
-// Extrae texto plano del HTML para el preview en el dropdown
 function stripHtml(html) {
   if (!html) return '';
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -48,7 +39,6 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
     setNotifications,
     setUnreadCount,
     setMuted: setRealtimeMuted,
-    mutedRef,
   } = useRealtime();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,7 +59,6 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
   const searchTimeout = useRef(null);
   const msgBodyRef = useRef(null);
 
-  // Sincronizar mute con el contexto de tiempo real
   const handleToggleMute = (e) => {
     e.stopPropagation();
     const newVal = !muted;
@@ -77,20 +66,16 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
     setRealtimeMuted(newVal);
   };
 
-  // Interceptar clicks en links del modal para navegar con React Router
-  // (los links generados por el backend apuntan a rutas React internas)
   const handleMsgBodyClick = useCallback((e) => {
     const anchor = e.target.closest('a[href]');
     if (!anchor) return;
     const href = anchor.getAttribute('href');
     if (!href) return;
-    // Si es un link interno de React (empieza con /)
     if (href.startsWith('/')) {
       e.preventDefault();
       setShowReadModal(false);
       navigate(href);
     }
-    // Links externos se abren normalmente
   }, [navigate]);
 
   useEffect(() => {
@@ -127,7 +112,6 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
     setReadingNotif(notif);
     setShowReadModal(true);
     setShowNotif(false);
-    // Marcar como leída en background y actualizar estado local
     if (notif.leido == 0) {
       try {
         await notificationAPI.markRead(notif.id);
@@ -139,12 +123,30 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
     }
   };
 
+  const markAllAsRead = async (e) => {
+    if (e) e.stopPropagation();
+    const unreadItems = notifications.filter(n => n.leido == 0);
+    if (unreadCount === 0 && unreadItems.length === 0) return;
+
+    setNotifications(prev => prev.map(n => ({ ...n, leido: 1 })));
+    setUnreadCount(0);
+
+    try {
+      await notificationAPI.markAllRead();
+      showToast('Todas las notificaciones marcadas como leídas', 'success');
+    } catch {
+      try {
+        await Promise.allSettled(unreadItems.map(n => notificationAPI.markRead(n.id)));
+        showToast('Todas las notificaciones marcadas como leídas', 'success');
+      } catch { /* ignore */ }
+    }
+  };
+
   const loadUsers = async () => {
     try {
       const res = await auxAPI.users();
       if (res.data.success) {
         const rawUsers = res.data.data?.users || res.data.data || [];
-        // El backend alias: nombre_completo → nombre. Normalizamos ambos casos.
         const normalized = rawUsers.map(u => ({
           ...u,
           nombre_completo: u.nombre_completo || u.nombre || u.username || `Usuario #${u.id}`,
@@ -166,7 +168,7 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
       } else {
         showToast('Error de conexión', 'error');
       }
-    } catch (err) {
+    } catch {
       showToast('Error de conexión', 'error');
     }
     setSendingNotif(false);
@@ -193,35 +195,51 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
 
   return (
     <>
-    <header className="top-bar">
-      <div className="flex items-center gap-[15px] flex-grow">
-        <button className="mobile-menu-btn" onClick={onToggleMobile}>
-          <i className="fa-solid fa-bars"></i>
-        </button>
+      <header className="top-bar">
+        <div className="flex items-center gap-3.5 flex-grow">
+          <button className="mobile-menu-btn" onClick={onToggleMobile} aria-label="Abrir menú">
+            <i className="fa-solid fa-bars"></i>
+          </button>
 
-        <div className="search-box" ref={searchRef}>
           {esAdministrativo() && (
-            <>
-              <i className="fa-solid fa-magnifying-glass" style={{ color: '#888' }}></i>
+            <div className="search-box" ref={searchRef}>
+              <i className="fa-solid fa-magnifying-glass" style={{ color: 'var(--text-tertiary)', fontSize: '14px' }}></i>
               <input
                 type="text"
-                placeholder="Buscar..."
+                placeholder="Buscar activos, tickets y más..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 onFocus={() => searchQuery.trim().length >= 2 && setShowSearch(true)}
                 onKeyDown={(e) => e.key === 'Escape' && setShowSearch(false)}
               />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setShowSearch(false); }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '0 4px' }}
+                  title="Limpiar búsqueda"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              ) : (
+                <span className="search-shortcut-badge">Alt+Shift+K</span>
+              )}
+
               {showSearch && (
                 <div className="search-results-container active">
                   {searchResults.length === 0 ? (
-                    <div className="p-5 text-center text-[#888]">
-                      <i className="fa-solid fa-search text-2xl mb-2 opacity-50"></i>
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '20px', marginBottom: '8px', opacity: 0.45, display: 'block' }}></i>
                       <div>No se encontraron resultados</div>
                     </div>
                   ) : (
                     searchResults.map((item, idx) => (
-                      <a key={idx} href={item.url} className="search-item"
-                        onClick={(e) => { e.preventDefault(); navigate(item.url); setShowSearch(false); }}>
+                      <a
+                        key={idx}
+                        href={item.url}
+                        className="search-item"
+                        onClick={(e) => { e.preventDefault(); navigate(item.url); setShowSearch(false); }}
+                      >
                         <div className="item-icon">
                           <i className={`fa-solid ${item.icon || 'fa-file'}`}></i>
                         </div>
@@ -234,160 +252,236 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
                     ))
                   )}
                   {searchResults.length > 0 && (
-                    <div className="p-2.5 border-t border-[var(--border-color)] flex justify-between items-center">
-                      <small className="text-[#888]">{searchResults.length} resultado(s)</small>
+                    <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <small style={{ color: 'var(--text-muted)', fontSize: '11.5px' }}>{searchResults.length} resultado(s)</small>
                     </div>
                   )}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
-      </div>
 
-      <div className="flex items-center gap-[15px]">
-        <div style={{ cursor: 'pointer', position: 'relative' }} title="Atajos de teclado (Alt+Shift+K)" onClick={onOpenShortcuts}>
-          <i className="fa-regular fa-keyboard" style={{ fontSize: '18px', color: '#555', marginTop: '4px' }}></i>
-        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="action-btn btn-sm"
+            style={{ height: '38px', borderRadius: 'var(--radius-pill)', padding: '0 14px' }}
+            title="Atajos de teclado (Alt + ?)"
+            onClick={onOpenShortcuts}
+          >
+            <i className="fa-regular fa-keyboard" style={{ fontSize: '13px', color: 'var(--text-muted)' }}></i>
+            <span style={{ fontSize: '11.5px', fontFamily: 'var(--font-mono)' }}>Alt+?</span>
+          </button>
 
-        <div className="notification-wrapper" ref={notifRef}
-          style={{ marginRight: '15px', position: 'relative', cursor: 'pointer' }}>
-        <i className="fa-regular fa-bell" style={{ fontSize: '20px', color: '#555' }}
-          onClick={() => setShowNotif(!showNotif)}></i>
-        {unreadCount > 0 && (
-          <span className="badge-notification" style={{ display: 'block' }}>
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
+          <div
+            className="notification-wrapper"
+            ref={notifRef}
+            onClick={() => setShowNotif(!showNotif)}
+            title="Notificaciones"
+          >
+            <i className="fa-solid fa-bell" style={{ fontSize: '15px', color: 'var(--text-muted)' }}></i>
+            {unreadCount > 0 && (
+              <span className="badge-notification">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
 
-        {showNotif && (
-          <div className="notification-dropdown" style={{ display: 'block' }}>
-            <div className="notif-header">
-              <h4>Notificaciones</h4>
-              <div className="flex gap-2.5 items-center">
-                <i className={`fa-solid ${muted ? 'fa-volume-xmark' : 'fa-bell'}`}
-                  style={{ cursor: 'pointer', color: muted ? '#888' : 'var(--primary-color)', fontSize: '14px' }}
-                  onClick={handleToggleMute}>
-                </i>
-                {(permisos.conf_basica || permisos.conf_roles) && (
-                  <button className="action-btn" style={{ fontSize: '11px', padding: '4px 8px' }}
-                    onClick={openSendModal}>
-                    <i className="fa-solid fa-plus"></i> Nuevo
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="notif-list">
-              {notifications.length === 0 ? (
-                <div className="notif-empty">No tienes notificaciones recientes</div>
-              ) : (
-                notifications.map((n) => (
-                  <div key={n.id}
-                    className={`notif-item ${n.leido == 0 && n.tipo !== 'global' ? 'unread' : ''} ${n.leido == 0 ? 'slide-in' : ''}`}
-                    onClick={() => markAsRead(n)}>
-                    <div className="notif-title">
-                      {n.tipo === 'global'
-                        ? <i className="fa-solid fa-earth-americas" style={{ color: 'var(--info-color)' }}></i>
-                        : <i className="fa-solid fa-user" style={{ color: 'var(--primary-color)' }}></i>}
-                      {' '}{n.titulo}
-                      {n.leido == 0 && n.tipo !== 'global' && (
-                        <small style={{ float:'right', color:'red', fontSize:'9px', fontWeight:'bold' }}>NUEVO</small>
-                      )}
-                    </div>
-                    {/* Preview en texto plano — el HTML completo se ve al abrir el modal */}
-                    <div className="notif-msg">{stripHtml(n.mensaje)}</div>
-                    <div className="notif-meta">
-                      <span>{n.remitente_nombre}</span>
-                      <span>{n.fecha ? new Date(n.fecha).toLocaleDateString() : ''}</span>
-                    </div>
+            {showNotif && (
+              <div className="notification-dropdown active" onClick={(e) => e.stopPropagation()}>
+                <div className="notif-header">
+                  <h4>Notificaciones</h4>
+                  <div className="flex gap-1.5 items-center">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      style={{
+                        height: '28px',
+                        padding: '0 8px',
+                        fontSize: '11.5px',
+                        gap: '5px',
+                        opacity: unreadCount > 0 ? 1 : 0.45,
+                        cursor: unreadCount > 0 ? 'pointer' : 'default'
+                      }}
+                      onClick={markAllAsRead}
+                      disabled={unreadCount === 0}
+                      title="Marcar todas como leídas"
+                    >
+                      <i
+                        className="fa-solid fa-check-double"
+                        style={{ color: unreadCount > 0 ? 'var(--primary-color)' : 'var(--text-muted)', fontSize: '12px' }}
+                      ></i>
+                      <span>Leídas</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      style={{ width: '28px', height: '28px' }}
+                      onClick={handleToggleMute}
+                      title={muted ? 'Activar sonido de notificaciones' : 'Silenciar notificaciones'}
+                    >
+                      <i
+                        className={`fa-solid ${muted ? 'fa-volume-xmark' : 'fa-bell'}`}
+                        style={{ color: muted ? 'var(--text-muted)' : 'var(--primary-color)', fontSize: '12.5px' }}
+                      ></i>
+                    </button>
+                    {(permisos.conf_basica || permisos.conf_roles) && (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={openSendModal}
+                      >
+                        <i className="fa-solid fa-plus"></i> Nuevo
+                      </button>
+                    )}
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+                <div className="notif-list">
+                  {notifications.length === 0 ? (
+                    <div className="notif-empty">No tienes notificaciones recientes</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`notif-item ${n.leido == 0 && n.tipo !== 'global' ? 'unread' : ''} ${n.leido == 0 ? 'slide-in' : ''}`}
+                        onClick={() => markAsRead(n)}
+                      >
+                        <div className="notif-title">
+                          {n.tipo === 'global'
+                            ? <i className="fa-solid fa-earth-americas" style={{ color: 'var(--info-color)' }}></i>
+                            : <i className="fa-solid fa-user" style={{ color: 'var(--primary-color)' }}></i>}
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {n.titulo}
+                          </span>
+                          {n.leido == 0 && n.tipo !== 'global' && (
+                            <span className="ui-pill pill-emerald" style={{ padding: '2px 8px', fontSize: '10px' }}>Nuevo</span>
+                          )}
+                        </div>
+                        <div className="notif-msg">{stripHtml(n.mensaje)}</div>
+                        <div className="notif-meta">
+                          <span>{n.remitente_nombre}</span>
+                          <span>{n.fecha ? new Date(n.fecha).toLocaleDateString() : ''}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      </div>
 
-      <div className="user-profile" ref={profileRef}>
-        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', position: 'relative' }}
-          onClick={() => setShowProfile(!showProfile)}>
-          <div className="user-info" style={{ textAlign: 'right', marginRight: '12px' }}>
-            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>{user?.nombre || 'Usuario'}</h4>
-            <small style={{ color: '#888', fontSize: '11px' }}>{user?.username}</small>
-          </div>
-          {avatarUrl(user?.nombre || 'U', 128) ? (
-            <img
-              src={avatarUrl(user?.nombre || 'U', 128)}
-              alt="Avatar"
-              style={{ width: '42px', height: '42px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
-            />
-          ) : (
-            <div
-              style={{ width: '42px', height: '42px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '18px', fontWeight: 700, color: '#fff', border: '2px solid #fff',
-                background: 'linear-gradient(135deg, var(--primary-color), var(--info-color))',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}
-            >
-              {getInitials(user?.nombre)}
+          <div className="user-profile" ref={profileRef} onClick={() => setShowProfile(!showProfile)}>
+            {avatarUrl(user?.nombre || 'U', 128) ? (
+              <img
+                src={avatarUrl(user?.nombre || 'U', 128)}
+                alt="Avatar"
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid var(--border-color)',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: '#FFFFFF',
+                  background: 'linear-gradient(135deg, var(--primary-color), var(--accent-emerald))',
+                  boxShadow: 'var(--shadow-sm)',
+                  flexShrink: 0,
+                }}
+              >
+                {getInitials(user?.nombre)}
+              </div>
+            )}
+            <div className="user-info" style={{ textAlign: 'left' }}>
+              <h4>{user?.nombre || 'Usuario'}</h4>
+              <small>{user?.username}</small>
             </div>
-          )}
-          <i className="fa-solid fa-chevron-down" style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}></i>
+            <i className="fa-solid fa-chevron-down" style={{ fontSize: '11px', color: 'var(--text-muted)' }}></i>
 
-          {showProfile && (
-            <div className="profile-dropdown" style={{ display: 'block', opacity: 1, visibility: 'visible', transform: 'translateY(0)' }}>
-              <Link to="/perfil" className="dropdown-item" onClick={() => setShowProfile(false)}>
-                <i className="fa-regular fa-user"></i> <span>Mi Perfil</span>
-              </Link>
-              {(permisos.conf_basica || permisos.conf_roles || permisos.rep_generar) && (
-                <Link to="/configuracion?tab=sistema" className="dropdown-item" onClick={() => setShowProfile(false)}>
-                  <i className="fa-solid fa-server"></i> <span>Auditoría</span>
+            {showProfile && (
+              <div className="profile-dropdown active" onClick={(e) => e.stopPropagation()}>
+                <Link to="/perfil" className="dropdown-item" onClick={() => setShowProfile(false)}>
+                  <i className="fa-regular fa-user"></i> <span>Mi Perfil</span>
                 </Link>
-              )}
-              <div className="dropdown-divider"></div>
-              <a href="#" className="dropdown-item" style={{ color: '#dc3545' }}
-                onClick={(e) => { e.preventDefault(); logout(); }}>
-                <i className="fa-solid fa-arrow-right-from-bracket"></i> <span>Cerrar Sesión</span>
-              </a>
-            </div>
-          )}
+                {(permisos.conf_basica || permisos.conf_roles || permisos.rep_generar) && (
+                  <Link to="/configuracion?tab=sistema" className="dropdown-item" onClick={() => setShowProfile(false)}>
+                    <i className="fa-solid fa-server"></i> <span>Auditoría</span>
+                  </Link>
+                )}
+                <div className="dropdown-divider"></div>
+                <a
+                  href="#"
+                  className="dropdown-item"
+                  style={{ color: 'var(--error-color)' }}
+                  onClick={(e) => { e.preventDefault(); logout(); }}
+                >
+                  <i className="fa-solid fa-arrow-right-from-bracket" style={{ color: 'var(--error-color)' }}></i>
+                  <span>Cerrar Sesión</span>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
 
       {/* MODAL LEER NOTIFICACIÓN */}
       {showReadModal && readingNotif && (
         <div className="modal-overlay active" onClick={(e) => { if (e.target === e.currentTarget) setShowReadModal(false); }}>
-          <div className="modal-content" style={{ width: '520px', padding: '0', overflow: 'hidden', borderRadius: '20px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(74,108,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)', fontSize: '16px' }}>
-                  <i className="fa-solid fa-envelope-open-text"></i>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>{readingNotif.titulo}</h3>
-                  <small style={{ color: 'var(--gray-text)', fontSize: '12px' }}>Mensaje del sistema</small>
-                </div>
-              </div>
-              <button className="action-btn" onClick={() => setShowReadModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ width: '520px', maxWidth: '95vw' }}>
+            <div className="modal-header">
+              <h3>
+                <i className="fa-solid fa-envelope-open-text"></i>
+                {readingNotif.titulo}
+              </h3>
+              <button className="btn-icon" onClick={() => setShowReadModal(false)} aria-label="Cerrar">
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            <div style={{ padding: '25px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--gray-text)', marginBottom: '15px', background: 'var(--input-bg)', padding: '12px 15px', borderRadius: '10px' }}>
-                <span><i className="fa-solid fa-user" style={{ marginRight: '5px' }}></i>De: <strong style={{ color: 'var(--text-color)' }}>{readingNotif.remitente_nombre}</strong></span>
-                <span><i className="fa-regular fa-clock" style={{ marginRight: '5px' }}></i>{new Date(readingNotif.fecha).toLocaleString()}</span>
+            <div className="modal-body">
+              <div className="detail-row" style={{ marginBottom: '16px' }}>
+                <span>
+                  <i className="fa-solid fa-user" style={{ marginRight: '6px', color: 'var(--primary-color)' }}></i>
+                  De: <strong style={{ color: 'var(--text-color)' }}>{readingNotif.remitente_nombre}</strong>
+                </span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11.5px' }}>
+                  <i className="fa-regular fa-clock" style={{ marginRight: '5px' }}></i>
+                  {new Date(readingNotif.fecha).toLocaleString()}
+                </span>
               </div>
-              <div className="notif-msg-body" style={{ background: 'var(--card-bg)', padding: '18px', borderRadius: '12px', fontSize: '14px', lineHeight: 1.6, color: 'var(--text-color)', border: '1px solid var(--border-color)', minHeight: '80px' }}
+              <div
+                className="notif-msg-body"
+                style={{
+                  background: 'var(--surface-secondary)',
+                  padding: '18px',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  lineHeight: 1.6,
+                  color: 'var(--text-color)',
+                  border: '1px solid var(--border-color)',
+                  minHeight: '80px',
+                }}
                 ref={msgBodyRef}
                 onClick={handleMsgBodyClick}
                 dangerouslySetInnerHTML={{ __html: sanitizeMsg(readingNotif.mensaje) }}
               />
             </div>
-            <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-              <button type="button" className="action-btn" onClick={() => setShowReadModal(false)} style={{ padding: '10px 20px' }}>Cerrar</button>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowReadModal(false)}>
+                Cerrar
+              </button>
               {readingNotif.id_remitente && (
-                <button type="button" className="btn-save" onClick={replyToNotification} style={{ padding: '10px 20px' }}>
+                <button type="button" className="btn btn-primary" onClick={replyToNotification}>
                   <i className="fa-solid fa-reply"></i> Responder
                 </button>
               )}
@@ -399,63 +493,90 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
       {/* MODAL ENVIAR NOTIFICACIÓN */}
       {showSendModal && (
         <div className="modal-overlay active" onClick={(e) => { if (e.target === e.currentTarget) setShowSendModal(false); }}>
-          <div className="modal-content" style={{ width: '520px', padding: '0', overflow: 'hidden', borderRadius: '20px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(74,108,247,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)', fontSize: '16px' }}>
-                  <i className="fa-solid fa-paper-plane"></i>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>Nuevo Comunicado</h3>
-                  <small style={{ color: 'var(--gray-text)', fontSize: '12px' }}>Enviar notificación a usuarios</small>
-                </div>
-              </div>
-              <button className="action-btn" onClick={() => setShowSendModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ width: '520px', maxWidth: '95vw' }}>
+            <div className="modal-header">
+              <h3>
+                <i className="fa-solid fa-paper-plane"></i>
+                Nuevo Comunicado
+              </h3>
+              <button className="btn-icon" onClick={() => setShowSendModal(false)} aria-label="Cerrar">
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            <form onSubmit={handleSendNotif} style={{ padding: '25px' }}>
-              <div className="form-group">
-                <label><i className="fa-solid fa-heading" style={{ marginRight: '5px', color: 'var(--primary-color)' }}></i>Título <span style={{ color: 'var(--error-color)' }}>*</span></label>
-                <input type="text" className="form-control" required placeholder="Asunto del comunicado..."
-                  value={sendForm.titulo}
-                  onChange={(e) => setSendForm({ ...sendForm, titulo: e.target.value })} />
-              </div>
-              <div className="form-group">
-                <label><i className="fa-solid fa-users" style={{ marginRight: '5px', color: 'var(--primary-color)' }}></i>Tipo de Envío</label>
-                <select className="form-control"
-                  value={sendForm.tipo}
-                  onChange={(e) => setSendForm({ ...sendForm, tipo: e.target.value })}>
-                  {permisos.conf_roles && <option value="global">Global (Todos los usuarios)</option>}
-                  <option value="personal">Directo (Un usuario específico)</option>
-                </select>
-              </div>
-              {sendForm.tipo === 'personal' && (
+            <form onSubmit={handleSendNotif}>
+              <div className="modal-body">
                 <div className="form-group">
-                  <label><i className="fa-solid fa-user-check" style={{ marginRight: '5px', color: 'var(--primary-color)' }}></i>Destinatario <span style={{ color: 'var(--error-color)' }}>*</span></label>
-                  <SearchableSelect
-                    options={users.map(u => ({ value: u.id, label: u.nombre_completo }))}
-                    value={sendForm.id_destinatario !== '' ? Number(sendForm.id_destinatario) : null}
-                    onChange={(val) => setSendForm({ ...sendForm, id_destinatario: val ?? '' })}
-                    placeholder="-- Buscar usuario --"
-                    isClearable={true}
+                  <label>
+                    <i className="fa-solid fa-heading" style={{ marginRight: '6px', color: 'var(--primary-color)' }}></i>
+                    Título <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    required
+                    placeholder="Asunto del comunicado..."
+                    value={sendForm.titulo}
+                    onChange={(e) => setSendForm({ ...sendForm, titulo: e.target.value })}
                   />
                 </div>
-              )}
-              <div className="form-group">
-                <label><i className="fa-solid fa-message" style={{ marginRight: '5px', color: 'var(--primary-color)' }}></i>Mensaje <span style={{ color: 'var(--error-color)' }}>*</span></label>
-                <textarea className="form-control" rows="4" required placeholder="Escriba aquí el contenido del mensaje..."
-                  value={sendForm.mensaje}
-                  onChange={(e) => setSendForm({ ...sendForm, mensaje: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); document.getElementById('sendNotifBtn').click(); } }}>
-                </textarea>
-                <small style={{ color: 'var(--gray-text)', fontSize: '11px', marginTop: '5px', display: 'block' }}>
-                  <i className="fa-solid fa-circle-info"></i> Presiona <strong>Enter</strong> para enviar, <strong>Shift + Enter</strong> para nueva línea.
-                </small>
+                <div className="form-group">
+                  <label>
+                    <i className="fa-solid fa-users" style={{ marginRight: '6px', color: 'var(--primary-color)' }}></i>
+                    Tipo de Envío
+                  </label>
+                  <select
+                    className="form-control"
+                    value={sendForm.tipo}
+                    onChange={(e) => setSendForm({ ...sendForm, tipo: e.target.value })}
+                  >
+                    {permisos.conf_roles && <option value="global">Global (Todos los usuarios)</option>}
+                    <option value="personal">Directo (Un usuario específico)</option>
+                  </select>
+                </div>
+                {sendForm.tipo === 'personal' && (
+                  <div className="form-group">
+                    <label>
+                      <i className="fa-solid fa-user-check" style={{ marginRight: '6px', color: 'var(--primary-color)' }}></i>
+                      Destinatario <span className="text-danger">*</span>
+                    </label>
+                    <SearchableSelect
+                      options={users.map(u => ({ value: u.id, label: u.nombre_completo }))}
+                      value={sendForm.id_destinatario !== '' ? Number(sendForm.id_destinatario) : null}
+                      onChange={(val) => setSendForm({ ...sendForm, id_destinatario: val ?? '' })}
+                      placeholder="-- Buscar usuario --"
+                      isClearable={true}
+                    />
+                  </div>
+                )}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>
+                    <i className="fa-solid fa-message" style={{ marginRight: '6px', color: 'var(--primary-color)' }}></i>
+                    Mensaje <span className="text-danger">*</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows="4"
+                    required
+                    placeholder="Escriba aquí el contenido del mensaje..."
+                    value={sendForm.mensaje}
+                    onChange={(e) => setSendForm({ ...sendForm, mensaje: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        document.getElementById('sendNotifBtn')?.click();
+                      }
+                    }}
+                  />
+                  <small className="text-muted" style={{ fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
+                    <i className="fa-solid fa-circle-info"></i> Presiona <strong>Enter</strong> para enviar, <strong>Shift + Enter</strong> para nueva línea.
+                  </small>
+                </div>
               </div>
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px', marginTop: '5px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" className="action-btn" onClick={() => setShowSendModal(false)} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button id="sendNotifBtn" type="submit" className="btn-save" style={{ padding: '10px 25px' }} disabled={sendingNotif}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowSendModal(false)}>
+                  Cancelar
+                </button>
+                <button id="sendNotifBtn" type="submit" className="btn btn-primary" disabled={sendingNotif}>
                   {sendingNotif ? <><i className="fa-solid fa-spinner fa-spin"></i> Enviando...</> : <><i className="fa-solid fa-paper-plane"></i> Enviar</>}
                 </button>
               </div>

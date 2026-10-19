@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { maintenanceAPI, equipmentAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
 import Pagination from '../components/common/Pagination';
@@ -195,46 +194,45 @@ export default function Mantenimientos() {
       return;
     }
 
-    Swal.fire({
+    const result = await showConfirm({
       title: '¿Confirmar registro del mantenimiento?',
+      text: `Se registrará un evento de "${tipoMaint}" en la hoja de vida del equipo.`,
       icon: 'question',
-      showCancelButton: true,
       confirmButtonText: 'Sí, registrar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: 'var(--primary-color)'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const payload = {
-            id_equipo: selectedEquipo.id,
-            tipo: tipoMaint,
-            fecha: mantenimientoForm.fecha || new Date().toISOString().split('T')[0],
-            observaciones: obs,
-            razon: raz,
-            id_configuracion: tipoMaint === 'Repotenciacion' ? (mantenimientoForm.id_configuracion || null) : null
-          };
-
-          const res = await maintenanceAPI.save(payload);
-          if (res.data.success) {
-            showToast(res.data.message || 'Mantenimiento registrado correctamente', 'success');
-            setMantenimientoForm({
-              fecha: new Date().toISOString().split('T')[0],
-              observaciones: '',
-              razon: '',
-              id_configuracion: ''
-            });
-            setActiveTab('historial');
-            await loadHVDetails(selectedEquipo.id);
-            await loadInitialData();
-          } else {
-            showToast(res.data.message || 'Error al registrar mantenimiento', 'error');
-          }
-        } catch (err) {
-          console.error('Error registrando mantenimiento:', err);
-          showToast(err.response?.data?.message || 'Error de conexión al guardar', 'error');
-        }
-      }
     });
+
+    if (result.isConfirmed) {
+      try {
+        const payload = {
+          id_equipo: selectedEquipo.id,
+          tipo: tipoMaint,
+          fecha: mantenimientoForm.fecha || new Date().toISOString().split('T')[0],
+          observaciones: obs,
+          razon: raz,
+          id_configuracion: tipoMaint === 'Repotenciacion' ? (mantenimientoForm.id_configuracion || null) : null
+        };
+
+        const res = await maintenanceAPI.save(payload);
+        if (res.data.success) {
+          showToast(res.data.message || 'Mantenimiento registrado correctamente', 'success');
+          setMantenimientoForm({
+            fecha: new Date().toISOString().split('T')[0],
+            observaciones: '',
+            razon: '',
+            id_configuracion: ''
+          });
+          setActiveTab('historial');
+          await loadHVDetails(selectedEquipo.id);
+          await loadInitialData();
+        } else {
+          showToast(res.data.message || 'Error al registrar mantenimiento', 'error');
+        }
+      } catch (err) {
+        console.error('Error registrando mantenimiento:', err);
+        showToast(err.response?.data?.message || 'Error de conexión al guardar', 'error');
+      }
+    }
   };
 
   // Generate PDF technical report
@@ -434,45 +432,33 @@ export default function Mantenimientos() {
       <div className="inventory-header">
         <div className="page-title-row">
           <h2><i className="fa-solid fa-clipboard-list"></i> Hoja de Vida y Mantenimientos</h2>
-          <div style={{ position: 'relative', width: '280px' }}>
-            <i className="fa-solid fa-search" style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--gray-text)', zIndex: 1, fontSize: '14px' }}></i>
-            <input className="form-control" type="text" placeholder="Buscar equipo..."
-              value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: '34px', paddingTop: '8px', paddingBottom: '8px' }} />
-          </div>
         </div>
       </div>
 
+      {/* Tabs activos / de baja */}
+      <div className="inventory-tabs">
+        <button
+          className={`inv-tab ${listaTab === 'activos' ? 'active' : ''}`}
+          onClick={() => { setListaTab('activos'); setPage(1); }}
+        >
+          <i className="fa-solid fa-desktop"></i> En Servicio
+          <span className="ui-pill pill-blue" style={{ marginLeft: '6px', padding: '1px 7px', fontSize: '0.7rem' }}>{equipos.length}</span>
+        </button>
+        <button
+          className={`inv-tab ${listaTab === 'baja' ? 'active' : ''}`}
+          onClick={() => { setListaTab('baja'); setPage(1); }}
+        >
+          <i className="fa-solid fa-skull-crossbones"></i> Dados de Baja
+          {equiposBaja.length > 0 && (
+            <span className="ui-pill pill-rose" style={{ marginLeft: '6px', padding: '1px 7px', fontSize: '0.7rem' }}>{equiposBaja.length}</span>
+          )}
+        </button>
+      </div>
+
       {loading ? (
-        <div className="text-center p-5"><i className="fa-solid fa-circle-notch fa-spin text-3xl text-[#4a6cf7]"></i></div>
+        <div className="text-center p-5"><i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '28px', color: 'var(--primary-color)' }}></i></div>
       ) : (
         <div className="table-wrapper">
-          {/* Tabs activos / de baja */}
-          <div className="inventory-tabs" style={{ marginBottom: 0, borderBottom: '1px solid var(--border-color)' }}>
-            <button
-              className={`inv-tab ${listaTab === 'activos' ? 'active' : ''}`}
-              onClick={() => { setListaTab('activos'); setPage(1); }}
-            >
-              <i className="fa-solid fa-desktop"></i> En Servicio
-              <span style={{
-                marginLeft: '6px', background: 'rgba(74,108,247,0.12)', color: 'var(--primary-color)',
-                borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 700
-              }}>{equipos.length}</span>
-            </button>
-            <button
-              className={`inv-tab ${listaTab === 'baja' ? 'active' : ''}`}
-              onClick={() => { setListaTab('baja'); setPage(1); }}
-            >
-              <i className="fa-solid fa-skull-crossbones"></i> Dados de Baja
-              {equiposBaja.length > 0 && (
-                <span style={{
-                  marginLeft: '6px', background: 'rgba(220,53,69,0.12)', color: '#dc3545',
-                  borderRadius: '10px', padding: '1px 7px', fontSize: '11px', fontWeight: 700
-                }}>{equiposBaja.length}</span>
-              )}
-            </button>
-          </div>
-
           <DataTableControls
             pageSize={pageSize}
             setPageSize={setPageSize}
@@ -480,7 +466,6 @@ export default function Mantenimientos() {
             setSearchTerm={setSearchQuery}
             totalItems={listaTab === 'activos' ? equipos.length : equiposBaja.length}
             filteredItemsCount={listaTab === 'activos' ? filteredEquipos.length : filteredEquiposBaja.length}
-            hideSearch={true}
           />
           <div className="table-scroll">
             <table className="data-table">
@@ -510,11 +495,11 @@ export default function Mantenimientos() {
                         <td>{eq.nombre_marca || eq.marca || '-'}</td>
                         <td>{eq.serial || '-'}</td>
                         <td>{eq.nombre_area || eq.area || '-'}</td>
-                        <td style={{ color: 'var(--primary-color)', fontWeight: 500 }}>
+                        <td style={{ color: eq.responsable ? 'var(--primary-color)' : 'var(--gray-text)', fontWeight: eq.responsable ? 500 : 400 }}>
                           {eq.responsable || 'Sin asignar'}
                         </td>
                         <td className="text-center">
-                          <button className="action-btn" title="Ver Hoja de Vida" onClick={() => openHVModal(eq)}>
+                          <button className="btn-table" title="Ver Hoja de Vida" onClick={() => openHVModal(eq)}>
                             <i className="fa-solid fa-eye"></i>
                           </button>
                         </td>
@@ -527,10 +512,10 @@ export default function Mantenimientos() {
                 ) : (
                   <>
                     {paginatedEquiposBaja.map(eq => (
-                      <tr key={eq.id} style={{ opacity: 0.85 }}>
+                      <tr key={eq.id} style={{ opacity: 0.88 }}>
                         <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            <i className="fa-solid fa-skull-crossbones" style={{ color: '#dc3545', fontSize: '11px' }}></i>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <i className="fa-solid fa-skull-crossbones" style={{ color: 'var(--error-color)', fontSize: '12px' }}></i>
                             <div>
                               <strong>{eq.nombre_equipo || '-'}</strong>
                               <br />
@@ -541,15 +526,16 @@ export default function Mantenimientos() {
                         <td>{eq.nombre_marca || '-'}</td>
                         <td>{eq.serial || '-'}</td>
                         <td>{eq.nombre_area || '-'}</td>
-                        <td style={{ color: '#dc3545', fontSize: '12px' }}>
-                          {eq.fecha_baja ? new Date(eq.fecha_baja).toLocaleDateString('es-CO') : '-'}
+                        <td>
+                          {eq.fecha_baja ? (
+                            <span className="ui-pill pill-rose">{new Date(eq.fecha_baja).toLocaleDateString('es-CO')}</span>
+                          ) : '-'}
                         </td>
                         <td className="text-center">
                           <button
-                            className="action-btn"
+                            className="btn-table btn-table-delete"
                             title="Ver Hoja de Vida (solo lectura)"
                             onClick={() => openHVModal(eq)}
-                            style={{ color: '#dc3545' }}
                           >
                             <i className="fa-solid fa-file-lines"></i>
                           </button>
@@ -588,9 +574,9 @@ export default function Mantenimientos() {
               {/* Banner de equipo de baja */}
               {selectedEquipoDetails?.equipo?.estado === 'De baja' && (
                 <div style={{
-                  background: 'rgba(220,53,69,0.1)', borderBottom: '2px solid #dc3545',
+                  background: 'var(--error-bg)', borderBottom: '1px solid var(--error-border)',
                   padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '10px',
-                  fontSize: '13px', color: '#dc3545', fontWeight: 600
+                  fontSize: '13px', color: 'var(--error-color)', fontWeight: 600
                 }}>
                   <i className="fa-solid fa-skull-crossbones"></i>
                   Este equipo está dado de baja
@@ -606,7 +592,7 @@ export default function Mantenimientos() {
               {/* Modal Header */}
               <div className="hv-header">
                 <div>
-                  <h3 style={{ margin: 0, color: 'var(--text-color)', fontSize: '1.25rem', fontWeight: 700 }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-color)', fontSize: '1.15rem', fontWeight: 700 }}>
                     <i className="fa-solid fa-server" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                     {selectedEquipoDetails?.equipo?.nombre_equipo || selectedEquipo.nombre_equipo}
                   </h3>
@@ -615,11 +601,11 @@ export default function Mantenimientos() {
                     {selectedEquipoDetails?.equipo?.serial_interno && ` | Int: ${selectedEquipoDetails.equipo.serial_interno}`}
                   </small>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button className="btn-save" onClick={generatePDF} style={{ background: '#e74a3b', padding: '8px 16px', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={generatePDF}>
                     <i className="fa-solid fa-file-pdf"></i> PDF
                   </button>
-                  <button className="action-btn" onClick={closeHVModal} style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <button type="button" className="btn-icon btn-ghost" onClick={closeHVModal}>
                     <i className="fa-solid fa-times"></i>
                   </button>
                 </div>
@@ -627,7 +613,7 @@ export default function Mantenimientos() {
 
               {detailLoading ? (
                 <div className="text-center p-5 flex-grow flex items-center justify-center">
-                  <i className="fa-solid fa-circle-notch fa-spin text-4xl text-[#4a6cf7]"></i>
+                  <i className="fa-solid fa-circle-notch fa-spin" style={{ fontSize: '36px', color: 'var(--primary-color)' }}></i>
                 </div>
               ) : (
                 <div className="hv-body">
@@ -816,7 +802,7 @@ export default function Mantenimientos() {
                       {canEdit && (
                         <>
                           <div className="form-group" style={{ marginTop: '10px' }}>
-                            <label style={{ color: '#e74a3b', fontWeight: 600 }}>Justificación de Cambios (Obligatorio)</label>
+                            <label style={{ color: 'var(--error-color)', fontWeight: 600 }}>Justificación de Cambios (Obligatorio)</label>
                             <textarea
                               className="form-control"
                               rows="2"
@@ -827,7 +813,7 @@ export default function Mantenimientos() {
                             />
                           </div>
 
-                          <button type="submit" className="btn-save" style={{ width: '100%', marginTop: '6px', justifyContent: 'center' }}>
+                          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '6px' }}>
                             <i className="fa-solid fa-floppy-disk"></i> Guardar Cambios Ficha
                           </button>
                         </>
@@ -900,11 +886,10 @@ export default function Mantenimientos() {
                           </div>
                           <button
                             type="button"
-                            className="btn-save"
-                            style={{ background: 'var(--success-color)', borderColor: 'var(--success-color)', boxShadow: '0 4px 12px rgba(40,167,69,0.3)' }}
+                            className="btn btn-primary"
                             onClick={() => saveMaintenance('Mantenimiento Preventivo')}
                           >
-                            Registrar
+                            <i className="fa-solid fa-check"></i> Registrar Preventivo
                           </button>
                         </div>
                       )}
@@ -959,11 +944,10 @@ export default function Mantenimientos() {
                           </div>
                           <button
                             type="button"
-                            className="btn-save"
-                            style={{ background: 'var(--error-color)', borderColor: 'var(--error-color)', boxShadow: '0 4px 12px rgba(220,53,69,0.3)' }}
+                            className="btn btn-danger"
                             onClick={() => saveMaintenance('Mantenimiento Correctivo')}
                           >
-                            Registrar
+                            <i className="fa-solid fa-wrench"></i> Registrar Correctivo
                           </button>
                         </div>
                       )}
@@ -1030,11 +1014,10 @@ export default function Mantenimientos() {
                           </div>
                           <button
                             type="button"
-                            className="btn-save"
-                            style={{ background: 'var(--warning-color)', borderColor: 'var(--warning-color)', color: '#212529', boxShadow: '0 4px 12px rgba(255,193,7,0.3)' }}
+                            className="btn btn-primary"
                             onClick={() => saveMaintenance('Repotenciacion')}
                           >
-                            Registrar
+                            <i className="fa-solid fa-arrow-up-right-dots"></i> Registrar Repotenciación
                           </button>
                         </div>
                       )}
@@ -1043,7 +1026,7 @@ export default function Mantenimientos() {
                       {activeTab === 'historial' && (
                         <div style={{ flexGrow: 1, paddingRight: '5px' }}>
                           {!selectedEquipoDetails?.mantenimientos || selectedEquipoDetails.mantenimientos.length === 0 ? (
-                            <div className="text-center text-muted" style={{ padding: '30px var(--card-bg)' }}>
+                            <div className="text-center" style={{ padding: '30px', color: 'var(--gray-text)' }}>
                               Sin historial registrado.
                             </div>
                           ) : (
