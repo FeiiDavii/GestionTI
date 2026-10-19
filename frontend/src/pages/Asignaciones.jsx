@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { assignmentAPI, auxAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
 import Pagination from '../components/common/Pagination';
@@ -180,14 +179,13 @@ export default function Asignaciones() {
   };
 
   const handleDeleteArticle = async (art) => {
-    const confirm = await Swal.fire({
+    const confirm = await showConfirm({
       title: '¿Eliminar artículo?',
       text: `Se eliminará "${art.nombre}". Esta acción no se puede deshacer.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#dc3545',
+      icon: 'warning',
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
+      confirmVariant: 'danger',
       reverseButtons: true
     });
     if (!confirm.isConfirmed) return;
@@ -315,11 +313,10 @@ export default function Asignaciones() {
   };
 
   const handleUndoAssignment = async (asig) => {
-    const confirm = await Swal.fire({
+    const confirm = await showConfirm({
       title: '¿Deshacer asignación?',
       text: `El artículo "${asig.nombre_articulo || ''}" volverá al stock disponible.`,
       icon: 'question',
-      showCancelButton: true,
       confirmButtonText: 'Sí, deshacer',
       cancelButtonText: 'Cancelar',
       reverseButtons: true
@@ -477,20 +474,19 @@ export default function Asignaciones() {
                           </td>
                           <td><small style={{ color: 'var(--gray-text)' }}>{art.caracteristicas || '-'}</small></td>
                           <td className="text-center">
-                            <span className={`badge-role ${disponible > 0 ? 'avanzado' : 'administrador'}`} title="Disponible" style={{ marginRight: '6px' }}>
-                              <i className="fa-solid fa-box" style={{ marginRight: '4px' }}></i> {disponible}
+                            <span className={`ui-pill ${disponible > 0 ? 'pill-emerald' : 'pill-rose'}`} title="Disponible" style={{ marginRight: '6px' }}>
+                              <i className="fa-solid fa-box"></i> {disponible} disp.
                             </span>
-                            <span className="badge-role consulta" title="Asignados">
-                              <i className="fa-solid fa-user-check" style={{ marginRight: '4px' }}></i> {asignado}
+                            <span className="ui-pill pill-cyan" title="Asignados">
+                              <i className="fa-solid fa-user-check"></i> {asignado} asig.
                             </span>
                           </td>
                           <td className="td-actions">
-                            <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                               {puedeCrearEditar && (
                                 <>
                                   {disponible > 0 && (
-                                    <button className="btn-table" title="Asignar" onClick={() => openAsignar(art)}
-                                      style={{ background: 'rgba(74,108,247,0.1)', color: 'var(--primary-color)', borderRadius: '8px', padding: '6px 10px' }}>
+                                    <button className="btn-table" title="Asignar" onClick={() => openAsignar(art)}>
                                       <i className="fa-solid fa-hand-holding-hand"></i>
                                     </button>
                                   )}
@@ -577,21 +573,22 @@ export default function Asignaciones() {
                               {getNombreDestino(asig)}
                             </>
                           ) : (
-                            <span style={{ color: 'red' }}>Desconocido</span>
+                            <span className="ui-pill pill-rose">Desconocido</span>
                           )}
                         </td>
                         <td>
-                          {asig.id_usuario ? 'Personal' : asig.id_area ? 'Área' : asig.id_equipo ? 'Equipo' : '-'}
+                          <span className="ui-pill pill-slate">
+                            {asig.id_usuario ? 'Personal' : asig.id_area ? 'Área' : asig.id_equipo ? 'Equipo' : '-'}
+                          </span>
                         </td>
                         <td className="td-actions">
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             {puedeCrearEditar && (
                               <>
                                 <button className="btn-table btn-table-edit" title="Cambiar destino" onClick={() => openEditAsignacion(asig)}>
                                   <i className="fa-solid fa-pen"></i>
                                 </button>
-                                <button className="btn-table" title="Deshacer (Regresar a Stock)" onClick={() => handleUndoAssignment(asig)}
-                                  style={{ background: 'rgba(255,193,7,0.1)', color: '#856404', borderRadius: '8px', padding: '6px 10px' }}>
+                                <button className="btn-table" title="Deshacer (Regresar a Stock)" onClick={() => handleUndoAssignment(asig)}>
                                   <i className="fa-solid fa-rotate-left"></i>
                                 </button>
                               </>
@@ -632,17 +629,17 @@ export default function Asignaciones() {
       {showArticleModal && (
         <div className="modal-overlay active" onClick={() => setShowArticleModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-box" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                 {editArticle ? 'Editar Artículo' : 'Nuevo Artículo'}
               </h3>
-              <button className="action-btn" onClick={() => setShowArticleModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowArticleModal(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleArticleSubmit}>
-              <div className="modal-body" style={{ padding: '25px' }}>
+              <div className="modal-body">
                 <div className="form-row">
                   <div className="form-group">
                     <label>Nombre <span className="text-danger">*</span></label>
@@ -656,32 +653,17 @@ export default function Asignaciones() {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Marca</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <div style={{ flex: 1 }}>
-                        <SearchableSelect
-                          value={articleForm.id_marca}
-                          onChange={(val) => setArticleForm(p => ({ ...p, id_marca: val }))}
-                          options={marcas.map(m => ({ value: m.id, label: m.nombre_marca || m.nombre }))}
-                        />
-                      </div>
+                    <div className="select-with-quickadd">
+                      <SearchableSelect
+                        value={articleForm.id_marca}
+                        onChange={(val) => setArticleForm(p => ({ ...p, id_marca: val }))}
+                        options={marcas.map(m => ({ value: m.id, label: m.nombre_marca || m.nombre }))}
+                      />
                       <button
                         type="button"
                         className="btn-quick-add"
                         title="Agregar Marca"
                         onClick={() => openQuickAdd('marca')}
-                        style={{
-                          width: '38px',
-                          height: '38px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'var(--input-bg)',
-                          border: '1px solid var(--border-color)',
-                          borderRadius: 'var(--border-radius)',
-                          color: 'var(--primary-color)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
                       >
                         <i className="fa-solid fa-plus"></i>
                       </button>
@@ -697,9 +679,9 @@ export default function Asignaciones() {
                   <input type="text" className="form-control" name="caracteristicas" value={articleForm.caracteristicas} onChange={handleArticleChange} placeholder="Ej: DDR4 16GB 3200MHz" />
                 </div>
               </div>
-              <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-                <button type="button" className="action-btn" onClick={() => setShowArticleModal(false)} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={savingArticle} style={{ padding: '10px 20px' }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowArticleModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingArticle}>
                   {savingArticle ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...</> : <><i className="fa-solid fa-floppy-disk"></i> {editArticle ? 'Actualizar' : 'Crear'}</>}
                 </button>
               </div>
@@ -712,17 +694,17 @@ export default function Asignaciones() {
       {showAssignModal && (
         <div className="modal-overlay active" onClick={() => setShowAssignModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-hand-holding-hand" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                 Asignar Artículo
               </h3>
-              <button className="action-btn" onClick={() => setShowAssignModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowAssignModal(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleAssignSubmit}>
-              <div className="modal-body" style={{ padding: '25px' }}>
+              <div className="modal-body">
                 <div className="form-group">
                   <label>Artículo a Asignar <span className="text-danger">*</span></label>
                   <SearchableSelect
@@ -736,18 +718,17 @@ export default function Asignaciones() {
                 </div>
                 <div className="form-group">
                   <label>Asignar a: <span className="text-danger">*</span></label>
-                  <select
-                    className="form-control"
-                    name="tipo_destino"
+                  <SearchableSelect
                     value={assignForm.tipo_destino}
-                    onChange={(e) => setAssignForm(p => ({ ...p, tipo_destino: e.target.value, id_usuario: '', id_area: '', id_equipo: '' }))}
-                    required
-                  >
-                    <option value="">Seleccione...</option>
-                    <option value="funcionario">Funcionario</option>
-                    <option value="area">Área</option>
-                    <option value="equipo">Equipo</option>
-                  </select>
+                    onChange={(val) => setAssignForm(p => ({ ...p, tipo_destino: val, id_usuario: '', id_area: '', id_equipo: '' }))}
+                    options={[
+                      { value: 'funcionario', label: 'Funcionario' },
+                      { value: 'area', label: 'Área' },
+                      { value: 'equipo', label: 'Equipo' }
+                    ]}
+                    placeholder="Seleccione..."
+                    isClearable={false}
+                  />
                 </div>
                 {assignForm.tipo_destino === 'funcionario' && (
                   <div className="form-group">
@@ -780,9 +761,9 @@ export default function Asignaciones() {
                   </div>
                 )}
               </div>
-              <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-                <button type="button" className="action-btn" onClick={() => setShowAssignModal(false)} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={savingAssign} style={{ padding: '10px 20px' }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingAssign}>
                   {savingAssign ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Asignando...</> : <><i className="fa-solid fa-check"></i> Asignar</>}
                 </button>
               </div>
@@ -795,31 +776,30 @@ export default function Asignaciones() {
       {showEditAssignModal && (
         <div className="modal-overlay active" onClick={() => setShowEditAssignModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-pen-to-square" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                 Editar Asignación
               </h3>
-              <button className="action-btn" onClick={() => setShowEditAssignModal(false)} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowEditAssignModal(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleEditAssignSubmit}>
-              <div className="modal-body" style={{ padding: '25px' }}>
+              <div className="modal-body">
                 <div className="form-group">
                   <label>Cambiar Destino a: <span className="text-danger">*</span></label>
-                  <select
-                    className="form-control"
-                    name="tipo_destino"
+                  <SearchableSelect
                     value={editAssignForm.tipo_destino}
-                    onChange={(e) => setEditAssignForm(p => ({ ...p, tipo_destino: e.target.value, id_usuario: '', id_area: '', id_equipo: '' }))}
-                    required
-                  >
-                    <option value="">Seleccione...</option>
-                    <option value="funcionario">Funcionario</option>
-                    <option value="area">Área</option>
-                    <option value="equipo">Equipo</option>
-                  </select>
+                    onChange={(val) => setEditAssignForm(p => ({ ...p, tipo_destino: val, id_usuario: '', id_area: '', id_equipo: '' }))}
+                    options={[
+                      { value: 'funcionario', label: 'Funcionario' },
+                      { value: 'area', label: 'Área' },
+                      { value: 'equipo', label: 'Equipo' }
+                    ]}
+                    placeholder="Seleccione..."
+                    isClearable={false}
+                  />
                 </div>
                 {editAssignForm.tipo_destino === 'funcionario' && (
                   <div className="form-group">
@@ -852,9 +832,9 @@ export default function Asignaciones() {
                   </div>
                 )}
               </div>
-              <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-                <button type="button" className="action-btn" onClick={() => setShowEditAssignModal(false)} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={savingEditAssign} style={{ padding: '10px 20px' }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditAssignModal(false)}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingEditAssign}>
                   {savingEditAssign ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...</> : <><i className="fa-solid fa-floppy-disk"></i> Actualizar</>}
                 </button>
               </div>
@@ -867,17 +847,17 @@ export default function Asignaciones() {
       {quickAddOpen && (
         <div className="modal-overlay active" onClick={closeQuickAdd} style={{ zIndex: 2100 }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-plus-circle" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                 Agregar Marca
               </h3>
-              <button className="action-btn" onClick={closeQuickAdd} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={closeQuickAdd}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleQuickAddSave}>
-              <div className="modal-body" style={{ padding: '25px' }}>
+              <div className="modal-body">
                 <div className="form-group">
                   <label>Nombre de la Marca <span className="text-danger">*</span></label>
                   <input
@@ -891,9 +871,9 @@ export default function Asignaciones() {
                   />
                 </div>
               </div>
-              <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-                <button type="button" className="action-btn" onClick={closeQuickAdd} style={{ padding: '10px 20px' }}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={quickAddLoading} style={{ padding: '10px 20px' }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeQuickAdd}>Cancelar</button>
+                <button type="submit" className="btn btn-primary" disabled={quickAddLoading}>
                   {quickAddLoading ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...</> : <><i className="fa-solid fa-floppy-disk"></i> Guardar</>}
                 </button>
               </div>

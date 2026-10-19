@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { auxAPI, permissionAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import Pagination from '../components/common/Pagination';
 import DataTableControls from '../components/common/DataTableControls';
+import SearchableSelect from '../components/common/SearchableSelect';
 
 const TABS = [
   { id: 'apariencia', label: 'Apariencia', icon: 'fa-palette' },
@@ -116,10 +116,8 @@ const KEYWORDS_PREDEFINIDAS = [
   { keyword: 'permiso', prioridad: 'Baja' }
 ];
 
-const ITEMS_PER_PAGE = 10; // mantenido por compatibilidad, ya no se usa directo
-
 export default function Configuracion() {
-  const { user, permisos, hasPermission, logout } = useAuth();
+  const { user, permisos, hasPermission } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Persistir tab activo en sessionStorage para que sobreviva un refresh
@@ -154,11 +152,11 @@ export default function Configuracion() {
 
   // --- Sistema ---
   const [configSistema, setConfigSistema] = useState(null);
-  const [dbInfo, setDbInfo] = useState(null);
+  const [, setDbInfo] = useState(null);
   const [backupRunning, setBackupRunning] = useState(false);
   const [backupImporting, setBackupImporting] = useState(false);
   const fileInputRef = useRef(null);
-  const [widgetsCompartidos, setWidgetsCompartidos] = useState([]);
+  const [, setWidgetsCompartidos] = useState([]);
   const [logs, setLogs] = useState([]);
 
   // --- Usuarios ---
@@ -186,7 +184,7 @@ export default function Configuracion() {
 
   // --- SLA ---
   const [slaConfig, setSlaConfig] = useState(SLA_DEFAULTS);
-  const [slaOriginal, setSlaOriginal] = useState(null);
+  const [, setSlaOriginal] = useState(null);
   const [slaPage, setSlaPage] = useState(1);
   const [slaPageSize, setSlaPageSize] = useState(10);
   const [slaBusqueda, setSlaBusqueda] = useState('');
@@ -263,7 +261,6 @@ export default function Configuracion() {
             if (r.data.success) {
               setUsuarios(r.data.data?.users || []);
               setFuncionarios(r.data.data?.funcionarios || []);
-              // Usar estado separado para no sobreescribir roles completos (con permisos)
               setRolesSimple(r.data.data?.roles || []);
             }
           }).catch(() => {})
@@ -315,7 +312,6 @@ export default function Configuracion() {
 
   const recargarRoles = useCallback(async () => {
     try {
-      // Recarga roles completos (con permisos) Y rolesSimple (para el selector del modal de usuario)
       const [rolesRes, usersRes] = await Promise.allSettled([
         permissionAPI.roles(),
         auxAPI.users(),
@@ -356,21 +352,17 @@ export default function Configuracion() {
   // SISTEMA
   // ============================================================
   const handleBackupBD = async () => {
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Generar Backup?',
       text: 'Se creará una copia de seguridad completa de la base de datos.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#4a6cf7',
-      cancelButtonColor: '#e74a3b',
-      confirmButtonText: '<i class="fa-solid fa-database"></i> Generar Backup',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: 'Generar Backup',
+      cancelButtonText: 'Cancelar',
+      icon: 'question'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     setBackupRunning(true);
     try {
-      // El backend responde con un archivo descargable, creamos un enlace temporal
       const response = await fetch('/api/aux/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -413,16 +405,15 @@ export default function Configuracion() {
       showToast('Solo se permiten archivos .sql', 'warning');
       return;
     }
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Restaurar Backup?',
-      html: `Se reemplazarán TODOS los datos actuales con el archivo <strong>${file.name}</strong>. Esta operación no se puede deshacer.`,
+      text: `Se reemplazarán TODOS los datos actuales con el archivo "${file.name}". Esta operación no se puede deshacer.`,
+      confirmButtonText: 'Sí, restaurar',
+      cancelButtonText: 'Cancelar',
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-triangle-exclamation"></i> Sí, restaurar'
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) { e.target.value = ''; return; }
+    if (!result?.isConfirmed) { e.target.value = ''; return; }
     setBackupImporting(true);
     try {
       const formData = new FormData();
@@ -441,16 +432,15 @@ export default function Configuracion() {
   };
 
   const handleClearLogs = async () => {
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Limpiar Logs Antiguos?',
       text: 'Se eliminarán todos los registros de actividad con más de 30 días.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-trash"></i> Limpiar'
+      confirmButtonText: 'Limpiar',
+      cancelButtonText: 'Cancelar',
+      icon: 'warning',
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
     try {
       const res = await permissionAPI.clearLogs?.();
       if (res?.data?.success) {
@@ -460,17 +450,6 @@ export default function Configuracion() {
       }
     } catch {
       showToast('Error', 'error');
-    }
-  };
-
-  const handleSaveConfigSistema = async () => {
-    try {
-      const res = await auxAPI.save({ action: 'config_sistema', data: configSistema });
-      if (res.data.success) {
-        showToast('Configuración guardada correctamente', 'success');
-      }
-    } catch {
-      showToast('No se pudo guardar la configuración', 'error');
     }
   };
 
@@ -515,12 +494,10 @@ export default function Configuracion() {
 
   const abrirModalUsuario = (usuario = null) => {
     if (usuario) {
-      // Proteger ADMIN
       if (esUsuarioAdmin(usuario)) {
         showToast('No se puede editar la cuenta de Administrador', 'warning');
         return;
       }
-      // Proteger propio usuario
       if (usuario.id === user?.id || usuario.user_id === user?.id) {
         showToast('No puedes editar tu propio usuario. Ve a tu Perfil.', 'warning');
         return;
@@ -569,28 +546,25 @@ export default function Configuracion() {
   };
 
   const handleToggleUsuario = async (usuario) => {
-    // Proteger usuario ADMIN
     if (esUsuarioAdmin(usuario)) {
       showToast('No se puede desactivar la cuenta de Administrador', 'warning');
       return;
     }
-    // Proteger propio usuario
     if (usuario.id === user?.id || usuario.user_id === user?.id) {
       showToast('No puedes desactivar tu propia cuenta.', 'warning');
       return;
     }
     const activoActual = usuario.activo == 1 || usuario.activo === true;
     const nuevoEstado = !activoActual;
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: `¿${nuevoEstado ? 'Activar' : 'Desactivar'} Usuario?`,
       text: `El usuario "${usuario.nombre || usuario.username}" quedará ${nuevoEstado ? 'activo' : 'inactivo'}.`,
+      confirmButtonText: `Sí, ${nuevoEstado ? 'Activar' : 'Desactivar'}`,
+      cancelButtonText: 'Cancelar',
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: nuevoEstado ? '#1cc88a' : '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: `Sí, ${nuevoEstado ? 'Activar' : 'Desactivar'}`
+      confirmVariant: !nuevoEstado ? 'danger' : undefined
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     try {
       const res = await auxAPI.toggleStatus({ id: usuario.id || usuario.user_id, activo: nuevoEstado ? 1 : 0 });
@@ -614,16 +588,15 @@ export default function Configuracion() {
       showToast('No puedes cerrar tu propia sesión.', 'warning');
       return;
     }
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Forzar Cierre de Sesión?',
-      html: `Se cerrará la sesión de <strong>${usuario.nombre || usuario.username}</strong> en todos los dispositivos.`,
+      text: `Se cerrará la sesión de ${usuario.nombre || usuario.username} en todos los dispositivos.`,
+      confirmButtonText: 'Forzar Cierre',
+      cancelButtonText: 'Cancelar',
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-right-from-bracket"></i> Forzar Cierre'
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     try {
       const res = await auxAPI.forceLogout({ id: usuario.id || usuario.user_id });
@@ -703,16 +676,15 @@ export default function Configuracion() {
       showToast(`No se puede eliminar el rol "${rol.nombre}" porque tiene ${rol.total_usuarios} usuario(s) asignado(s).`, 'warning');
       return;
     }
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Eliminar Rol?',
-      html: `Se eliminará el rol <strong>${rol.nombre}</strong>. Los usuarios con este rol perderán sus permisos.`,
+      text: `Se eliminará el rol "${rol.nombre}". Los usuarios con este rol perderán sus permisos.`,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-trash"></i> Eliminar'
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     try {
       const res = await permissionAPI.deleteRole(rol.id || rol.rol_id);
@@ -778,16 +750,15 @@ export default function Configuracion() {
   };
 
   const handleDeleteSLA = async (sla) => {
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Eliminar SLA?',
-      html: `Se eliminará el SLA <strong>${sla.nombre || sla.prioridad}</strong>.`,
+      text: `Se eliminará el SLA "${sla.nombre || sla.prioridad}".`,
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
       icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-trash"></i> Eliminar'
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
     try {
       const res = await permissionAPI.deleteSLA(sla.id);
       if (res.data.success) {
@@ -800,8 +771,6 @@ export default function Configuracion() {
       showToast('Error al eliminar el SLA', 'error');
     }
   };
-
-  const slaModificado = JSON.stringify(slaConfig) !== JSON.stringify(slaOriginal);
 
   // ============================================================
   // PRIORIDADES (KEYWORDS)
@@ -833,16 +802,15 @@ export default function Configuracion() {
 
   const handleDeleteKeyword = async (kw) => {
     const palabra = kw.palabra_clave || kw.keyword || kw.palabra;
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Eliminar Keyword?',
       text: `Se eliminará la palabra clave "${palabra}".`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#e74a3b',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-trash"></i> Eliminar'
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+      icon: 'warning',
+      confirmVariant: 'danger'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     try {
       const res = await permissionAPI.deleteKeyword(kw.id);
@@ -858,16 +826,14 @@ export default function Configuracion() {
   };
 
   const handleAgregarKeywordsPredefinidas = async () => {
-    const result = await Swal.fire({
+    const result = await showConfirm({
       title: '¿Agregar Keywords Predefinidas?',
       text: 'Se agregarán las palabras clave predefinidas del sistema con sus prioridades respectivas.',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#4a6cf7',
-      cancelButtonColor: '#858796',
-      confirmButtonText: '<i class="fa-solid fa-plus"></i> Agregar'
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      icon: 'question'
     });
-    if (!result.isConfirmed) return;
+    if (!result?.isConfirmed) return;
 
     setLoading(true);
     try {
@@ -908,7 +874,7 @@ export default function Configuracion() {
   // ============================================================
   const puedeVerTab = (tabId) => {
     switch (tabId) {
-      case 'apariencia': return true; // todos pueden ver apariencia
+      case 'apariencia': return true;
       case 'sistema': return hasPermission('conf_basica') || hasPermission('conf_avanzada');
       case 'usuarios': return hasPermission('conf_basica');
       case 'roles': return hasPermission('conf_roles');
@@ -918,7 +884,6 @@ export default function Configuracion() {
     }
   };
 
-  // Redirigir al primer tab permitido si el actual no es accesible
   useEffect(() => {
     if (!puedeVerTab(tabActivo)) {
       const permitido = TABS.find(t => puedeVerTab(t.id));
@@ -953,7 +918,12 @@ export default function Configuracion() {
     <div className="inventory-module">
       <div className="inventory-header">
         <div className="page-title-row">
-          <h2><i className="fa-solid fa-gear"></i> Configuración Global</h2>
+          <div>
+            <h2><i className="fa-solid fa-gear"></i> Configuración Global</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--gray-text)', margin: '2px 0 0' }}>
+              Preferencias visuales, gestión de usuarios, roles, acuerdos de servicio (SLA) y mantenimiento del sistema
+            </p>
+          </div>
         </div>
       </div>
 
@@ -962,6 +932,7 @@ export default function Configuracion() {
         {tabsPermitidos.map(tab => (
           <button
             key={tab.id}
+            type="button"
             className={`settings-tab ${tabActivo === tab.id ? 'active' : ''}`}
             onClick={() => cambiarTab(tab.id)}
           >
@@ -980,26 +951,25 @@ export default function Configuracion() {
             <div className="card-header">
               <h3><i className="fa-solid fa-palette"></i> Preferencias Visuales</h3>
             </div>
-            <div className="card-body" style={{ padding: '25px' }}>
-            </div>
             <div className="card-body">
-              <p style={{ fontSize: '13px', color: 'var(--gray-text)', marginBottom: '20px' }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--gray-text)', marginBottom: '20px' }}>
                 Personaliza la apariencia de la interfaz. Estos cambios se guardan localmente en tu navegador.
               </p>
 
               {/* Modo Oscuro */}
-              <div className="switch-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '10px', marginBottom: '12px' }}>
+              <div className="switch-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', background: 'var(--surface-secondary)', border: '1px solid var(--border-color)', borderRadius: '14px', marginBottom: '12px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>
                     <i className="fa-solid fa-moon" style={{ marginRight: '8px', color: 'var(--primary-color)' }}></i>
                     Modo Oscuro
                   </h4>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--gray-text)' }}>
+                  <p style={{ margin: '4px 0 4px', fontSize: '0.82rem', color: 'var(--gray-text)' }}>
                     Interfaz de alto contraste para reducir fatiga visual.
                   </p>
-                  <small style={{ fontSize: '11px', color: darkMode ? 'var(--success-color)' : 'var(--gray-text)' }}>
+                  <span className={`ui-pill ${darkMode ? 'pill-emerald' : 'pill-slate'}`} style={{ fontSize: '0.68rem', padding: '1px 8px' }}>
+                    <span className="ui-pill-dot" />
                     {darkMode ? 'Activado' : 'Desactivado'}
-                  </small>
+                  </span>
                 </div>
                 <label className="switch">
                   <input
@@ -1012,18 +982,19 @@ export default function Configuracion() {
               </div>
 
               {/* Sidebar Compacto */}
-              <div className="switch-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'var(--bg-secondary)', borderRadius: '10px', marginBottom: '12px' }}>
+              <div className="switch-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px', background: 'var(--surface-secondary)', border: '1px solid var(--border-color)', borderRadius: '14px' }}>
                 <div>
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-color)' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-color)' }}>
                     <i className="fa-solid fa-outdent" style={{ marginRight: '8px', color: 'var(--primary-color)' }}></i>
                     Sidebar Compacto
                   </h4>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--gray-text)' }}>
+                  <p style={{ margin: '4px 0 4px', fontSize: '0.82rem', color: 'var(--gray-text)' }}>
                     Minimizar el menú lateral para ganar espacio de trabajo.
                   </p>
-                  <small style={{ fontSize: '11px', color: sidebarCompacto ? 'var(--success-color)' : 'var(--gray-text)' }}>
+                  <span className={`ui-pill ${sidebarCompacto ? 'pill-emerald' : 'pill-slate'}`} style={{ fontSize: '0.68rem', padding: '1px 8px' }}>
+                    <span className="ui-pill-dot" />
                     {sidebarCompacto ? 'Compacto' : 'Normal'}
-                  </small>
+                  </span>
                 </div>
                 <label className="switch">
                   <input
@@ -1048,18 +1019,18 @@ export default function Configuracion() {
           <div className="settings-card">
             <div className="card-header">
               <h3><i className="fa-solid fa-chart-line"></i> Auditoría y Logs</h3>
-              <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
-                <button className="action-btn" onClick={cargarTodo} title="Actualizar logs">
-                  <i className="fa-solid fa-rotate"></i>
+              <div className="header-actions" style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={cargarTodo} title="Actualizar logs">
+                  <i className="fa-solid fa-rotate"></i> Actualizar
                 </button>
                 {hasPermission('conf_avanzada') && (
                   <button
-                    className="action-btn"
-                    style={{ color: 'var(--error-color)' }}
+                    type="button"
+                    className="btn btn-danger btn-sm"
                     title="Limpiar logs antiguos"
                     onClick={handleClearLogs}
                   >
-                    <i className="fa-solid fa-trash-can"></i>
+                    <i className="fa-solid fa-trash-can"></i> Limpiar Antiguos
                   </button>
                 )}
               </div>
@@ -1078,7 +1049,7 @@ export default function Configuracion() {
                   <tbody>
                     {logs.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--gray-text)' }}>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '24px', color: 'var(--gray-text)' }}>
                           No hay registros de actividad recientes.
                         </td>
                       </tr>
@@ -1087,17 +1058,19 @@ export default function Configuracion() {
                         const fecha = new Date(log.fecha);
                         return (
                           <tr key={log.id || i}>
-                            <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
+                            <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums' }}>
                               {fecha.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                             </td>
-                            <td style={{ whiteSpace: 'nowrap', fontSize: '12px' }}>
+                            <td style={{ whiteSpace: 'nowrap', fontSize: '0.8rem', fontVariantNumeric: 'tabular-nums', color: 'var(--gray-text)' }}>
                               {fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
                             </td>
-                            <td style={{ fontSize: '13px', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '250px' }}>
-                              <i className="fa-solid fa-circle-dot" style={{ color: 'var(--primary-color)', fontSize: '8px', marginRight: '6px' }}></i>
+                            <td style={{ fontSize: '0.84rem', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: '250px' }}>
+                              <i className="fa-solid fa-circle-dot" style={{ color: 'var(--primary-color)', fontSize: '8px', marginRight: '8px' }}></i>
                               {log.descripcion}
                             </td>
-                            <td style={{ fontSize: '13px', whiteSpace: 'nowrap' }}>{log.nombre_completo || log.usuario_nombre || 'Sistema'}</td>
+                            <td style={{ fontSize: '0.84rem', whiteSpace: 'nowrap' }}>
+                              <span className="ui-pill pill-slate">{log.nombre_completo || log.usuario_nombre || 'Sistema'}</span>
+                            </td>
                           </tr>
                         );
                       })
@@ -1114,14 +1087,14 @@ export default function Configuracion() {
               <h3><i className="fa-solid fa-server"></i> Mantenimiento del Sistema</h3>
             </div>
             <div className="card-body">
-              <p style={{ fontSize: '13px', color: 'var(--gray-text)', marginBottom: '15px' }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--gray-text)', marginBottom: '16px' }}>
                 Realiza operaciones de respaldo y restauración de la base de datos del sistema.
               </p>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
                 {hasPermission('conf_avanzada') && (
-                  <button className="action-btn" onClick={handleBackupBD} disabled={backupRunning}>
+                  <button type="button" className="btn btn-primary" onClick={handleBackupBD} disabled={backupRunning}>
                     <i className={`fa-solid ${backupRunning ? 'fa-circle-notch fa-spin' : 'fa-download'}`}></i>
-                    {' '}Exportar BD (.sql)
+                    Exportar BD (.sql)
                   </button>
                 )}
                 {hasPermission('conf_avanzada') && (
@@ -1134,13 +1107,14 @@ export default function Configuracion() {
                       onChange={handleImportBackup}
                     />
                     <button
-                      className="action-btn"
-                      style={{ color: 'var(--warning-color)', borderColor: 'var(--warning-color)' }}
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ color: 'var(--warning-color)', borderColor: 'var(--warning-color)', background: 'var(--warning-bg)' }}
                       onClick={() => fileInputRef.current?.click()}
                       disabled={backupImporting}
                     >
                       <i className={`fa-solid ${backupImporting ? 'fa-circle-notch fa-spin' : 'fa-upload'}`}></i>
-                      {' '}Restaurar BD
+                      Restaurar BD
                     </button>
                   </>
                 )}
@@ -1158,12 +1132,11 @@ export default function Configuracion() {
           <div className="settings-card">
             <div className="card-header">
               <h3><i className="fa-solid fa-users"></i> Gestión de Usuarios</h3>
-              <button className="btn-save" onClick={() => abrirModalUsuario(null)}>
+              <button type="button" className="btn btn-primary" onClick={() => abrirModalUsuario(null)}>
                 <i className="fa-solid fa-plus"></i> Nuevo Usuario
               </button>
             </div>
-            <div className="card-body" style={{ padding: '25px' }}>
-              {/* Búsqueda + controles */}
+            <div className="card-body" style={{ padding: '20px 24px' }}>
               <DataTableControls
                 pageSize={pageSize}
                 setPageSize={setPageSize}
@@ -1174,17 +1147,16 @@ export default function Configuracion() {
                 searchPlaceholder="Buscar por nombre o usuario..."
               />
 
-              {/* Tabla */}
-              <div className="table-responsive">
+              <div className="table-scroll">
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>ID</th>
+                      <th style={{ width: '70px' }}>ID</th>
                       <th>Usuario</th>
                       <th>Nombre</th>
                       <th>Rol</th>
                       <th>Estado</th>
-                      <th>Acciones</th>
+                      <th className="text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1196,58 +1168,67 @@ export default function Configuracion() {
                         </td>
                       </tr>
                     ) : (
-                      usuariosPaginados.map(usr => (
-                        <tr key={usr.id || usr.user_id}>
-                          <td>{usr.id || usr.user_id}</td>
-                          <td>
-                            <strong>{usr.username}</strong>
-                          </td>
-                          <td>{usr.nombre || '—'}</td>
-                          <td>
-                            <span className="badge badge-role">
-                              {usr.rol_nombre || usr.role_nombre || '—'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={`status-badge ${usr.activo == 1 || usr.activo === true ? 'active' : 'inactive'}`}>
-                              {usr.activo == 1 || usr.activo === true ? 'Activo' : 'Inactivo'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="action-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'nowrap' }}>
-                              <div className="switch-container" title={esUsuarioAdmin(usr) ? 'Protegido' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (usr.activo == 1 ? 'Desactivar' : 'Activar'))}>
-                                <label className="switch" style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}>
-                                  <input
-                                    type="checkbox"
-                                    checked={usr.activo == 1 || usr.activo === true}
-                                    onChange={() => handleToggleUsuario(usr)}
-                                    disabled={esUsuarioAdmin(usr)}
-                                  />
-                                  <span className="slider round"></span>
-                                </label>
+                      usuariosPaginados.map(usr => {
+                        const isActivo = usr.activo == 1 || usr.activo === true;
+                        const isProtected = esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id);
+                        return (
+                          <tr key={usr.id || usr.user_id}>
+                            <td style={{ fontWeight: 600, color: 'var(--gray-text)', fontVariantNumeric: 'tabular-nums' }}>
+                              #{usr.id || usr.user_id}
+                            </td>
+                            <td>
+                              <strong>{usr.username}</strong>
+                            </td>
+                            <td>{usr.nombre || '—'}</td>
+                            <td>
+                              <span className="ui-pill pill-indigo">
+                                {usr.rol_nombre || usr.role_nombre || '—'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`ui-pill ${isActivo ? 'pill-emerald' : 'pill-slate'}`}>
+                                <span className="ui-pill-dot" />
+                                {isActivo ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="action-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap' }}>
+                                <div className="switch-container" title={esUsuarioAdmin(usr) ? 'Protegido' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (isActivo ? 'Desactivar' : 'Activar'))}>
+                                  <label className="switch" style={isProtected ? { opacity: 0.4, cursor: 'not-allowed', margin: 0 } : { margin: 0 }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isActivo}
+                                      onChange={() => handleToggleUsuario(usr)}
+                                      disabled={isProtected}
+                                    />
+                                    <span className="slider round"></span>
+                                  </label>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn-table btn-action-edit"
+                                  title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario')}
+                                  onClick={() => abrirModalUsuario(usr)}
+                                  disabled={isProtected}
+                                  style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                >
+                                  <i className="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-table btn-action-delete"
+                                  title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión')}
+                                  onClick={() => handleForceLogoutUsuario(usr)}
+                                  disabled={isProtected}
+                                  style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                >
+                                  <i className="fa-solid fa-right-from-bracket"></i>
+                                </button>
                               </div>
-                              <button
-                                className="action-btn"
-                                title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario')}
-                                onClick={() => abrirModalUsuario(usr)}
-                                disabled={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id)}
-                                style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                              >
-                                <i className="fa-solid fa-pen-to-square"></i>
-                              </button>
-                              <button
-                                className="action-btn"
-                                title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión')}
-                                onClick={() => handleForceLogoutUsuario(usr)}
-                                disabled={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id)}
-                                style={esUsuarioAdmin(usr) || (usr.id === user?.id || usr.user_id === user?.id) ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                              >
-                                <i className="fa-solid fa-right-from-bracket"></i>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1267,11 +1248,11 @@ export default function Configuracion() {
           <div className="settings-card">
             <div className="card-header">
               <h3><i className="fa-solid fa-shield"></i> Roles y Permisos</h3>
-              <button className="btn-save" onClick={() => abrirModalRol(null)}>
+              <button type="button" className="btn btn-primary" onClick={() => abrirModalRol(null)}>
                 <i className="fa-solid fa-plus"></i> Nuevo Rol
               </button>
             </div>
-            <div className="card-body" style={{ padding: '15px 20px' }}>
+            <div className="card-body" style={{ padding: '20px 24px' }}>
               <DataTableControls
                 pageSize={rolesPageSize}
                 setPageSize={setRolesPageSize}
@@ -1281,13 +1262,12 @@ export default function Configuracion() {
                 filteredItemsCount={rolesFiltrados.length}
                 searchPlaceholder="Buscar rol..."
               />
-            </div>
-            <div className="card-body" style={{ padding: '0' }}>
-              <div className="table-responsive">
-                <table className="data-table" style={{ marginTop: 0 }}>
+
+              <div className="table-scroll">
+                <table className="data-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '60px' }}>ID</th>
+                      <th style={{ width: '70px' }}>ID</th>
                       <th>Nombre</th>
                       <th>Descripción</th>
                       <th className="text-center">Permisos</th>
@@ -1311,36 +1291,33 @@ export default function Configuracion() {
                         const totalPermisos = PERMISOS_LISTA.length;
                         return (
                           <tr key={rol.id || rol.rol_id}>
-                            <td style={{ fontWeight: 600, color: 'var(--gray-text)', fontSize: '13px' }}>
+                            <td style={{ fontWeight: 600, color: 'var(--gray-text)', fontVariantNumeric: 'tabular-nums' }}>
                               #{rol.id || rol.rol_id}
                             </td>
                             <td>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <i className="fa-solid fa-shield" style={{ color: 'var(--primary-color)', fontSize: '13px' }}></i>
-                                <strong style={{ fontSize: '14px' }}>{rol.nombre}</strong>
+                                <strong>{rol.nombre}</strong>
                               </div>
                             </td>
-                            <td style={{ fontSize: '13px', color: 'var(--gray-text)' }}>
+                            <td style={{ fontSize: '0.84rem', color: 'var(--gray-text)' }}>
                               {rol.descripcion || <em>Sin descripción</em>}
                             </td>
                             <td className="text-center">
-                              <span className="badge" style={{
-                                background: permisosActivos > 0 ? 'rgba(74,108,247,0.15)' : 'var(--bg-secondary)',
-                                color: permisosActivos > 0 ? 'var(--primary-color)' : 'var(--gray-text)',
-                                padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 600
-                              }}>
+                              <span className={`ui-pill ${permisosActivos > 0 ? 'pill-indigo' : 'pill-slate'}`}>
                                 {permisosActivos} / {totalPermisos}
                               </span>
                             </td>
                             <td className="text-center">
-                              <span style={{ fontSize: '13px', color: 'var(--gray-text)' }}>
+                              <span className="ui-pill pill-slate">
                                 {rol.total_usuarios !== undefined ? rol.total_usuarios : '—'}
                               </span>
                             </td>
                             <td className="text-center">
-                              <div className="action-buttons" style={{ justifyContent: 'center' }}>
+                              <div className="action-buttons" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                 <button
-                                  className="action-btn"
+                                  type="button"
+                                  className="btn-table btn-action-edit"
                                   title={esRolAdmin(rol) ? 'El rol Administrador no se puede modificar' : 'Editar Rol'}
                                   onClick={() => abrirModalRol(rol)}
                                   disabled={esRolAdmin(rol)}
@@ -1349,9 +1326,10 @@ export default function Configuracion() {
                                   <i className="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <button
-                                  className="action-btn"
+                                  type="button"
+                                  className="btn-table btn-action-delete"
                                   onClick={() => handleDeleteRol(rol)}
-                                  style={{ color: 'var(--error-color)', ...(esRolAdmin(rol) ? { opacity: 0.4, cursor: 'not-allowed' } : {}) }}
+                                  style={esRolAdmin(rol) || rol.total_usuarios > 0 ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
                                   disabled={esRolAdmin(rol) || rol.total_usuarios > 0}
                                   title={esRolAdmin(rol) ? 'El rol Administrador no se puede eliminar' : (rol.total_usuarios > 0 ? `Tiene ${rol.total_usuarios} usuario(s) asignado(s)` : 'Eliminar Rol')}
                                 >
@@ -1366,8 +1344,7 @@ export default function Configuracion() {
                   </tbody>
                 </table>
               </div>
-            </div>
-            <div className="card-body" style={{ padding: '10px 20px 15px' }}>
+
               <Pagination page={rolesPage} setPage={setRolesPage} totalPages={totalPaginasRoles} totalItems={rolesFiltrados.length} pageSize={rolesPageSize} />
             </div>
           </div>
@@ -1382,11 +1359,11 @@ export default function Configuracion() {
           <div className="settings-card">
             <div className="card-header">
               <h3><i className="fa-solid fa-gauge-high"></i> Acuerdos de Nivel de Servicio (SLA)</h3>
-              <button className="btn-save" onClick={() => abrirModalSLA(null)}>
+              <button type="button" className="btn btn-primary" onClick={() => abrirModalSLA(null)}>
                 <i className="fa-solid fa-plus"></i> Nuevo SLA
               </button>
             </div>
-            <div className="card-body" style={{ padding: '15px 20px' }}>
+            <div className="card-body" style={{ padding: '20px 24px' }}>
               <DataTableControls
                 pageSize={slaPageSize}
                 setPageSize={setSlaPageSize}
@@ -1396,13 +1373,12 @@ export default function Configuracion() {
                 filteredItemsCount={slaFiltrados.length}
                 searchPlaceholder="Buscar SLA..."
               />
-            </div>
-            <div className="card-body" style={{ padding: '0' }}>
-              <div className="table-responsive">
-                <table className="data-table" style={{ marginTop: 0 }}>
+
+              <div className="table-scroll">
+                <table className="data-table">
                   <thead>
                     <tr>
-                      <th style={{ width: '60px' }}>ID</th>
+                      <th style={{ width: '70px' }}>ID</th>
                       <th>Nombre</th>
                       <th>Prioridad</th>
                       <th className="text-center">T. Respuesta</th>
@@ -1421,55 +1397,56 @@ export default function Configuracion() {
                       </tr>
                     ) : (
                       slaPaginados.map(sla => {
-                        const colorClass =
-                          (sla.prioridad === 'Crítica' || sla.prioridad_ticket === 'Crítica') ? 'critica' :
-                          (sla.prioridad === 'Alta'    || sla.prioridad_ticket === 'Alta')    ? 'alta' :
-                          (sla.prioridad === 'Media'   || sla.prioridad_ticket === 'Media')   ? 'media' : 'baja';
                         const prioridadLabel = sla.prioridad || sla.prioridad_ticket || '—';
+                        const pillClass =
+                          (prioridadLabel === 'Crítica' || prioridadLabel === 'Alta') ? 'pill-rose' :
+                          prioridadLabel === 'Media' ? 'pill-amber' : 'pill-emerald';
                         const nombreLabel    = sla.nombre || prioridadLabel;
                         const activo = sla.activo !== false && sla.activo !== 0;
                         return (
                           <tr key={sla.id}>
-                            <td style={{ fontWeight: 600, color: 'var(--gray-text)', fontSize: '13px' }}>
+                            <td style={{ fontWeight: 600, color: 'var(--gray-text)', fontVariantNumeric: 'tabular-nums' }}>
                               #{sla.id}
                             </td>
                             <td>
-                              <strong style={{ fontSize: '14px' }}>{nombreLabel}</strong>
+                              <strong>{nombreLabel}</strong>
                             </td>
                             <td>
-                              <span className={`priority-badge ${colorClass}`}>
+                              <span className={`ui-pill ${pillClass}`}>
                                 {prioridadLabel}
                               </span>
                             </td>
                             <td className="text-center">
-                              <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-color)' }}>
+                              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-color)' }}>
                                 {sla.respuesta}h
                               </span>
                             </td>
                             <td className="text-center">
-                              <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-color)' }}>
+                              <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-color)' }}>
                                 {sla.resolucion}h
                               </span>
                             </td>
                             <td className="text-center">
-                              <span className={`status-badge ${activo ? 'active' : 'inactive'}`}>
+                              <span className={`ui-pill ${activo ? 'pill-emerald' : 'pill-slate'}`}>
+                                <span className="ui-pill-dot" />
                                 {activo ? 'Activo' : 'Inactivo'}
                               </span>
                             </td>
                             <td className="text-center">
-                              <div className="action-buttons" style={{ justifyContent: 'center' }}>
+                              <div className="action-buttons" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                                 <button
-                                  className="action-btn"
+                                  type="button"
+                                  className="btn-table btn-action-edit"
                                   title="Editar SLA"
                                   onClick={() => abrirModalSLA(sla)}
                                 >
                                   <i className="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <button
-                                  className="action-btn"
+                                  type="button"
+                                  className="btn-table btn-action-delete"
                                   title="Eliminar SLA"
                                   onClick={() => handleDeleteSLA(sla)}
-                                  style={{ color: 'var(--error-color)' }}
                                 >
                                   <i className="fa-solid fa-trash"></i>
                                 </button>
@@ -1482,8 +1459,7 @@ export default function Configuracion() {
                   </tbody>
                 </table>
               </div>
-            </div>
-            <div className="card-body" style={{ padding: '10px 20px 15px' }}>
+
               <Pagination page={slaPage} setPage={setSlaPage} totalPages={totalPaginasSLA} totalItems={slaFiltrados.length} pageSize={slaPageSize} />
             </div>
           </div>
@@ -1499,20 +1475,20 @@ export default function Configuracion() {
             <div className="card-header">
               <h3><i className="fa-solid fa-tag"></i> Palabras Clave para Prioridad Automática</h3>
               <div className="header-actions">
-                <button className="btn-save" onClick={handleAgregarKeywordsPredefinidas} style={{ background: '#36b9cc' }}>
+                <button type="button" className="btn btn-soft" onClick={handleAgregarKeywordsPredefinidas}>
                   <i className="fa-solid fa-list"></i> Agregar Predefinidas
                 </button>
               </div>
             </div>
             <div className="card-body">
-              <p style={{ fontSize: '13px', color: 'var(--gray-text)', marginBottom: '20px' }}>
+              <p style={{ fontSize: '0.88rem', color: 'var(--gray-text)', marginBottom: '20px' }}>
                 Las palabras clave se utilizan para asignar automáticamente la prioridad a los tickets
                 según el contenido de la solicitud. El sistema analiza el texto del ticket y asigna la
                 prioridad más alta que coincida.
               </p>
 
               {/* Agregar keyword */}
-              <div className="add-keyword-row" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+              <div className="add-keyword-row" style={{ display: 'flex', gap: '10px', marginBottom: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   className="form-control"
@@ -1520,22 +1496,24 @@ export default function Configuracion() {
                   value={nuevaKeyword}
                   onChange={(e) => setNuevaKeyword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, minWidth: '220px' }}
                 />
 
-                <select
-                  className="form-control"
-                  value={nuevaKeywordPrioridad}
-                  onChange={(e) => setNuevaKeywordPrioridad(e.target.value)}
-                  style={{ width: '160px' }}
-                >
-                  <option value="Crítica">Crítica</option>
-                  <option value="Alta">Alta</option>
-                  <option value="Media">Media</option>
-                  <option value="Baja">Baja</option>
-                </select>
+                <div style={{ width: '180px' }}>
+                  <SearchableSelect
+                    value={nuevaKeywordPrioridad}
+                    onChange={(val) => setNuevaKeywordPrioridad(val || 'Baja')}
+                    options={[
+                      { value: 'Crítica', label: 'Crítica' },
+                      { value: 'Alta', label: 'Alta' },
+                      { value: 'Media', label: 'Media' },
+                      { value: 'Baja', label: 'Baja' }
+                    ]}
+                    isClearable={false}
+                  />
+                </div>
 
-                <button className="btn-save" onClick={handleAddKeyword}>
+                <button type="button" className="btn btn-primary" onClick={handleAddKeyword}>
                   <i className="fa-solid fa-plus"></i> Agregar
                 </button>
               </div>
@@ -1555,53 +1533,54 @@ export default function Configuracion() {
                       {Object.entries(keywordsPorPrioridad).map(([prioridad, list]) => {
                         let badgeClass = 'baja';
                         let titleColor = 'var(--text-color)';
-                        let borderColor = 'var(--border-color)';
+                        let pillClass = 'pill-slate';
                         let icon = 'fa-info-circle';
                         
                         if (prioridad === 'Crítica') {
                           badgeClass = 'critica';
-                          titleColor = '#e74a3b';
-                          borderColor = 'rgba(231, 74, 59, 0.2)';
+                          titleColor = 'var(--error-color)';
+                          pillClass = 'pill-rose';
                           icon = 'fa-triangle-exclamation';
                         } else if (prioridad === 'Alta') {
                           badgeClass = 'alta';
-                          titleColor = '#f6c23e';
-                          borderColor = 'rgba(246, 194, 62, 0.2)';
+                          titleColor = 'var(--warning-color)';
+                          pillClass = 'pill-amber';
                           icon = 'fa-circle-exclamation';
                         } else if (prioridad === 'Media') {
                           badgeClass = 'media';
-                          titleColor = '#4e73df';
-                          borderColor = 'rgba(78, 115, 223, 0.2)';
+                          titleColor = 'var(--primary-color)';
+                          pillClass = 'pill-indigo';
                           icon = 'fa-circle-dot';
                         } else if (prioridad === 'Baja') {
                           badgeClass = 'baja';
                           titleColor = 'var(--gray-text)';
-                          borderColor = 'var(--border-color)';
+                          pillClass = 'pill-emerald';
                           icon = 'fa-tag';
                         }
 
                         return (
-                          <div key={prioridad} className="settings-card" style={{ border: `1px solid ${borderColor}`, marginBottom: 0 }}>
-                            <div className="card-header" style={{ padding: '12px 15px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <h4 style={{ margin: 0, color: titleColor, fontSize: '14px', fontWeight: 600 }}>
-                                <i className={`fa-solid ${icon}`} style={{ marginRight: '8px' }}></i>
+                          <div key={prioridad} className="settings-card" style={{ border: '1px solid var(--border-color)', marginBottom: 0 }}>
+                            <div className="card-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--surface-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ margin: 0, color: titleColor, fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <i className={`fa-solid ${icon}`}></i>
                                 Prioridad {prioridad}
                               </h4>
-                              <span className="badge" style={{ fontSize: '11px', background: 'var(--input-bg)', color: 'var(--text-color)', padding: '2px 8px', borderRadius: '12px' }}>
+                              <span className={`ui-pill ${pillClass}`}>
                                 {list.length} palabras
                               </span>
                             </div>
-                            <div className="card-body" style={{ padding: '15px', minHeight: '80px' }}>
+                            <div className="card-body" style={{ padding: '16px', minHeight: '80px' }}>
                               {list.length === 0 ? (
-                                <p style={{ fontSize: '12px', color: 'var(--gray-text)', margin: 0, textAlign: 'center', paddingTop: '15px' }}>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--gray-text)', margin: 0, textAlign: 'center', paddingTop: '15px' }}>
                                   Sin palabras clave registradas.
                                 </p>
                               ) : (
                                 <div className="keywords-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                   {list.map(kw => (
-                                    <div key={kw.id} className={`keyword-chip ${badgeClass}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '15px', fontSize: '12px', border: '1px solid var(--border-color)' }}>
+                                    <div key={kw.id} className={`keyword-chip ${badgeClass}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 11px', borderRadius: '9999px', fontSize: '0.78rem', fontWeight: 500, background: 'var(--surface-secondary)', border: '1px solid var(--border-color)' }}>
                                       <span className="keyword-text">{kw.palabra_clave}</span>
                                       <button
+                                        type="button"
                                         className="keyword-remove"
                                         onClick={() => handleDeleteKeyword(kw)}
                                         title="Eliminar"
@@ -1629,17 +1608,17 @@ export default function Configuracion() {
 
               {/* Palabras predefinidas no agregadas aún */}
               {keywords.length < KEYWORDS_PREDEFINIDAS.length && (
-                <div style={{ marginTop: '25px' }}>
-                  <h4 style={{ fontSize: '14px', marginBottom: '10px', color: 'var(--text-color)' }}>
-                    <i className="fa-solid fa-bookmark"></i> Palabras Clave Predefinidas Disponibles
+                <div style={{ marginTop: '24px' }}>
+                  <h4 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '10px', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className="fa-solid fa-bookmark" style={{ color: 'var(--primary-color)' }}></i> Palabras Clave Predefinidas Disponibles
                   </h4>
-                  <div className="keywords-grid" style={{ opacity: 0.7 }}>
+                  <div className="keywords-grid" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', opacity: 0.75 }}>
                     {KEYWORDS_PREDEFINIDAS
                       .filter(item => !keywords.some(k => (k.palabra_clave || '').toLowerCase() === item.keyword.toLowerCase()))
                       .map((item, i) => (
-                        <div key={i} className="keyword-chip predefined">
-                          <span className="keyword-text">{item.keyword}</span>
-                        </div>
+                        <span key={i} className="ui-pill pill-slate" style={{ fontWeight: 500 }}>
+                          {item.keyword}
+                        </span>
                       ))
                     }
                   </div>
@@ -1655,20 +1634,20 @@ export default function Configuracion() {
       {/* ============================================================ */}
       {showModalUsuario && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowModalUsuario(false)}>
-          <div className="modal-content" style={{ width: '500px' }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3>
+              <h3 style={{ margin: 0, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fa-solid fa-user" style={{ color: 'var(--primary-color)' }}></i>
-                {editandoUsuario ? ' Editar Usuario' : ' Nuevo Usuario'}
+                {editandoUsuario ? 'Editar Usuario' : 'Nuevo Usuario'}
               </h3>
-              <button className="action-btn" onClick={() => setShowModalUsuario(false)}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowModalUsuario(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleSaveUsuario}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Usuario *</label>
+                  <label>Usuario <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -1680,7 +1659,7 @@ export default function Configuracion() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Nombre Completo *</label>
+                  <label>Nombre Completo <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -1691,7 +1670,7 @@ export default function Configuracion() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Contraseña {!editandoUsuario && '*'}</label>
+                  <label>Contraseña {!editandoUsuario && <span style={{ color: 'var(--error-color)' }}>*</span>}</label>
                   <input
                     type="password"
                     className="form-control"
@@ -1705,37 +1684,33 @@ export default function Configuracion() {
 
                 <div className="form-group">
                   <label>Rol</label>
-                  <select
-                    className="form-control"
-                    value={formUsuario.role_id}
-                    onChange={(e) => setFormUsuario(prev => ({ ...prev, role_id: e.target.value }))}
-                  >
-                    <option value="">Seleccionar Rol...</option>
-                    {(rolesSimple.length > 0 ? rolesSimple : roles).map(rol => (
-                      <option key={rol.id || rol.rol_id} value={rol.id || rol.rol_id}>
-                        {rol.nombre || rol.nombre_rol}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={formUsuario.role_id ? String(formUsuario.role_id) : ''}
+                    onChange={(val) => setFormUsuario(prev => ({ ...prev, role_id: val || '' }))}
+                    options={(rolesSimple.length > 0 ? rolesSimple : roles).map(rol => ({
+                      value: String(rol.id || rol.rol_id),
+                      label: rol.nombre || rol.nombre_rol
+                    }))}
+                    placeholder="Seleccionar Rol..."
+                    isClearable={true}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Asociar Funcionario (Opcional)</label>
-                  <select
-                    className="form-control"
-                    value={formUsuario.id_funcionario}
-                    onChange={(e) => setFormUsuario(prev => ({ ...prev, id_funcionario: e.target.value }))}
-                  >
-                    <option value="">-- Sin asociación --</option>
-                    {funcionarios.map(func => (
-                      <option key={func.id} value={func.id}>
-                        {func.nombre_completo}
-                      </option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={formUsuario.id_funcionario ? String(formUsuario.id_funcionario) : ''}
+                    onChange={(val) => setFormUsuario(prev => ({ ...prev, id_funcionario: val || '' }))}
+                    options={funcionarios.map(func => ({
+                      value: String(func.id),
+                      label: func.nombre_completo
+                    }))}
+                    placeholder="-- Sin asociación --"
+                    isClearable={true}
+                  />
                 </div>
                 <div className="form-group">
                   <div className="switch-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
-                    <label className="switch">
+                    <label className="switch" style={{ margin: 0 }}>
                       <input
                         type="checkbox"
                         checked={formUsuario.activo}
@@ -1743,19 +1718,19 @@ export default function Configuracion() {
                       />
                       <span className="slider round"></span>
                     </label>
-                    <span style={{ fontSize: '14px' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
                       {formUsuario.activo ? 'Usuario Activo' : 'Usuario Inactivo'}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="action-btn" onClick={() => setShowModalUsuario(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModalUsuario(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-save">
+                <button type="submit" className="btn btn-primary">
                   <i className="fa-solid fa-floppy-disk"></i>
-                  {editandoUsuario ? ' Actualizar Usuario' : ' Crear Usuario'}
+                  {editandoUsuario ? 'Actualizar Usuario' : 'Crear Usuario'}
                 </button>
               </div>
             </form>
@@ -1768,20 +1743,20 @@ export default function Configuracion() {
       {/* ============================================================ */}
       {showModalRol && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowModalRol(false)}>
-          <div className="modal-content" style={{ width: '650px', maxHeight: '90vh', overflow: 'auto' }}>
+          <div className="modal-content" style={{ maxWidth: '680px', maxHeight: '90vh', overflow: 'auto' }}>
             <div className="modal-header">
-              <h3>
+              <h3 style={{ margin: 0, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fa-solid fa-shield" style={{ color: 'var(--primary-color)' }}></i>
-                {editandoRol ? ' Editar Rol' : ' Nuevo Rol'}
+                {editandoRol ? 'Editar Rol' : 'Nuevo Rol'}
               </h3>
-              <button className="action-btn" onClick={() => setShowModalRol(false)}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowModalRol(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleSaveRol}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Nombre del Rol *</label>
+                  <label>Nombre del Rol <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -1803,15 +1778,15 @@ export default function Configuracion() {
                 </div>
 
                 <div className="permisos-section" style={{ marginTop: '20px' }}>
-                  <div className="perm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <h4 style={{ margin: 0, fontSize: '15px' }}>
-                      <i className="fa-solid fa-key"></i> Permisos del Rol
+                  <div className="perm-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <i className="fa-solid fa-key" style={{ color: 'var(--primary-color)' }}></i> Permisos del Rol
                     </h4>
                     <div className="perm-actions" style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" className="action-btn" onClick={() => handleToggleAllPermisos(true)}>
+                      <button type="button" className="btn btn-soft btn-sm" onClick={() => handleToggleAllPermisos(true)}>
                         <i className="fa-solid fa-check-double"></i> Seleccionar Todos
                       </button>
-                      <button type="button" className="action-btn" onClick={() => handleToggleAllPermisos(false)}>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => handleToggleAllPermisos(false)}>
                         <i className="fa-solid fa-xmark"></i> Deseleccionar Todos
                       </button>
                     </div>
@@ -1821,7 +1796,7 @@ export default function Configuracion() {
                     {PERMISOS_LISTA.map(perm => (
                       <div key={perm.key} className="permiso-item">
                         <div className="switch-container">
-                          <label className="switch">
+                          <label className="switch" style={{ margin: 0 }}>
                             <input
                               type="checkbox"
                               checked={!!permisosRol[perm.key]}
@@ -1840,21 +1815,23 @@ export default function Configuracion() {
 
                   {/* Resumen de permisos */}
                   <div className="perm-resumen" style={{
-                    marginTop: '15px', padding: '10px', background: 'var(--bg-secondary)',
-                    borderRadius: '8px', fontSize: '13px', color: 'var(--gray-text)'
+                    marginTop: '14px', padding: '10px 14px', background: 'var(--surface-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '10px', fontSize: '0.82rem', color: 'var(--gray-text)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                   }}>
-                    <i className="fa-solid fa-info-circle"></i>{' '}
-                    Permisos activos: {Object.values(permisosRol).filter(Boolean).length} de {PERMISOS_LISTA.length}
+                    <span><i className="fa-solid fa-info-circle" style={{ color: 'var(--primary-color)', marginRight: '6px' }}></i> Permisos activos seleccionados:</span>
+                    <span className="ui-pill pill-indigo">{Object.values(permisosRol).filter(Boolean).length} de {PERMISOS_LISTA.length}</span>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="action-btn" onClick={() => setShowModalRol(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModalRol(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-save">
+                <button type="submit" className="btn btn-primary">
                   <i className="fa-solid fa-floppy-disk"></i>
-                  {editandoRol ? ' Actualizar Rol' : ' Crear Rol'}
+                  {editandoRol ? 'Actualizar Rol' : 'Crear Rol'}
                 </button>
               </div>
             </form>
@@ -1867,20 +1844,20 @@ export default function Configuracion() {
       {/* ============================================================ */}
       {showModalSLA && (
         <div className="modal-overlay active" onClick={(e) => e.target === e.currentTarget && setShowModalSLA(false)}>
-          <div className="modal-content" style={{ width: '500px' }}>
+          <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div className="modal-header">
-              <h3>
+              <h3 style={{ margin: 0, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fa-solid fa-gauge-high" style={{ color: 'var(--primary-color)' }}></i>
-                {editandoSLA ? ' Editar SLA' : ' Nuevo SLA'}
+                {editandoSLA ? 'Editar SLA' : 'Nuevo SLA'}
               </h3>
-              <button className="action-btn" onClick={() => setShowModalSLA(false)}>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowModalSLA(false)}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
             <form onSubmit={handleSaveSLA}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Nombre del SLA *</label>
+                  <label>Nombre del SLA <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <input
                     type="text"
                     className="form-control"
@@ -1891,21 +1868,22 @@ export default function Configuracion() {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Prioridad Asociada *</label>
-                  <select
-                    className="form-control"
+                  <label>Prioridad Asociada <span style={{ color: 'var(--error-color)' }}>*</span></label>
+                  <SearchableSelect
                     value={formSLA.prioridad}
-                    onChange={(e) => setFormSLA(prev => ({ ...prev, prioridad: e.target.value }))}
-                  >
-                    <option value="Crítica">Crítica</option>
-                    <option value="Alta">Alta</option>
-                    <option value="Media">Media</option>
-                    <option value="Baja">Baja</option>
-                  </select>
+                    onChange={(val) => setFormSLA(prev => ({ ...prev, prioridad: val || 'Media' }))}
+                    options={[
+                      { value: 'Crítica', label: 'Crítica' },
+                      { value: 'Alta', label: 'Alta' },
+                      { value: 'Media', label: 'Media' },
+                      { value: 'Baja', label: 'Baja' }
+                    ]}
+                    isClearable={false}
+                  />
                 </div>
                 <div className="grid-2" style={{ gap: '15px' }}>
                   <div className="form-group">
-                    <label>Tiempo de Respuesta (horas) *</label>
+                    <label>Tiempo de Respuesta (horas) <span style={{ color: 'var(--error-color)' }}>*</span></label>
                     <input
                       type="number"
                       className="form-control"
@@ -1914,12 +1892,12 @@ export default function Configuracion() {
                       required min={1} max={168}
                       placeholder="Ej: 4"
                     />
-                    <small style={{ fontSize: '11px', color: 'var(--gray-text)' }}>
+                    <small style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
                       Máx. tiempo para primera respuesta al ticket
                     </small>
                   </div>
                   <div className="form-group">
-                    <label>Tiempo de Resolución (horas) *</label>
+                    <label>Tiempo de Resolución (horas) <span style={{ color: 'var(--error-color)' }}>*</span></label>
                     <input
                       type="number"
                       className="form-control"
@@ -1928,14 +1906,14 @@ export default function Configuracion() {
                       required min={1} max={720}
                       placeholder="Ej: 24"
                     />
-                    <small style={{ fontSize: '11px', color: 'var(--gray-text)' }}>
+                    <small style={{ fontSize: '0.75rem', color: 'var(--gray-text)' }}>
                       Máx. tiempo para cerrar/resolver el ticket
                     </small>
                   </div>
                 </div>
                 <div className="form-group">
                   <div className="switch-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
-                    <label className="switch">
+                    <label className="switch" style={{ margin: 0 }}>
                       <input
                         type="checkbox"
                         checked={formSLA.activo}
@@ -1943,19 +1921,19 @@ export default function Configuracion() {
                       />
                       <span className="slider round"></span>
                     </label>
-                    <span style={{ fontSize: '14px' }}>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>
                       {formSLA.activo ? 'SLA Activo' : 'SLA Inactivo'}
                     </span>
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
-                <button type="button" className="action-btn" onClick={() => setShowModalSLA(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModalSLA(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-save">
+                <button type="submit" className="btn btn-primary">
                   <i className="fa-solid fa-floppy-disk"></i>
-                  {editandoSLA ? ' Actualizar SLA' : ' Crear SLA'}
+                  {editandoSLA ? 'Actualizar SLA' : 'Crear SLA'}
                 </button>
               </div>
             </form>

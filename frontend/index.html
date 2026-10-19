@@ -7,20 +7,20 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Aplica tema IndustryOS (oscuro por defecto) y sidebar ANTES de que React cargue -->
+    <!-- Aplica tema (claro por defecto estilo Invester) y sidebar ANTES de que React cargue -->
     <script>
       (function () {
         try {
           var dark = localStorage.getItem('darkMode');
-          var isDark = dark === null ? true : dark === 'true';
+          var isDark = dark === 'true';
           var compact = localStorage.getItem('sidebarCompact') === 'true';
           if (isDark) {
             document.documentElement.setAttribute('data-theme', 'dark');
-            if (dark === null) localStorage.setItem('darkMode', 'true');
           } else {
             document.documentElement.setAttribute('data-theme', 'light');
+            if (dark === null) localStorage.setItem('darkMode', 'false');
           }
           if (compact) document.documentElement.classList.add('sidebar-compact-pending');
         } catch (e) {}

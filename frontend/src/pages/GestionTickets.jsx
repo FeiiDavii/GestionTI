@@ -2,37 +2,21 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ticketAPI, notificationAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import {
-  FaHeadset, FaSearch, FaList, FaUserTag, FaEnvelopeOpen,
+  FaHeadset, FaList, FaUserTag, FaEnvelopeOpen,
   FaSpinner, FaCheckCircle, FaLock, FaSlidersH, FaTimes,
   FaSave, FaPaperPlane, FaHandPointUp, FaArrowUp,
-  FaStar, FaRegStar, FaComment, FaComments, FaHistory,
-  FaQuoteLeft, FaUserTie, FaEye, FaCloudUploadAlt, FaCheck,
+  FaStar, FaRegStar, FaComments, FaHistory,
+  FaQuoteLeft, FaUserTie, FaEye, FaCloudUploadAlt,
   FaPlus, FaInfoCircle, FaTools, FaFileAlt, FaFileWord,
-  FaFileExcel, FaFilePdf, FaVideo, FaMusic, FaDownload, FaFile
+  FaFileExcel, FaFilePdf, FaMusic, FaDownload, FaFile
 } from 'react-icons/fa';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
-
-// ─── ICON MAP ───────────────────────────────────────────────────────────────
-const statusIcon = {
-  Abierto: <FaEnvelopeOpen />,
-  'En Proceso': <FaSpinner className="fa-spin" />,
-  Resuelto: <FaCheckCircle />,
-  Cerrado: <FaLock />
-};
+import Pagination from '../components/common/Pagination';
 
 // ─── HELPER: DATE FORMAT ────────────────────────────────────────────────────
-function formatDate(d) {
-  if (!d) return '';
-  const date = new Date(d);
-  if (isNaN(date)) return d;
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) +
-    ' • ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-}
-
 function formatDateShort(d) {
   if (!d) return '';
   const date = new Date(d);
@@ -47,90 +31,55 @@ function formatTime(d) {
   return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
-function getBadgeClass(estado) {
+function getStatusPillClass(estado) {
   const map = {
-    Abierto: 'badge-abierto',
-    'En Proceso': 'badge-proceso',
-    Resuelto: 'badge-resuelto',
-    Cerrado: 'badge-cerrado',
+    Abierto: 'ui-pill pill-amber',
+    'En Proceso': 'ui-pill pill-blue',
+    Resuelto: 'ui-pill pill-emerald',
+    Cerrado: 'ui-pill pill-slate',
   };
-  return map[estado] || 'badge-cerrado';
+  return map[estado] || 'ui-pill pill-slate';
 }
 
-// ─── PAGINATION COMPONENT (outside main component) ──────────────────────────
-function PaginationBar({ currentPage, totalPages, total, pageSize, onPageChange }) {
-  if (totalPages <= 1) return null;
-  const start = (currentPage - 1) * pageSize + 1;
-  const end = Math.min(currentPage * pageSize, total);
-  const getPages = () => {
-    const pages = [];
-    let s = Math.max(1, currentPage - 2);
-    let e = Math.min(totalPages, currentPage + 2);
-    if (s > 1) { pages.push(1); if (s > 2) pages.push('...'); }
-    for (let i = s; i <= e; i++) pages.push(i);
-    if (e < totalPages) { if (e < totalPages - 1) pages.push('...'); pages.push(totalPages); }
-    return pages;
+function getPriorityPillClass(prioridad) {
+  const map = {
+    Crítica: 'ui-pill pill-rose',
+    Alta: 'ui-pill pill-amber',
+    Media: 'ui-pill pill-blue',
+    Baja: 'ui-pill pill-emerald',
   };
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 2px', marginTop: 6, flexWrap: 'wrap', gap: 8, borderTop: '1px solid var(--border-color)' }}>
-      <span style={{ fontSize: '.82rem', color: 'var(--gray-text)' }}>
-        Mostrando <strong style={{ color: 'var(--text-color)' }}>{start}–{end}</strong> de <strong style={{ color: 'var(--text-color)' }}>{total}</strong>
-      </span>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        <button className="pag-btn" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}>‹</button>
-        {getPages().map((p, i) =>
-          p === '...' ? <span key={`d${i}`} style={{ padding: '0 4px', color: 'var(--gray-text)' }}>…</span> : (
-            <button key={p} className={`pag-btn ${p === currentPage ? 'pag-active' : ''}`} onClick={() => onPageChange(p)}>{p}</button>
-          )
-        )}
-        <button className="pag-btn" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}>›</button>
-      </div>
-    </div>
-  );
+  return map[prioridad] || 'ui-pill pill-slate';
 }
 
 // ─── TABLE ROW COMPONENT (outside main to prevent re-mount/focus loss) ──────
 function TicketTableRow({ ticket, onGestionar }) {
-  const statusPillClass = (estado) => {
-    if (estado === 'Abierto') return 'pill-Abierto';
-    if (estado === 'En Proceso') return 'pill-EnProceso';
-    if (estado === 'Resuelto') return 'pill-Resuelto';
-    return 'pill-Cerrado';
-  };
-
   const t = ticket;
   return (
-    <tr
-      onMouseEnter={e => e.currentTarget.style.background = 'var(--hover-bg)'}
-      onMouseLeave={e => e.currentTarget.style.background = ''}
-    >
-      <td style={{ fontWeight: 700, color: 'var(--primary-color)', padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>#{t.id}</td>
-      <td style={{ fontWeight: 600, padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-color)' }}>{t.solicitante || 'Anónimo'}</td>
-      <td style={{ padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-color)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</td>
-      <td style={{ padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-color)' }}>{t.categoria || <span style={{ color: '#ccc' }}>--</span>}</td>
-      <td style={{ padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-        <span style={{
-          color: t.prioridad === 'Crítica' ? '#dc3545' : t.prioridad === 'Alta' ? '#e67e22' : t.prioridad === 'Media' ? '#856404' : '#28a745',
-          background: t.prioridad === 'Crítica' ? 'rgba(220,53,69,0.12)' : t.prioridad === 'Alta' ? 'rgba(230,126,34,0.12)' : t.prioridad === 'Media' ? 'rgba(255,193,7,0.12)' : 'rgba(40,167,69,0.12)',
-          padding: '4px 10px', borderRadius: 6, fontWeight: 600, fontSize: 12
-        }}>{t.prioridad}</span>
+    <tr>
+      <td style={{ fontWeight: 700, color: 'var(--primary-color)' }}>#{t.id}</td>
+      <td style={{ fontWeight: 600 }}>{t.solicitante || 'Anónimo'}</td>
+      <td style={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={t.titulo}>{t.titulo}</td>
+      <td>{t.categoria || <span style={{ color: 'var(--gray-text)' }}>—</span>}</td>
+      <td>
+        <span className={getPriorityPillClass(t.prioridad)}>{t.prioridad}</span>
       </td>
-      <td style={{ padding: '15px 20px', borderBottom: '1px solid var(--border-color)' }}>
-        <span className={`status-pill ${statusPillClass(t.estado)}`}>{t.estado}</span>
+      <td>
+        <span className={getStatusPillClass(t.estado)}>{t.estado}</span>
       </td>
-      <td style={{ padding: '12px 15px', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', color: 'var(--text-color)' }}>
+      <td>
         {t.tecnico_nombre ? (
-          <><FaUserTie style={{ color: '#4e73df', marginRight: '5px' }} /> {t.tecnico_nombre}</>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <FaUserTie style={{ color: 'var(--primary-color)' }} /> {t.tecnico_nombre}
+          </span>
         ) : (
-          <span style={{ color: '#ccc', fontStyle: 'italic' }}>Sin asignar</span>
+          <span style={{ color: 'var(--gray-text)', fontStyle: 'italic' }}>Sin asignar</span>
         )}
       </td>
-      <td style={{ textAlign: 'center', padding: '12px 15px', borderBottom: '1px solid var(--border-color)' }}>
+      <td className="text-center">
         <button
-          className="btn-action-modern"
+          className="btn-table"
           onClick={() => onGestionar(t.id)}
           title="Gestionar"
-          style={{ padding: '8px 12px', borderRadius: 8, border: 'none', background: 'rgba(78,115,223,0.1)', color: 'var(--primary-color)', cursor: 'pointer', transition: 'all .2s' }}
         >
           <FaSlidersH />
         </button>
@@ -148,13 +97,13 @@ function TimelineItem({ item }) {
     resolucion: 'fa-check-circle'
   };
   const colorMap = {
-    creacion: '#4a6cf7', asignacion: '#28a745',
-    escalacion: '#ffc107', estado: '#17a2b8',
-    calificacion: '#f6c23e', reapertura: '#e74a3b',
-    resolucion: '#1cc88a'
+    creacion: 'var(--primary-color)', asignacion: 'var(--success-color)',
+    escalacion: 'var(--warning-color)', estado: 'var(--info-color)',
+    calificacion: 'var(--warning-color)', reapertura: 'var(--error-color)',
+    resolucion: 'var(--success-color)'
   };
   const icon = iconMap[item.tipo] || 'fa-circle';
-  const iconColor = colorMap[item.tipo] || '#6c757d';
+  const iconColor = colorMap[item.tipo] || 'var(--gray-text)';
   return (
     <div style={{ position: 'relative', marginBottom: 20, paddingLeft: 15 }}>
       <div style={{
@@ -439,14 +388,12 @@ export default function GestionTickets() {
   const cargarTimeline = useCallback(async (id) => {
     try {
       const res = await ticketAPI.timeline(id);
-      // El backend devuelve json_success(array) → res.data.data = array de eventos
       const timelineArr = Array.isArray(res.data?.data)
         ? res.data.data
         : Array.isArray(res.data?.timeline)
           ? res.data.timeline
           : [];
       setTimelineData(timelineArr);
-      // Registrar IDs conocidos para SSE incremental
       timelineKnownIds.current = new Set(
         timelineArr.map(item => item.tipo + '_' + item.fecha)
       );
@@ -457,7 +404,6 @@ export default function GestionTickets() {
   const loadAdminTimeline = useCallback(async (id) => {
     try {
       const res = await ticketAPI.timeline(id);
-      // El backend devuelve json_success(array) → res.data.data = array de eventos
       const tl = Array.isArray(res.data?.data)
         ? res.data.data
         : Array.isArray(res.data?.timeline)
@@ -503,7 +449,7 @@ export default function GestionTickets() {
     try {
       const res = await ticketAPI.update(jsonData);
       if (res.data?.success) {
-        await Swal.fire({ icon: 'success', title: 'Guardado', text: 'Cambios guardados exitosamente', timer: 1500, showConfirmButton: false });
+        showToast('Cambios guardados exitosamente', 'success');
         cerrarModal();
         await cargarTickets();
       } else {
@@ -553,36 +499,33 @@ export default function GestionTickets() {
   };
 
   // ── AUTO-ASIGNARME ───────────────────────────────────────────────────────
-  const asignarAMi = () => {
+  const asignarAMi = async () => {
     if (!currentTicket || !currentUserId) return;
-    Swal.fire({
+    const result = await showConfirm({
       title: '¿Tomar este caso?',
       text: 'Te asignarás este ticket automáticamente',
       icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#4a6cf7',
       confirmButtonText: 'Sí, asignarme',
       cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
-      if (!result.isConfirmed) return;
-      try {
-        const res = await ticketAPI.update({
-          ticket_id: currentTicket.id,
-          tecnico_id: currentUserId
-        });
-        if (res.data?.success) {
-          await cargarTickets();
-          setCurrentTicket(prev => ({ ...prev, tecnico_id: currentUserId, tecnico: user?.nombre_completo }));
-          setFormTecnicoId(String(currentUserId));
-          showToast('Asignado exitosamente', 'success');
-        } else {
-          showToast(res.data?.message || 'Error al asignarse el ticket', 'error');
-        }
-      } catch (err) {
-        const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al asignarse el ticket';
-        showToast(errorMessage, 'error');
-      }
     });
+    if (!result.isConfirmed) return;
+    try {
+      const res = await ticketAPI.update({
+        ticket_id: currentTicket.id,
+        tecnico_id: currentUserId
+      });
+      if (res.data?.success) {
+        await cargarTickets();
+        setCurrentTicket(prev => ({ ...prev, tecnico_id: currentUserId, tecnico: user?.nombre_completo }));
+        setFormTecnicoId(String(currentUserId));
+        showToast('Asignado exitosamente', 'success');
+      } else {
+        showToast(res.data?.message || 'Error al asignarse el ticket', 'error');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || 'Error de conexión al asignarse el ticket';
+      showToast(errorMessage, 'error');
+    }
   };
 
   // ── ESCALAR TICKET ───────────────────────────────────────────────────────
@@ -702,8 +645,8 @@ export default function GestionTickets() {
     for (let i = 1; i <= 5; i++) {
       stars.push(
         i <= calificacion
-          ? <FaStar key={i} style={{ color: '#f6c23e', marginRight: 2 }} />
-          : <FaRegStar key={i} style={{ color: '#ddd', marginRight: 2 }} />
+          ? <FaStar key={i} style={{ color: 'var(--warning-color)', marginRight: 2 }} />
+          : <FaRegStar key={i} style={{ color: 'var(--border-color)', marginRight: 2 }} />
       );
     }
     return stars;
@@ -721,7 +664,7 @@ export default function GestionTickets() {
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', color: 'var(--text-color)' }}>
         <FaHeadset style={{ fontSize: '3rem', color: 'var(--primary-color)', marginBottom: 20 }} />
         <h1>Sin Acceso</h1>
-        <p style={{ fontSize: '1.2rem', color: 'var(--gray-text)', maxWidth: 500 }}>
+        <p style={{ fontSize: '1.1rem', color: 'var(--gray-text)', maxWidth: 500 }}>
           No tienes permisos para acceder a la Gestión de Tickets.
         </p>
       </div>
@@ -730,54 +673,33 @@ export default function GestionTickets() {
 
   return (
     <div className="inventory-module">
-
-
-      <div className="inventory-header">
+      <div className="inventory-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div className="page-title-row">
           <h2><FaHeadset /> Mesa de Ayuda</h2>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <div className="search-box-modern" style={{ padding: '8px 16px', width: '260px' }}>
-              <FaSearch style={{ color: 'var(--gray-text)', marginRight: '8px', fontSize: '14px' }} />
-              <input
-                type="text"
-                placeholder="Buscar ticket..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', color: 'var(--text-color)' }}
-              />
-            </div>
-            {puedeCrear && (
-              <button
-                onClick={abrirNuevoModal}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: tieneTicketAbierto ? '#888' : 'var(--primary-color)',
-                  color: '#fff',
-                  border: 'none', padding: '10px 20px', borderRadius: 25,
-                  cursor: tieneTicketAbierto ? 'not-allowed' : 'pointer',
-                  fontWeight: 600, fontSize: '0.9rem',
-                  boxShadow: tieneTicketAbierto ? 'none' : '0 4px 10px rgba(78,115,223,0.3)',
-                  transition: 'all .2s',
-                  whiteSpace: 'nowrap',
-                  opacity: tieneTicketAbierto ? 0.5 : 1
-                }}
-                title={tieneTicketAbierto ? 'Ya tienes un ticket en curso' : 'Crear Nuevo Ticket'}
-              >
-                <FaPlus /> Nuevo Ticket
-              </button>
-            )}
-          </div>
         </div>
+        {puedeCrear && (
+          <button
+            className="btn btn-primary"
+            onClick={abrirNuevoModal}
+            style={{
+              cursor: tieneTicketAbierto ? 'not-allowed' : 'pointer',
+              opacity: tieneTicketAbierto ? 0.55 : 1
+            }}
+            title={tieneTicketAbierto ? 'Ya tienes un ticket en curso' : 'Crear Nuevo Ticket'}
+          >
+            <FaPlus /> Nuevo Ticket
+          </button>
+        )}
       </div>
 
       <div className="inventory-tabs">
         {[
-          { key: 'Todos', icon: <FaList />, label: 'Todos' },
-          { key: 'Asignados', icon: <FaUserTag />, label: 'Asignados a mí' },
-          { key: 'Abierto', icon: <FaEnvelopeOpen />, label: 'Abiertos' },
-          { key: 'En Proceso', icon: <FaSpinner className="fa-spin" />, label: 'En Proceso' },
-          { key: 'Resuelto', icon: <FaCheckCircle />, label: 'Resueltos' },
-          { key: 'Cerrado', icon: <FaLock />, label: 'Cerrados' }
+          { key: 'Todos', icon: <FaList />, label: 'Todos', count: tickets.length },
+          { key: 'Asignados', icon: <FaUserTag />, label: 'Asignados a mí', count: tickets.filter(tk => tk.tecnico_id == currentUserId).length },
+          { key: 'Abierto', icon: <FaEnvelopeOpen />, label: 'Abiertos', count: tickets.filter(tk => tk.estado === 'Abierto').length },
+          { key: 'En Proceso', icon: <FaSpinner />, label: 'En Proceso', count: tickets.filter(tk => tk.estado === 'En Proceso').length },
+          { key: 'Resuelto', icon: <FaCheckCircle />, label: 'Resueltos', count: tickets.filter(tk => tk.estado === 'Resuelto').length },
+          { key: 'Cerrado', icon: <FaLock />, label: 'Cerrados', count: tickets.filter(tk => tk.estado === 'Cerrado').length }
         ].map(tab => (
           <button
             key={tab.key}
@@ -785,26 +707,27 @@ export default function GestionTickets() {
             onClick={() => setActiveTab(tab.key)}
           >
             {tab.icon} {tab.label}
+            <span className="ui-pill pill-slate" style={{ marginLeft: '6px', padding: '1px 7px', fontSize: '0.7rem' }}>{tab.count}</span>
           </button>
         ))}
       </div>
 
       {activeTab === 'Asignados' && (
-        <div style={{ display: 'block', padding: '10px 20px', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-text)' }}>Filtrar estado de mis tickets:</label>
-            <select
-              className="form-control-modern"
-              style={{ width: 200, padding: 6 }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '12px' }}>
+          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-text)', margin: 0 }}>Filtrar estado de mis tickets:</label>
+          <div style={{ width: '210px' }}>
+            <SearchableSelect
               value={assignedSubFilter}
-              onChange={e => setAssignedSubFilter(e.target.value)}
-            >
-              <option value="Todos">Todos</option>
-              <option value="Abierto">Abierto</option>
-              <option value="En Proceso">En Proceso</option>
-              <option value="Resuelto">Resuelto</option>
-              <option value="Cerrado">Cerrado</option>
-            </select>
+              onChange={(val) => setAssignedSubFilter(val || 'Todos')}
+              options={[
+                { value: 'Todos', label: 'Todos' },
+                { value: 'Abierto', label: 'Abierto' },
+                { value: 'En Proceso', label: 'En Proceso' },
+                { value: 'Resuelto', label: 'Resuelto' },
+                { value: 'Cerrado', label: 'Cerrado' }
+              ]}
+              isClearable={false}
+            />
           </div>
         </div>
       )}
@@ -818,32 +741,31 @@ export default function GestionTickets() {
             setSearchTerm={(v) => { setSearchTerm(v); setCurrentPage(1); }}
             totalItems={tickets.length}
             filteredItemsCount={filteredTickets.length}
-            showSearch={false}
           />
           <div className="table-scroll">
             <table className="data-table" id="ticketsTable">
               <thead>
                 <tr>
-                  <th width="50">ID</th>
+                  <th style={{ width: '70px' }}>ID</th>
                   <th>Solicitante</th>
                   <th>Asunto</th>
                   <th>Categoría</th>
                   <th>Prioridad</th>
                   <th>Estado</th>
                   <th>Técnico</th>
-                  <th width="80" className="text-center">Acción</th>
+                  <th style={{ width: '80px' }} className="text-center">Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--text-color)' }}>
-                      <FaSpinner className="fa-spin" style={{ marginRight: 8 }} /> Cargando...
+                    <td colSpan={8} className="text-center p-4" style={{ color: 'var(--text-color)' }}>
+                      <FaSpinner className="fa-spin" style={{ marginRight: 8, display: 'inline' }} /> Cargando...
                     </td>
                   </tr>
                 ) : paginatedTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: 'var(--gray-text)' }}>No hay tickets.</td>
+                    <td colSpan={8} className="text-center p-4" style={{ color: 'var(--gray-text)' }}>No hay tickets.</td>
                   </tr>
                 ) : (
                   paginatedTickets.map(ticket => (
@@ -858,18 +780,13 @@ export default function GestionTickets() {
             </table>
           </div>
 
-          {/* Pagination */}
-          {!loading && filteredTickets.length > 0 && (
-            <div style={{ padding: '4px 10px' }}>
-              <PaginationBar
-                currentPage={currentPage}
-                totalPages={totalPages}
-                total={filteredTickets.length}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-              />
-            </div>
-          )}
+          <Pagination
+            page={currentPage}
+            setPage={setCurrentPage}
+            totalPages={totalPages}
+            totalItems={filteredTickets.length}
+            pageSize={pageSize}
+          />
         </div>
       </div>
 
@@ -883,24 +800,26 @@ export default function GestionTickets() {
         >
           <div className="modal-content" style={{
             width: 1100, maxWidth: '96vw', height: '88vh', padding: 0,
-            display: 'flex', flexDirection: 'column', borderRadius: 14, overflow: 'hidden',
-            background: 'var(--card-bg)'
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
           }}>
             {/* Modal Header */}
-            <div className="modal-header-custom">
+            <div className="modal-header" style={{ flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ background: 'rgba(78,115,223,0.1)', color: 'var(--primary-color)', borderRadius: 8, width: 35, height: 35, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: 10, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <FaTools />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Ticket #{t.id}</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.08rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    Ticket #{t.id}
+                    <span className={getStatusPillClass(t.estado)}>{t.estado}</span>
+                  </h3>
                   <small style={{ color: 'var(--gray-text)' }}>Panel de Soporte Técnico</small>
                 </div>
               </div>
-              <button className="action-btn" onClick={cerrarModal}><FaTimes /></button>
+              <button type="button" className="btn-icon btn-ghost" onClick={cerrarModal}><FaTimes /></button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', flexGrow: 1, overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', flexGrow: 1, overflow: 'hidden', minHeight: 0 }}>
               {/* ─── SIDEBAR PANEL ──────────────────────────────────────────── */}
               <div className="sidebar-panel">
                 <div className="info-card mb-3">
@@ -911,107 +830,75 @@ export default function GestionTickets() {
                 <form id="formGestion" onSubmit={handleGuardarCambios}>
                   <div className="form-group mb-3">
                     <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--gray-text)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>ESTADO</label>
-                    <select
-                      className="form-control-modern"
+                    <SearchableSelect
                       value={formEstado}
-                      onChange={e => setFormEstado(e.target.value)}
+                      onChange={(val) => setFormEstado(val || 'Abierto')}
+                      options={[
+                        { value: 'Abierto', label: 'Abierto' },
+                        { value: 'En Proceso', label: 'En Proceso' },
+                        { value: 'Resuelto', label: 'Resuelto' },
+                        ...(formEstado === 'Cerrado' ? [{ value: 'Cerrado', label: 'Cerrado (Solo usuario)' }] : [])
+                      ]}
+                      isClearable={false}
                       disabled={ticketCerrado}
-                    >
-                      <option value="Abierto">Abierto</option>
-                      <option value="En Proceso">En Proceso</option>
-                      <option value="Resuelto">Resuelto</option>
-                      <option value="Cerrado" disabled>Cerrado (Solo usuario)</option>
-                    </select>
+                    />
                   </div>
 
                   <div className="form-group mb-3">
                     <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--gray-text)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>CATEGORÍA</label>
-                    <select
-                      className="form-control-modern"
+                    <SearchableSelect
                       value={formCategoria}
-                      onChange={e => setFormCategoria(e.target.value)}
+                      onChange={(val) => setFormCategoria(val || '')}
+                      options={categorias.map(cat => ({ value: cat, label: cat }))}
+                      placeholder="-- Seleccionar Categoría --"
+                      isClearable={true}
                       disabled={ticketCerrado}
-                    >
-                      <option value="">-- Seleccionar Categoría --</option>
-                      {categorias.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="form-group mb-3">
                     <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--gray-text)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>PRIORIDAD (Fija)</label>
-                    <input
-                      type="text"
-                      className="form-control-modern"
-                      value={t.prioridad}
-                      readOnly
-                      style={{ background: 'var(--input-bg)', color: 'var(--gray-text)', cursor: 'not-allowed' }}
-                    />
+                    <div style={{ marginTop: '4px' }}>
+                      <span className={getPriorityPillClass(t.prioridad)}>{t.prioridad}</span>
+                    </div>
                   </div>
 
                   <div className="form-group mb-4">
                     <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--gray-text)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 }}>TÉCNICO ASIGNADO</label>
-                    <select
-                      className="form-control-modern"
+                    <SearchableSelect
                       value={formTecnicoId}
-                      onChange={e => setFormTecnicoId(e.target.value)}
+                      onChange={(val) => setFormTecnicoId(val ? String(val) : '')}
+                      options={tecnicos.map(tec => ({ value: String(tec.id), label: tec.nombre_completo }))}
+                      placeholder="-- Sin asignar --"
+                      isClearable={true}
                       disabled={ticketCerrado || (!puedeReasignar && !!t.tecnico_id && !esMiTicket)}
-                    >
-                      <option value="">-- Sin asignar --</option>
-                      {tecnicos.map(tec => (
-                        <option key={tec.id} value={String(tec.id)}>{tec.nombre_completo}</option>
-                      ))}
-                    </select>
+                    />
 
                     {!ticketCerrado && puedeResponder && (
-                      <div 
-                        className="assign-me" 
+                      <button
+                        type="button"
+                        className={t.tecnico_id == currentUserId ? 'btn btn-soft' : 'btn btn-primary'}
                         onClick={t.tecnico_id != currentUserId ? asignarAMi : undefined}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          padding: '10px 16px',
-                          marginTop: 10,
-                          marginBottom: 0,
-                          borderRadius: 8,
-                          fontWeight: 600,
-                          fontSize: '0.9rem',
-                          cursor: t.tecnico_id == currentUserId ? 'default' : 'pointer',
-                          opacity: t.tecnico_id == currentUserId ? 0.6 : 1,
-                          background: t.tecnico_id == currentUserId ? 'rgba(78,115,223,0.1)' : 'linear-gradient(135deg,#4e73df,#36b9cc)',
-                          color: t.tecnico_id == currentUserId ? '#4e73df' : '#fff',
-                          border: t.tecnico_id == currentUserId ? '1px solid #4e73df' : 'none',
-                          transition: 'all 0.2s'
-                        }}
+                        disabled={t.tecnico_id == currentUserId}
+                        style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
                       >
                         <FaHandPointUp /> {t.tecnico_id == currentUserId ? 'Ya tienes este caso asignado' : 'Tomar este caso'}
-                      </div>
+                      </button>
                     )}
 
                     {(puedeReasignar || puedeResponder) && puedoEscalar && !ticketCerrado && (
                       <button
                         type="button"
                         id="btnEscalar"
+                        className="btn btn-secondary"
                         onClick={abrirModalEscalar}
                         style={{
-                          display: 'flex',
                           width: '100%',
-                          padding: '10px 16px',
-                          border: '1px solid #f6c23e',
-                          borderRadius: 8,
-                          fontWeight: 600,
-                          fontSize: '0.9rem',
-                          transition: 'all 0.2s',
-                          background: 'rgba(246,194,62,0.1)',
-                          color: '#f6c23e',
-                          marginTop: 10,
-                          cursor: 'pointer',
-                          alignItems: 'center',
                           justifyContent: 'center',
-                          gap: 8
+                          marginTop: 10,
+                          borderColor: 'var(--warning-color)',
+                          color: 'var(--warning-color)',
+                          background: 'var(--warning-bg)',
                         }}
                       >
                         <FaArrowUp /> Escalar Ticket
@@ -1022,27 +909,16 @@ export default function GestionTickets() {
                   {!ticketCerrado && (
                     <button 
                       type="submit" 
-                      className="btn-save-modern" 
+                      className="btn btn-primary" 
                       id="btnGuardarCambios"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        width: '100%',
-                        padding: '10px 16px',
-                        marginTop: 10,
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        fontSize: '0.9rem'
-                      }}
+                      style={{ width: '100%', justifyContent: 'center', marginTop: 10 }}
                     >
                       <FaSave /> Guardar Cambios
                     </button>
                   )}
 
                   {ticketCerrado && (
-                    <div style={{ display: 'block', marginTop: 15, padding: 10, background: 'rgba(231,74,59,0.1)', color: '#e74a3b', fontSize: '0.8rem', borderRadius: 5, textAlign: 'center', fontWeight: 600 }}>
+                    <div style={{ display: 'block', marginTop: 15, padding: 10, background: 'var(--error-bg)', color: 'var(--error-color)', fontSize: '0.8rem', borderRadius: 8, textAlign: 'center', fontWeight: 600 }}>
                       <FaLock style={{ marginRight: 6 }} /> TICKET CERRADO - SOLO LECTURA
                     </div>
                   )}
@@ -1055,35 +931,24 @@ export default function GestionTickets() {
                     {t.archivo_adjunto ? (
                       <button
                         type="button"
+                        className="btn btn-soft btn-sm"
                         onClick={() => {
                           setPreviewFile(t.archivo_adjunto);
                           setShowPreviewModal(true);
                         }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontWeight: 700,
-                          fontSize: '0.9rem',
-                          color: 'var(--text-color)',
-                          padding: 0,
-                        }}
                       >
-                        <FaEye style={{ color: 'var(--primary-color)' }} /> Ver Archivo
+                        <FaEye /> Ver Archivo
                       </button>
                     ) : (
-                      <span style={{ color: '#aaa', fontStyle: 'italic', fontSize: '0.85rem' }}>No hay adjuntos</span>
+                      <span style={{ color: 'var(--gray-text)', fontStyle: 'italic', fontSize: '0.85rem' }}>No hay adjuntos</span>
                     )}
                   </div>
                 </div>
 
                 {/* Calificación admin */}
                 {t.estado === 'Cerrado' && t.calificacion > 0 && (
-                  <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', paddingTop: 15, background: 'rgba(246,194,62,0.1)', borderRadius: 8, padding: 15 }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f6c23e' }}>
+                  <div style={{ marginTop: 20, borderTop: '1px solid var(--border-color)', background: 'var(--warning-bg)', borderRadius: 10, padding: 14 }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--warning-color)' }}>
                       <FaStar /> CALIFICACIÓN DEL USUARIO
                     </label>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 2, margin: '8px 0' }}>
@@ -1106,14 +971,10 @@ export default function GestionTickets() {
                   {!ticketCerrado && !t.tecnico_id && puedeResponder && (
                     <div style={{ display: 'block', marginTop: 10 }}>
                       <button
+                        type="button"
+                        className="btn btn-primary"
                         onClick={asignarAMi}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          background: 'linear-gradient(135deg,#4e73df,#36b9cc)',
-                          color: '#fff', border: 'none', padding: '9px 18px',
-                          borderRadius: 8, cursor: 'pointer', fontWeight: 600,
-                          fontSize: '0.88rem', width: '100%', justifyContent: 'center'
-                        }}
+                        style={{ width: '100%', justifyContent: 'center' }}
                       >
                         <FaHandPointUp /> Tomar este caso
                       </button>
@@ -1147,25 +1008,25 @@ export default function GestionTickets() {
                     style={{ flexGrow: 1, overflowY: 'auto', padding: '16px 20px', background: 'var(--bg-color)' }}
                   >
                     {chatLoading ? (
-                      <div style={{ textAlign: 'center', padding: 30, color: '#aaa' }}>
+                      <div style={{ textAlign: 'center', padding: 30, color: 'var(--gray-text)' }}>
                         <FaSpinner className="fa-spin" /> Cargando...
                       </div>
                     ) : chatHistory.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: 30, color: '#ccc' }}>
-                        <FaComments style={{ fontSize: '2.5rem', marginBottom: 10 }} /><br />Sin mensajes previos
+                      <div style={{ textAlign: 'center', padding: 30, color: 'var(--gray-text)' }}>
+                        <FaComments style={{ fontSize: '2.5rem', marginBottom: 10, color: 'var(--border-color)' }} /><br />Sin mensajes previos
                       </div>
                     ) : (
                       chatHistory.map((h, idx) => {
                         const esTecnico = h.es_tecnico == 1;
                         const align = esTecnico ? 'flex-end' : 'flex-start';
-                        const bg = esTecnico ? '#e3f2fd' : 'var(--card-bg)';
-                        const border = esTecnico ? 'none' : '1px solid var(--border-color)';
+                        const bg = esTecnico ? 'var(--primary-light)' : 'var(--surface-primary)';
+                        const border = esTecnico ? '1px solid rgba(37, 99, 235, 0.22)' : '1px solid var(--border-color)';
                         const autor = esTecnico ? 'Soporte TI' : h.usuario_nombre || h.nombre_completo || 'Usuario';
-                        const txtColor = esTecnico ? '#333' : 'var(--text-color)';
+                        const txtColor = 'var(--text-color)';
                         return (
                           <div key={h.id || idx} style={{ display: 'flex', flexDirection: 'column', alignItems: align, marginBottom: 15 }}>
-                            <div style={{ background: bg, border, padding: '10px 15px', borderRadius: 10, maxWidth: '85%', fontSize: '0.9rem', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', color: txtColor }}>
-                              <div style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--primary-color)', marginBottom: 4 }}>{autor}</div>
+                            <div style={{ background: bg, border, padding: '10px 15px', borderRadius: 14, maxWidth: '85%', fontSize: '0.9rem', boxShadow: 'var(--shadow-xs)', color: txtColor }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.75rem', color: esTecnico ? 'var(--primary-color)' : 'var(--text-secondary)', marginBottom: 4 }}>{autor}</div>
                               {h.mensaje}
                             </div>
                             <small style={{ color: 'var(--gray-text)', fontSize: '0.7rem', marginTop: 3 }}>{h.fecha}</small>
@@ -1177,7 +1038,7 @@ export default function GestionTickets() {
 
                   {!ticketCerrado && (puedeResponder || esMiTicket) && (
                     <div className="chat-input-area" style={{ flexShrink: 0 }}>
-                      <form id="formChat" onSubmit={handleSendChat} style={{ display: 'flex', gap: 10, width: '100%' }}>
+                      <form id="formChat" onSubmit={handleSendChat} style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
                         <textarea
                           ref={chatInputRef}
                           className="input-chat"
@@ -1203,8 +1064,8 @@ export default function GestionTickets() {
                 <div style={{ display: adminTab === 'timeline' ? 'flex' : 'none', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
                   <div style={{ flexGrow: 1, overflowY: 'auto', padding: '20px 20px 20px 30px', background: 'var(--bg-color)', borderRadius: 8 }}>
                     {timelineData.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: 30, color: '#ddd' }}>
-                        <FaHistory style={{ fontSize: 30, marginBottom: 10 }} /><br />No hay actividad registrada
+                      <div style={{ textAlign: 'center', padding: 30, color: 'var(--gray-text)' }}>
+                        <FaHistory style={{ fontSize: 30, marginBottom: 10, color: 'var(--border-color)' }} /><br />No hay actividad registrada
                       </div>
                     ) : (
                       <div className="timeline-container" style={{ position: 'relative', paddingLeft: '30px' }}>
@@ -1229,19 +1090,19 @@ export default function GestionTickets() {
           style={{ zIndex: 10001 }}
           onClick={(e) => { if (e.target === e.currentTarget) cerrarModalEscalar(); }}
         >
-          <div className="modal-content" style={{ width: 480, maxWidth: '95%', padding: 0, borderRadius: 15, overflow: 'hidden', background: 'var(--card-bg)' }}>
+          <div className="modal-content" style={{ maxWidth: 480 }}>
             {/* Header */}
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>
-                <FaArrowUp style={{ color: '#e74a3b', marginRight: 8 }} /> Escalar Caso
+            <div className="modal-header">
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaArrowUp style={{ color: 'var(--warning-color)' }} /> Escalar Caso
               </h3>
-              <button type="button" className="action-btn" onClick={cerrarModalEscalar} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--input-bg)', color: 'var(--text-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={cerrarModalEscalar}>
                 <FaTimes />
               </button>
             </div>
             {/* Body */}
             <form onSubmit={(e) => { e.preventDefault(); confirmarEscalar(); }}>
-              <div className="modal-body" style={{ padding: '20px 24px' }}>
+              <div className="modal-body">
                 <div className="form-group mb-3">
                   <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block', fontSize: '13.5px' }}>Escalar a <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <SearchableSelect
@@ -1253,7 +1114,7 @@ export default function GestionTickets() {
                 <div className="form-group mb-3" style={{ marginTop: 16 }}>
                   <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block', fontSize: '13.5px' }}>Motivo <span style={{ color: 'var(--error-color)' }}>*</span></label>
                   <textarea
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-color)', fontSize: '14px', outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+                    className="form-control"
                     rows={3}
                     placeholder="Ej: Requiere conocimiento especializado en redes..."
                     value={escalarMotivo}
@@ -1262,11 +1123,11 @@ export default function GestionTickets() {
                 </div>
               </div>
               {/* Footer */}
-              <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-                <button type="button" onClick={cerrarModalEscalar} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--border-color)', cursor: 'pointer', background: 'var(--input-bg)', color: 'var(--text-color)', fontSize: '0.9rem', fontWeight: 600 }}>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={cerrarModalEscalar}>
                   Cancelar
                 </button>
-                <button type="submit" style={{ padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#e74a3b,#f6c23e)', color: 'white', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <button type="submit" className="btn btn-primary" style={{ background: 'var(--warning-color)' }}>
                   <FaArrowUp /> Confirmar Escalado
                 </button>
               </div>
@@ -1282,92 +1143,90 @@ export default function GestionTickets() {
           style={{ zIndex: 10001 }}
           onClick={(e) => { if (e.target === e.currentTarget) setShowNuevoModal(false); }}
         >
-          <div className="modal-content" style={{ width: 500, maxWidth: '95%', padding: 0, borderRadius: 15, overflow: 'hidden', background: 'var(--card-bg)' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}><FaHeadset style={{ color: 'var(--primary-color)', marginRight: 8 }} /> Nuevo Ticket</h3>
-              <button className="action-btn" onClick={() => setShowNuevoModal(false)} style={{ width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'var(--input-bg)', color: 'var(--text-color)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaHeadset style={{ color: 'var(--primary-color)' }} /> Nuevo Ticket
+              </h3>
+              <button type="button" className="btn-icon btn-ghost" onClick={() => setShowNuevoModal(false)}>
                 <FaTimes />
               </button>
             </div>
-            <form onSubmit={handleNuevoSubmit} style={{ padding: 25 }}>
-              <div className="form-group">
-                <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block' }}>
-                  Descripción del problema <span style={{ color: 'red' }}>*</span>
-                </label>
-                <textarea
-                  className="form-control-modern"
-                  value={nuevoDesc}
-                  onChange={e => setNuevoDesc(e.target.value)}
-                  rows={5}
-                  minLength={10}
-                  maxLength={5000}
-                  placeholder="Describe detalladamente el inconveniente..."
-                  required
-                />
-                <small style={{ color: 'var(--gray-text)', marginTop: 5, display: 'block' }}>
-                  <FaInfoCircle style={{ marginRight: 4 }} /> Mínimo 10 caracteres.
-                </small>
-              </div>
-
-              <div className="form-group" style={{ marginTop: 20 }}>
-                <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block' }}>Evidencia (Opcional)</label>
-                <div className="file-upload-container">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="file-input-hidden"
-                    id="fileAdjuntoNuevo"
-                    onChange={e => {
-                      if (e.target.files[0]) {
-                        setNuevoFile(e.target.files[0]);
-                        setNuevoFileName(e.target.files[0].name);
-                      }
-                    }}
+            <form onSubmit={handleNuevoSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block' }}>
+                    Descripción del problema <span style={{ color: 'var(--error-color)' }}>*</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    value={nuevoDesc}
+                    onChange={e => setNuevoDesc(e.target.value)}
+                    rows={5}
+                    minLength={10}
+                    maxLength={5000}
+                    placeholder="Describe detalladamente el inconveniente..."
+                    required
                   />
-                  <label htmlFor="fileAdjuntoNuevo" className="file-upload-label">
-                    <FaCloudUploadAlt /> Seleccionar Archivo
-                  </label>
-                  <span className="file-name-display">
-                    {nuevoFileName}
-                  </span>
+                  <small style={{ color: 'var(--gray-text)', marginTop: 5, display: 'block' }}>
+                    <FaInfoCircle style={{ marginRight: 4 }} /> Mínimo 10 caracteres.
+                  </small>
                 </div>
-              </div>
 
-              <div className="form-group" style={{ marginTop: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <label className="switch" style={{ margin: 0 }}>
+                <div className="form-group" style={{ marginTop: 18 }}>
+                  <label style={{ fontWeight: 600, color: 'var(--text-color)', marginBottom: 8, display: 'block' }}>Evidencia (Opcional)</label>
+                  <div className="file-upload-container">
                     <input
-                      type="checkbox"
-                      id="nuevoAutoAsignar"
-                      checked={nuevoAutoAsignar}
-                      onChange={e => setNuevoAutoAsignar(e.target.checked)}
+                      type="file"
+                      ref={fileInputRef}
+                      className="file-input-hidden"
+                      id="fileAdjuntoNuevo"
+                      onChange={e => {
+                        if (e.target.files[0]) {
+                          setNuevoFile(e.target.files[0]);
+                          setNuevoFileName(e.target.files[0].name);
+                        }
+                      }}
                     />
-                    <span className="slider"></span>
-                  </label>
-                  <label htmlFor="nuevoAutoAsignar" style={{ fontWeight: 600, color: 'var(--text-color)', cursor: 'pointer', margin: 0, fontSize: '0.9rem' }}>
-                    Auto-asignarme este ticket
-                  </label>
+                    <label htmlFor="fileAdjuntoNuevo" className="file-upload-label">
+                      <FaCloudUploadAlt /> Seleccionar Archivo
+                    </label>
+                    <span className="file-name-display">
+                      {nuevoFileName}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: 18 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label className="switch" style={{ margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        id="nuevoAutoAsignar"
+                        checked={nuevoAutoAsignar}
+                        onChange={e => setNuevoAutoAsignar(e.target.checked)}
+                      />
+                      <span className="slider"></span>
+                    </label>
+                    <label htmlFor="nuevoAutoAsignar" style={{ fontWeight: 600, color: 'var(--text-color)', cursor: 'pointer', margin: 0, fontSize: '0.9rem' }}>
+                      Auto-asignarme este ticket
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'right', marginTop: 25 }}>
+              <div className="modal-footer">
                 <button
                   type="button"
+                  className="btn btn-secondary"
                   onClick={() => setShowNuevoModal(false)}
-                  style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--border-color)', cursor: 'pointer', background: 'var(--input-bg)', color: 'var(--text-color)', marginRight: 10, fontSize: '0.9rem', fontWeight: 600 }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
+                  className="btn btn-primary"
                   disabled={creating}
-                  style={{
-                    background: creating ? '#888' : 'var(--primary-color)', color: 'white',
-                    padding: '10px 25px', borderRadius: 25, border: 'none',
-                    cursor: creating ? 'not-allowed' : 'pointer', display: 'inline-flex',
-                    alignItems: 'center', gap: 8, fontWeight: 600, fontSize: '0.9rem',
-                    transition: '0.2s', boxShadow: '0 4px 10px rgba(78,115,223,0.3)'
-                  }}
                 >
                   {creating ? <><FaSpinner className="fa-spin" /> Guardando...</> : 'Crear Solicitud'}
                 </button>
@@ -1378,55 +1237,33 @@ export default function GestionTickets() {
       )}
       {resolucionModalOpen && (
         <div
+          className="modal-overlay active"
+          style={{ zIndex: 99999 }}
           onClick={() => setResolucionModalOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.6)',
-            zIndex: 99999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backdropFilter: 'blur(3px)',
-          }}
         >
           <div
+            className="modal-content"
+            style={{ maxWidth: 500 }}
             onClick={e => e.stopPropagation()}
-            style={{
-              background: 'var(--card-bg)',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: 500,
-              margin: '0 16px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-              border: '1px solid var(--border-color)',
-              overflow: 'hidden',
-            }}
           >
             {/* Header */}
-            <div style={{
-              padding: '18px 24px',
-              borderBottom: '1px solid var(--border-color)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(28,200,138,0.08)',
-            }}>
+            <div className="modal-header" style={{ background: 'var(--success-bg)' }}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <FaCheckCircle style={{ color: '#1cc88a', fontSize: '1.1rem' }} />
+                <FaCheckCircle style={{ color: 'var(--success-color)', fontSize: '1.1rem' }} />
                 Resolución de Ticket #{currentTicket?.id}
               </h3>
               <button
+                type="button"
+                className="btn-icon btn-ghost"
                 onClick={() => setResolucionModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--gray-text)', fontSize: '1.1rem', display: 'flex', alignItems: 'center' }}
               >
                 <FaTimes />
               </button>
             </div>
             {/* Body */}
-            <div style={{ padding: '20px 24px 24px' }}>
+            <div className="modal-body">
               <p style={{ fontSize: '0.88rem', color: 'var(--gray-text)', marginBottom: '16px', lineHeight: 1.6 }}>
-                Para marcar este ticket como <strong style={{ color: '#1cc88a' }}>Resuelto</strong>, ingrese el concepto técnico o solución aplicada.
+                Para marcar este ticket como <strong style={{ color: 'var(--success-color)' }}>Resuelto</strong>, ingrese el concepto técnico o solución aplicada.
                 Esta información quedará registrada en la línea de tiempo y será exportable en los reportes.
               </p>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--gray-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -1435,56 +1272,31 @@ export default function GestionTickets() {
               <textarea
                 autoFocus
                 rows="5"
+                className="form-control"
                 value={conceptoTecnico}
                 onChange={e => setConceptoTecnico(e.target.value)}
                 placeholder="Describa detalladamente la solución aplicada al problema del usuario..."
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '10px',
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--input-bg)',
-                  color: 'var(--text-color)',
-                  fontSize: '0.9rem',
-                  resize: 'vertical',
-                  outline: 'none',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.6,
-                  boxSizing: 'border-box',
-                  transition: 'border-color 0.2s',
-                }}
-                onFocus={e => e.target.style.borderColor = '#1cc88a'}
-                onBlur={e => e.target.style.borderColor = 'var(--border-color)'}
               />
-              <p style={{ fontSize: '0.78rem', color: '#aaa', marginTop: 6, marginBottom: 0 }}>
-                Mínimo 5 caracteres. {conceptoTecnico.length > 0 && <span style={{ color: conceptoTecnico.trim().length >= 5 ? '#1cc88a' : '#e74a3b' }}>{conceptoTecnico.trim().length} caracteres</span>}
+              <p style={{ fontSize: '0.78rem', color: 'var(--gray-text)', marginTop: 6, marginBottom: 0 }}>
+                Mínimo 5 caracteres. {conceptoTecnico.length > 0 && <span style={{ color: conceptoTecnico.trim().length >= 5 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>{conceptoTecnico.trim().length} caracteres</span>}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                <button
-                  onClick={() => setResolucionModalOpen(false)}
-                  style={{
-                    padding: '9px 20px', borderRadius: 8,
-                    border: '1px solid var(--border-color)',
-                    cursor: 'pointer', background: 'var(--input-bg)',
-                    color: 'var(--text-color)', fontSize: '0.9rem', fontWeight: 600,
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmarResolucion}
-                  style={{
-                    background: '#1cc88a', color: 'white',
-                    padding: '9px 22px', borderRadius: 8, border: 'none',
-                    cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem',
-                    boxShadow: '0 4px 14px rgba(28,200,138,0.4)',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  <FaCheckCircle /> Confirmar Resolución
-                </button>
-              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setResolucionModalOpen(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ background: 'var(--success-color)' }}
+                onClick={confirmarResolucion}
+              >
+                <FaCheckCircle /> Confirmar Resolución
+              </button>
             </div>
           </div>
         </div>
@@ -1500,30 +1312,19 @@ export default function GestionTickets() {
         const isAudio   = /^(mp3|wav|ogg|aac|flac|m4a)$/.test(ext);
         const isDoc     = /^(doc|docx|xls|xlsx|ppt|pptx|odt|ods|odp)$/.test(ext);
 
-        // Icon and label for non-renderable files
         const fileIconMap = {
-          docx: <FaFileWord style={{ fontSize: 48, color: '#2b579a' }} />,
-          doc:  <FaFileWord style={{ fontSize: 48, color: '#2b579a' }} />,
-          xlsx: <FaFileExcel style={{ fontSize: 48, color: '#217346' }} />,
-          xls:  <FaFileExcel style={{ fontSize: 48, color: '#217346' }} />,
-          pdf:  <FaFilePdf   style={{ fontSize: 48, color: '#e74c3c' }} />,
+          docx: <FaFileWord style={{ fontSize: 48, color: 'var(--primary-color)' }} />,
+          doc:  <FaFileWord style={{ fontSize: 48, color: 'var(--primary-color)' }} />,
+          xlsx: <FaFileExcel style={{ fontSize: 48, color: 'var(--success-color)' }} />,
+          xls:  <FaFileExcel style={{ fontSize: 48, color: 'var(--success-color)' }} />,
+          pdf:  <FaFilePdf   style={{ fontSize: 48, color: 'var(--error-color)' }} />,
         };
         const FileIcon = fileIconMap[ext] || <FaFile style={{ fontSize: 48, color: 'var(--primary-color)' }} />;
 
         return (
           <div
             className="modal-overlay active"
-            style={{
-              position: 'fixed',
-              top: 0, left: 0,
-              width: '100%', height: '100%',
-              background: 'rgba(0,0,0,0.85)',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 30000,
-              backdropFilter: 'blur(5px)',
-            }}
+            style={{ zIndex: 30000 }}
             onClick={() => setShowPreviewModal(false)}
           >
             <div
@@ -1532,26 +1333,15 @@ export default function GestionTickets() {
                 width: '820px',
                 maxWidth: '92vw',
                 height: '88vh',
-                background: 'var(--card-bg)',
-                borderRadius: '15px',
                 overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 padding: 0,
-                boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
               }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* ── Header ── */}
-              <div style={{
-                padding: '15px 25px',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--card-bg)',
-                flexShrink: 0,
-              }}>
+              <div className="modal-header" style={{ flexShrink: 0 }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <FaEye style={{ color: 'var(--primary-color)' }} /> Vista Previa
                   <span style={{ fontSize: '0.8rem', color: 'var(--gray-text)', fontWeight: 400, marginLeft: 4 }}>
@@ -1562,31 +1352,15 @@ export default function GestionTickets() {
                   <a
                     href={fileUrl}
                     download
-                    style={{
-                      padding: '7px 16px',
-                      borderRadius: 20,
-                      background: 'var(--primary-color)',
-                      color: 'white',
-                      textDecoration: 'none',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
+                    className="btn btn-primary btn-sm"
+                    style={{ textDecoration: 'none' }}
                   >
                     <FaDownload /> Descargar
                   </a>
                   <button
+                    type="button"
+                    className="btn-icon btn-ghost"
                     onClick={() => setShowPreviewModal(false)}
-                    style={{
-                      width: 32, height: 32,
-                      borderRadius: 8, border: 'none',
-                      cursor: 'pointer',
-                      background: 'var(--input-bg)',
-                      color: 'var(--text-color)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
                   >
                     <FaTimes />
                   </button>
@@ -1599,7 +1373,7 @@ export default function GestionTickets() {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: isImage || isVideo || isAudio ? 'center' : 'stretch',
-                background: isImage ? '#111' : 'var(--bg-color)',
+                background: isImage ? '#0F172A' : 'var(--bg-color)',
                 overflow: 'hidden',
               }}>
                 {isImage && (
@@ -1610,7 +1384,6 @@ export default function GestionTickets() {
                       maxWidth: '100%', maxHeight: '100%',
                       objectFit: 'contain',
                       borderRadius: 8,
-                      boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}
                   />
                 )}
@@ -1656,14 +1429,8 @@ export default function GestionTickets() {
                       <a
                         href={fileUrl}
                         download
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 8,
-                          background: 'var(--primary-color)', color: '#fff',
-                          padding: '10px 24px', borderRadius: 25,
-                          textDecoration: 'none', fontWeight: 600,
-                          fontSize: '0.9rem',
-                          boxShadow: '0 4px 12px rgba(78,115,223,0.35)',
-                        }}
+                        className="btn btn-primary"
+                        style={{ textDecoration: 'none' }}
                       >
                         <FaDownload /> Descargar archivo
                       </a>
@@ -1685,13 +1452,8 @@ export default function GestionTickets() {
                     <a
                       href={fileUrl}
                       download
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        background: 'var(--primary-color)', color: '#fff',
-                        padding: '10px 24px', borderRadius: 25,
-                        textDecoration: 'none', fontWeight: 600,
-                        boxShadow: '0 4px 12px rgba(78,115,223,0.35)',
-                      }}
+                      className="btn btn-primary"
+                      style={{ textDecoration: 'none' }}
                     >
                       <FaDownload /> Descargar
                     </a>

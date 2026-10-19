@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { licenseAPI, auxAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import SearchableSelect from '../components/common/SearchableSelect';
 import DataTableControls from '../components/common/DataTableControls';
 import Pagination from '../components/common/Pagination';
@@ -142,10 +141,12 @@ export default function Licencias() {
 
   const handleSave = async () => {
     if (!formData.nombre_software?.trim()) {
-      showToast('El mensaje debe tener al menos 6 caracteres', 'warning');
+      showToast('El nombre del software es obligatorio', 'warning');
+      return;
     }
     if (!formData.serial_key?.trim()) {
-      showToast('El mensaje debe tener al menos 6 caracteres', 'warning');
+      showToast('El serial o clave de licencia es obligatorio', 'warning');
+      return;
     }
     setGuardando(true);
     try {
@@ -163,11 +164,11 @@ export default function Licencias() {
         res = await licenseAPI.create(payload);
       }
       if (res.data?.success) {
-        showToast(editando ? 'Actualizada' : 'Creada', 'success');
+        showToast(editando ? 'Licencia actualizada correctamente' : 'Licencia creada correctamente', 'success');
         closeModal();
         loadData();
       } else {
-        showToast('Error de conexión', 'error');
+        showToast(res.data?.message || 'Error al guardar la licencia', 'error');
       }
     } catch (err) {
       showToast('Error de conexión', 'error');
@@ -175,26 +176,28 @@ export default function Licencias() {
     setGuardando(false);
   };
 
-  const handleDelete = (lic) => {
-    Swal.fire({
+  const handleDelete = async (lic) => {
+    const result = await showConfirm({
       title: '¿Eliminar licencia?',
       text: `${lic.nombre_software} ${lic.tipo_edicion || ''}`.trim(),
-      icon: 'warning', showCancelButton: true, confirmButtonColor: '#dc3545', confirmButtonText: 'Sí, eliminar'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          const res = await licenseAPI.delete(lic.id);
-          if (res.data?.success) {
-            showToast('Eliminada', 'success');
-            loadData();
-          } else {
-            showToast('Error de conexión', 'error');
-          }
-        } catch (err) {
-          showToast('Error de conexión', 'error');
-        }
-      }
+      icon: 'warning',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar',
+      confirmVariant: 'danger',
     });
+    if (result.isConfirmed) {
+      try {
+        const res = await licenseAPI.delete(lic.id);
+        if (res.data?.success) {
+          showToast('Licencia eliminada correctamente', 'success');
+          loadData();
+        } else {
+          showToast('Error al eliminar la licencia', 'error');
+        }
+      } catch (err) {
+        showToast('Error de conexión', 'error');
+      }
+    }
   };
 
   const getCount = (name) => licencias.filter(l => l.nombre_software === name).length;
@@ -223,10 +226,12 @@ export default function Licencias() {
       <div className="inventory-tabs">
         <button className={`inv-tab ${activeTab === 'todas' ? 'active' : ''}`} onClick={() => setActiveTab('todas')}>
           <i className="fa-solid fa-layer-group"></i> Todas
+          <span className="ui-pill pill-slate" style={{ marginLeft: '6px', padding: '1px 7px', fontSize: '0.7rem' }}>{licencias.length}</span>
         </button>
         {softwareGroups.map(([name]) => (
           <button key={name} className={`inv-tab ${activeTab === name ? 'active' : ''}`} onClick={() => setActiveTab(name)}>
             <i className="fa-solid fa-cube"></i> {name}
+            <span className="ui-pill pill-slate" style={{ marginLeft: '6px', padding: '1px 7px', fontSize: '0.7rem' }}>{getCount(name)}</span>
           </button>
         ))}
       </div>
@@ -269,14 +274,17 @@ export default function Licencias() {
                     return display.map(lic => (
                       <tr key={lic.id}>
                         <td><strong>{lic.nombre_software || '—'}</strong></td>
-                        <td>{lic.tipo_edicion || '—'}</td>
+                        <td>
+                          {lic.tipo_edicion ? (
+                            <span className="ui-pill pill-blue">{lic.tipo_edicion}</span>
+                          ) : '—'}
+                        </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <code style={{ fontSize: '13px', background: 'var(--input-bg)', padding: '4px 10px', borderRadius: '6px', color: 'var(--text-color)' }}>
+                            <code style={{ fontSize: '12.5px', fontFamily: 'var(--font-mono)', background: 'var(--input-bg)', border: '1px solid var(--border-color)', padding: '3px 10px', borderRadius: '6px', color: 'var(--text-color)' }}>
                               {visibleSerials[lic.id] ? lic.serial_key : maskSerial(lic.serial_key)}
                             </code>
-                            <button className="btn-table" title={visibleSerials[lic.id] ? 'Ocultar' : 'Mostrar'} onClick={() => toggleSerial(lic.id)}
-                              style={{ background: 'rgba(74,108,247,0.08)', color: 'var(--primary-color)', borderRadius: '6px', padding: '4px 8px', border: 'none', cursor: 'pointer' }}>
+                            <button className="btn-table" title={visibleSerials[lic.id] ? 'Ocultar' : 'Mostrar'} onClick={() => toggleSerial(lic.id)}>
                               <i className={`fa-solid ${visibleSerials[lic.id] ? 'fa-eye' : 'fa-eye-slash'}`}></i>
                             </button>
                           </div>
@@ -284,7 +292,7 @@ export default function Licencias() {
                         <td>{lic.nombre_area || '—'}</td>
                         <td>{lic.nombre_equipo || '—'}</td>
                         <td className="td-actions">
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             {hasPermission('inv_crear_editar') && (
                               <button className="btn-table btn-table-edit" title="Editar" onClick={() => openEdit(lic)}>
                                 <i className="fa-solid fa-pen"></i>
@@ -319,16 +327,16 @@ export default function Licencias() {
       {showModal && (
         <div className="modal-overlay active" onClick={closeModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: '20px 25px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-color)' }}>
+            <div className="modal-header">
+              <h3>
                 <i className="fa-solid fa-key" style={{ color: 'var(--primary-color)', marginRight: '8px' }}></i>
                 {editando ? 'Editar Licencia' : 'Nueva Licencia'}
               </h3>
-              <button className="action-btn" onClick={closeModal} style={{ width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <button type="button" className="btn-icon btn-ghost" onClick={closeModal}>
                 <i className="fa-solid fa-times"></i>
               </button>
             </div>
-            <div style={{ padding: '25px' }}>
+            <div className="modal-body">
               <div className="form-row">
                 <div className="form-group">
                   <label>Software <span className="text-danger">*</span></label>
@@ -368,9 +376,9 @@ export default function Licencias() {
                 </div>
               </div>
             </div>
-            <div style={{ padding: '15px 25px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: 'var(--input-bg)' }}>
-              <button className="action-btn" onClick={closeModal} style={{ padding: '10px 20px' }}>Cancelar</button>
-              <button className="btn-save" onClick={handleSave} disabled={guardando} style={{ padding: '10px 20px' }}>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancelar</button>
+              <button type="button" className="btn btn-primary" onClick={handleSave} disabled={guardando}>
                 {guardando ? <><i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...</> : <><i className="fa-solid fa-floppy-disk"></i> {editando ? 'Actualizar' : 'Guardar'}</>}
               </button>
             </div>

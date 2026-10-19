@@ -15,8 +15,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { topologyAPI, equipmentAPI, auxAPI } from '../api/client';
-import Swal from 'sweetalert2';
-import { showToast } from '../core/toast';
+import { showToast, showConfirm } from '../core/toast';
 import dagre from 'dagre';
 
 // ─── ICON REGISTRY (fixed: brands prefix for logos) ───────────────────────────
@@ -227,7 +226,7 @@ const ParentSearchSelector = ({ value, onChange, allNodes, currentNodeId }) => {
         style={{
           display: 'flex',
           alignItems: 'center',
-          justify: 'space-between',
+          justifyContent: 'space-between',
           cursor: 'pointer',
           background: 'var(--input-bg)',
           userSelect: 'none',
@@ -310,7 +309,7 @@ const ParentSearchSelector = ({ value, onChange, allNodes, currentNodeId }) => {
                       color: isSelected ? 'var(--primary-color)' : 'var(--text-color)',
                     }}
                   >
-                    <i className={resolveIcon(conf.icon)} style={{ width: 14, textAlignment: 'center', color: 'var(--primary-color)' }}></i>
+                    <i className={resolveIcon(conf.icon)} style={{ width: 14, textAlign: 'center', color: 'var(--primary-color)' }}></i>
                     <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {n.data.name}
                     </div>
@@ -406,13 +405,12 @@ const LeafNode = ({ data, selected }) => {
 
   return (
     <div style={{
-      borderLeft: `5px solid ${catConfig.color}`,
       background: 'var(--card-bg)',
       borderRadius: 12,
       padding: '10px 14px',
       minWidth: 200,
       boxShadow: selected ? `0 0 15px ${catConfig.color}55` : '0 3px 10px rgba(0,0,0,0.07)',
-      border: `1px solid ${selected ? catConfig.color : 'var(--border-color)'}`,
+      border: `1.5px solid ${selected ? catConfig.color : 'var(--border-color)'}`,
       transition: 'all 0.2s ease',
     }}>
       <Handle type="target" position={Position.Top} id="target-top" style={{ background: catConfig.color }} />
@@ -870,54 +868,46 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
   };
 
   // ── Delete edge ──────────────────────────────────────────────────────────────
-  const handleDeleteEdge = () => {
+  const handleDeleteEdge = async () => {
     if (!selectedEdge) return;
-    Swal.fire({
+    const res = await showConfirm({
       title: '¿Eliminar Conexión?',
       text: 'Se eliminará el enlace entre los dos nodos.',
       icon: 'warning',
-      showCancelButton: true,
       confirmButtonText: 'Eliminar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc3545',
-      background: 'var(--card-bg)',
-      color: 'var(--text-color)',
-    }).then(res => {
-      if (res.isConfirmed) {
-        const updatedEdges = allEdges.filter(e => e.id !== selectedEdge.id);
-        setAllEdges(updatedEdges);
-        pushHistory(allNodes, updatedEdges);
-        setSelectedEdge(null);
-        setEditingEdge(null);
-        showToast('Conexión eliminada', 'success');
-      }
+      confirmVariant: 'danger',
     });
+    if (res.isConfirmed) {
+      const updatedEdges = allEdges.filter(e => e.id !== selectedEdge.id);
+      setAllEdges(updatedEdges);
+      pushHistory(allNodes, updatedEdges);
+      setSelectedEdge(null);
+      setEditingEdge(null);
+      showToast('Conexión eliminada', 'success');
+    }
   };
 
-  const handleDeleteNode = () => {
+  const handleDeleteNode = async () => {
     if (!selectedNode) return;
-    Swal.fire({
+    const res = await showConfirm({
       title: '¿Eliminar Nodo?',
       text: 'También se eliminarán sus conexiones. Esta acción no es permanente hasta que guardes.',
       icon: 'warning',
-      showCancelButton: true,
       confirmButtonText: 'Eliminar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#dc3545',
-      background: 'var(--card-bg)',
-      color: 'var(--text-color)',
-    }).then(res => {
-      if (res.isConfirmed) {
-        const updatedAll = allNodes.filter(n => n.id !== selectedNode.id);
-        const updatedEdges = allEdges.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
-        setAllNodes(updatedAll);
-        setAllEdges(updatedEdges);
-        pushHistory(updatedAll, updatedEdges);
-        setSelectedNode(null);
-        setEditingNode(null);
-        showToast('Nodo eliminado', 'success');
-      }
+      confirmVariant: 'danger',
     });
+    if (res.isConfirmed) {
+      const updatedAll = allNodes.filter(n => n.id !== selectedNode.id);
+      const updatedEdges = allEdges.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id);
+      setAllNodes(updatedAll);
+      setAllEdges(updatedEdges);
+      pushHistory(updatedAll, updatedEdges);
+      setSelectedNode(null);
+      setEditingNode(null);
+      showToast('Nodo eliminado', 'success');
+    }
   };
 
   const handleDuplicateNode = () => {
@@ -1646,24 +1636,26 @@ export default function Topology() {
   }
 
   return (
-    <div style={{ background: 'var(--bg-color)', minHeight: 'calc(100vh - 70px)' }}>
+    <div className="inventory-module" style={{ minHeight: 'calc(100vh - 70px)' }}>
       {/* Page header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 0, padding: '0 0 16px 0' }}>
+      <div className="inventory-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-color)', margin: 0 }}>
-            <i className="fa-solid fa-network-wired" style={{ color: 'var(--primary-color)', marginRight: 10 }}></i>
-            Network Topology Engine
-          </h1>
+          <div className="page-title-row">
+            <h2>
+              <i className="fa-solid fa-network-wired"></i>
+              Topología de Red
+            </h2>
+          </div>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--gray-text)' }}>
             Diseña y documenta la infraestructura tecnológica de la organización en tiempo real
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, background: 'rgba(16,185,129,0.12)', borderRadius: 20, padding: '4px 12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, border: '1px solid rgba(16,185,129,0.3)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981', display: 'inline-block' }}></span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="ui-pill pill-emerald">
+            <span className="pill-dot"></span>
             Tiempo Real Activo
           </span>
-          <span style={{ fontSize: 11, background: 'var(--input-bg)', borderRadius: 6, padding: '4px 10px', color: 'var(--gray-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span className="ui-pill pill-slate">
             <i className="fa-solid fa-info-circle" style={{ color: 'var(--primary-color)' }}></i>
             Doble clic para entrar en un grupo
           </span>
@@ -1671,7 +1663,7 @@ export default function Topology() {
       </div>
 
       {/* React Flow provider wraps the canvas */}
-      <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px var(--shadow-color)' }}>
+      <div style={{ borderRadius: 'var(--radius-lg)', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--card-shadow)' }}>
         <ReactFlowProvider>
           <TopologyCanvas
             allNodes={allNodes}

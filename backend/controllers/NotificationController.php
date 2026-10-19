@@ -41,9 +41,21 @@ class NotificationController {
     public function markRead() {
         Auth::requireLogin();
         $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+        if (!empty($input['all'])) {
+            $this->pdo->prepare("UPDATE notificaciones SET leido=1 WHERE id_destinatario=? AND leido=0")
+                ->execute([$_SESSION['user_id']]);
+            json_success(null, 'Todas las notificaciones marcadas como leídas');
+        }
         $this->pdo->prepare("UPDATE notificaciones SET leido=1 WHERE id=? AND id_destinatario=?")
             ->execute([$input['id'] ?? 0, $_SESSION['user_id']]);
         json_success(null, 'Marcada como leída');
+    }
+
+    public function markAllRead() {
+        Auth::requireLogin();
+        $this->pdo->prepare("UPDATE notificaciones SET leido=1 WHERE id_destinatario=? AND leido=0")
+            ->execute([$_SESSION['user_id']]);
+        json_success(null, 'Todas las notificaciones marcadas como leídas');
     }
 
     public function markReadByRelated() {
