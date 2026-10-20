@@ -42,19 +42,23 @@ export function RealtimeProvider({ children }) {
       if (!audioCtxRef.current) {
         audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (audioCtxRef.current.state === 'suspended') {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
         audioCtxRef.current.resume();
       }
     } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
-    const handler = () => initAudio();
-    document.addEventListener('click', handler, { once: true });
-    document.addEventListener('keydown', handler, { once: true });
+    const unlock = () => {
+      initAudio();
+    };
+    window.addEventListener('click', unlock, { passive: true });
+    window.addEventListener('keydown', unlock, { passive: true });
+    window.addEventListener('touchstart', unlock, { passive: true });
     return () => {
-      document.removeEventListener('click', handler);
-      document.removeEventListener('keydown', handler);
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
     };
   }, [initAudio]);
 
@@ -64,19 +68,42 @@ export function RealtimeProvider({ children }) {
       initAudio();
       const ctx = audioCtxRef.current;
       if (!ctx) return;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.3, now + 0.05);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-      osc.start(now);
-      osc.stop(now + 0.3);
+
+      const runBeep = () => {
+        try {
+          const now = ctx.currentTime;
+          // Tono armónico agradable de notificación (doble tono: 587Hz D5 -> 880Hz A5)
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(587.33, now); // D5
+          osc1.frequency.setValueAtTime(880, now + 0.1); // A5
+
+          osc2.type = 'triangle';
+          osc2.frequency.setValueAtTime(880, now + 0.1);
+
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.3, now + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now);
+          osc1.stop(now + 0.4);
+          osc2.start(now + 0.1);
+          osc2.stop(now + 0.4);
+        } catch { /* ignore */ }
+      };
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().then(runBeep).catch(() => {});
+      } else {
+        runBeep();
+      }
     } catch { /* ignore */ }
   }, [initAudio]);
 

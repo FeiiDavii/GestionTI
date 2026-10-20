@@ -107,8 +107,8 @@ $lastUnreadCount    = -1;
 $lastSystemActionId = 0;
 
 try {
-    $s = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM notificaciones");
-    $s->execute();
+    $s = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM notificaciones WHERE (id_destinatario = ? OR (tipo = 'global' AND id_destinatario IS NULL))");
+    $s->execute([$userId]);
     $lastNotifId = (int)$s->fetchColumn();
 
     $s = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM acciones");
