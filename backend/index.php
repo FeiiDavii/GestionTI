@@ -151,6 +151,9 @@ $routes = [
     '/notifications/send'     => ['NotificationController', 'send'],
     '/notifications/mark-read' => ['NotificationController', 'markRead'],
     '/notifications/mark-all-read' => ['NotificationController', 'markAllRead'],
+    '/notifications/mark-unread' => ['NotificationController', 'markUnread'],
+    '/notifications/archive' => ['NotificationController', 'archive'],
+    '/notifications/delete' => ['NotificationController', 'delete'],
     '/notifications/mark-read-by-related' => ['NotificationController', 'markReadByRelated'],
     '/reports/generate'       => ['ReportController', 'generate'],
     '/reports/listas'         => ['ReportController', 'listas'],
@@ -208,3 +211,4 @@ if (preg_match('#^/equipments/(\d+)$#', $uri, $matches)) {
 
 http_response_code(404);
 echo json_encode(['success' => false, 'message' => 'Ruta no encontrada: ' . $uri]);
+

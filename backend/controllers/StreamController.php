@@ -61,8 +61,8 @@ class StreamController {
         $lastSystemActionId = 0;
 
         try {
-            $stmt = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM notificaciones");
-            $stmt->execute();
+            $stmt = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM notificaciones WHERE (id_destinatario = ? OR (tipo = 'global' AND id_destinatario IS NULL))");
+            $stmt->execute([$userId]);
             $lastNotifId = (int)$stmt->fetchColumn();
 
             $stmt = $pdo->prepare("SELECT COALESCE(MAX(id), 0) FROM acciones");
@@ -91,11 +91,7 @@ class StreamController {
                             n.id_remitente, u.nombre_completo AS remitente_nombre
                      FROM notificaciones n
                      JOIN usuarios u ON n.id_remitente = u.id
-                     WHERE n.id > ?
-                       AND (
-                           (n.tipo = 'personal' AND n.id_destinatario = ?)
-                           OR (n.tipo = 'global' AND n.id_destinatario = ? AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY))
-                       )
+                     WHERE n.id > ? AND (n.id_destinatario = ? OR (n.tipo = 'global' AND n.id_destinatario IS NULL AND n.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY)))
                      ORDER BY n.id ASC"
                 );
                 $stmt->execute([$lastNotifId, $userId, $userId]);
@@ -109,7 +105,7 @@ class StreamController {
                 // Contador de no leídas (solo si cambió)
                 $stmt = $pdo->prepare(
                     "SELECT COUNT(*) FROM notificaciones
-                     WHERE id_destinatario = ? AND leido = 0"
+                     WHERE id_destinatario = ? AND leido = 0 AND COALESCE(archivado, 0) = 0"
                 );
                 $stmt->execute([$userId]);
                 $currentUnread = (int)$stmt->fetchColumn();
@@ -210,3 +206,5 @@ class StreamController {
         return (int)($stmt->fetchColumn() ?: 0);
     }
 }
+
+

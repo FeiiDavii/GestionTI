@@ -924,7 +924,7 @@ body.sidebar-compact .nav-submenu li a i { margin-right: 0; font-size: 14px; }
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 350px;
+  width: 380px;
   background: var(--surface-primary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -968,6 +968,8 @@ body.sidebar-compact .nav-submenu li a i { margin-right: 0; font-size: 14px; }
 }
 .notif-item:last-child { border-bottom: none; }
 .notif-item:hover { background: var(--hover-bg); }
+.notif-item .notif-row-actions { opacity: 0; transition: opacity 0.15s ease; }
+.notif-item:hover .notif-row-actions { opacity: 1; }
 .notif-item.unread {
   background: var(--primary-light);
 }
@@ -3520,3 +3522,5 @@ body.modal-open { overflow: hidden; }
 @media (max-width: 480px) {
   .permisos-grid { grid-template-columns: 1fr; }
 }
+
+

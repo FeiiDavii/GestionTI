@@ -362,6 +362,7 @@ CREATE TABLE `notificaciones` (
   `id_destinatario` int(11) DEFAULT NULL COMMENT 'Null si es global',
   `id_remitente` int(11) NOT NULL,
   `leido` tinyint(1) DEFAULT 0,
+  `archivado` tinyint(1) DEFAULT 0,
   `fecha` datetime DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
