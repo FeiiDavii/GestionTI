@@ -352,7 +352,6 @@ export default function Tickets() {
           setChatHistory(dataObj.chat || detailRes.data.chat || detailRes.data.history || []);
           setTimelineData(dataObj.timeline || detailRes.data.timeline || []);
         }
-        showToast(res.data.message || 'Mensaje enviado exitosamente', 'success');
       } else {
         showToast(res.data?.message || 'Error al enviar el mensaje', 'error');
       }

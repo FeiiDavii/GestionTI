@@ -93,10 +93,14 @@ export const bajasAPI = {
 };
 
 export const notificationAPI = {
-  list: () => api.get('/notifications'),
+  list: (params) => api.get('/notifications', { params }),
   send: (data) => api.post('/notifications/send', data),
-  markRead: (id) => api.post('/notifications/mark-read', { id }),
+  markRead: (idOrIds) => api.post('/notifications/mark-read', Array.isArray(idOrIds) ? { ids: idOrIds } : { id: idOrIds }),
   markAllRead: () => api.post('/notifications/mark-all-read'),
+  markUnread: (idOrIds) => api.post('/notifications/mark-unread', Array.isArray(idOrIds) ? { ids: idOrIds } : { id: idOrIds }),
+  archive: (idOrIds, unarchive = false) => api.post('/notifications/archive', Array.isArray(idOrIds) ? { ids: idOrIds, unarchive } : { id: idOrIds, unarchive }),
+  delete: (idOrIds) => api.post('/notifications/delete', Array.isArray(idOrIds) ? { ids: idOrIds } : { id: idOrIds }),
+  deleteAllArchived: () => api.post('/notifications/delete', { all_archived: true }),
   markReadByRelated: (data) => api.post('/notifications/mark-read-by-related', data)
 };
 
@@ -144,3 +148,6 @@ export const topologyAPI = {
 };
 
 export default api;
+
+
+

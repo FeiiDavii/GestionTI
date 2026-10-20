@@ -121,7 +121,7 @@ export default function Login() {
               <div className="input-group" style={{ marginBottom: 0 }}>
                 <input
                   type="text"
-                  placeholder="ej. operador.ti"
+                  placeholder="JHOND"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -163,7 +163,7 @@ export default function Login() {
             </button>
 
             <div className="signup-link">
-              GESTION TI // ENTERPRISE CORE v3.10.0
+              GESTION TI v3.10.0
             </div>
           </form>
         </div>
@@ -186,12 +186,12 @@ export default function Login() {
             }}>
               <i className="fa-solid fa-network-wired"></i>
             </div>
-            <h3>Operaciones & Infraestructura</h3>
-            <p>Monitoreo unificado de inventario tecnológico, ciclo de vida de tickets y topología de red en tiempo real.</p>
+            <h3>Operaciones e Infraestructura</h3>
+            <p>Monitoreo unificado de inventario tecnológico y ciclo de vida de tickets</p>
             <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span className="ui-pill pill-emerald">ITSM 2.0</span>
-              <span className="ui-pill pill-blue">ITAM CORE</span>
-              <span className="ui-pill pill-cyan">SSE TELEMETRY</span>
+              <span className="ui-pill pill-emerald">SGTI</span>
+              <span className="ui-pill pill-blue">GATI</span>
+              <span className="ui-pill pill-cyan">SSE</span>
             </div>
           </div>
         </div>
@@ -220,7 +220,7 @@ export default function Login() {
                     className="form-control"
                     value={recoveryUsername}
                     onChange={(e) => setRecoveryUsername(e.target.value)}
-                    placeholder="Ej: jperez"
+                    placeholder="Ej: JHOND"
                     required
                     minLength={3}
                   />
