@@ -650,9 +650,16 @@ export default function Tickets() {
                     style={{ resize: 'vertical' }}
                     required
                   />
-                  <small style={{ color: 'var(--gray-text)', marginTop: '6px', display: 'block' }}>
-                    <FaInfoCircle style={{ marginRight: '4px' }} /> Mínimo 10 caracteres. La prioridad será asignada automáticamente.
-                  </small>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                    <small style={{ color: 'var(--gray-text)', margin: 0 }}>
+                      <FaInfoCircle style={{ marginRight: '4px' }} /> Mínimo 10 caracteres. La prioridad será asignada automáticamente.
+                    </small>
+                    {createDesc.length > 0 && (
+                      <span style={{ fontSize: '0.78rem', color: createDesc.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                        {createDesc.trim().length} / 5000 caracteres
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ marginTop: '18px' }}>
@@ -859,12 +866,17 @@ export default function Tickets() {
                           rows={2}
                           placeholder="Mínimo 10 caracteres..."
                           style={{
-                            margin: '10px auto',
+                            margin: '10px auto 4px auto',
                             width: '80%',
                             display: 'block',
                             resize: 'vertical',
                           }}
                         />
+                        <div style={{ width: '80%', margin: '0 auto', textAlign: 'right' }}>
+                          <span style={{ fontSize: '0.75rem', color: reopenReason.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                            {reopenReason.trim().length} / mín. 10 caracteres
+                          </span>
+                        </div>
                         <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'center', gap: '10px' }}>
                           <button
                             type="button"
@@ -1131,7 +1143,7 @@ export default function Tickets() {
                         </div>
 
                         {/* Chat Input */}
-                        {!showWizard && !existingRating && canReply && (canViewGlobal || viewTicket?.tecnico_id == user?.id) && (
+                        {!showWizard && !existingRating && viewTicket?.estado !== 'Cerrado' && (
                           <div id="chatInputWrapper" style={{
                             padding: '14px 20px',
                             borderTop: '1px solid var(--border-color)',
@@ -1164,6 +1176,11 @@ export default function Tickets() {
                                 {sendingReply ? <FaSpinner className="fa-spin" /> : <FaPaperPlane />}
                               </button>
                             </div>
+                            {chatMessage.length > 0 && (
+                              <div style={{ paddingLeft: '18px', paddingTop: '4px', fontSize: '0.72rem', color: chatMessage.trim().length >= 6 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                {chatMessage.trim().length} / 2000 caracteres (mín. 6)
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1208,12 +1225,12 @@ export default function Tickets() {
                                 const iconMap = {
                                   creacion: 'fa-plus-circle', asignacion: 'fa-user-tag',
                                   escalacion: 'fa-arrow-up', estado: 'fa-rotate',
-                                  calificacion: 'fa-star', reapertura: 'fa-undo'
+                                  calificacion: 'fa-star', reapertura: 'fa-undo', resolucion: 'fa-check-circle'
                                 };
                                 const colorMap = {
                                   creacion: 'var(--primary-color)', asignacion: 'var(--success-color)',
                                   escalacion: 'var(--warning-color)', estado: 'var(--info-color)',
-                                  calificacion: 'var(--warning-color)', reapertura: 'var(--error-color)'
+                                  calificacion: 'var(--warning-color)', reapertura: 'var(--error-color)', resolucion: 'var(--success-color)'
                                 };
                                 const icon = iconMap[item.tipo] || 'fa-circle';
                                 const iconColor = colorMap[item.tipo] || 'var(--gray-text)';

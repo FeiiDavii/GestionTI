@@ -1132,9 +1132,11 @@ export default function Configuracion() {
           <div className="settings-card">
             <div className="card-header">
               <h3><i className="fa-solid fa-users"></i> Gestión de Usuarios</h3>
-              <button type="button" className="btn btn-primary" onClick={() => abrirModalUsuario(null)}>
-                <i className="fa-solid fa-plus"></i> Nuevo Usuario
-              </button>
+              {hasPermission('usr_gestionar') && (
+                <button type="button" className="btn btn-primary" onClick={() => abrirModalUsuario(null)}>
+                  <i className="fa-solid fa-plus"></i> Nuevo Usuario
+                </button>
+              )}
             </div>
             <div className="card-body" style={{ padding: '20px 24px' }}>
               <DataTableControls
@@ -1156,13 +1158,13 @@ export default function Configuracion() {
                       <th>Nombre</th>
                       <th>Rol</th>
                       <th>Estado</th>
-                      <th className="text-center">Acciones</th>
+                      {hasPermission('usr_gestionar') && <th className="text-center">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
                     {usuariosPaginados.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center" style={{ padding: '30px', color: 'var(--gray-text)' }}>
+                        <td colSpan={hasPermission('usr_gestionar') ? 6 : 5} className="text-center" style={{ padding: '30px', color: 'var(--gray-text)' }}>
                           <i className="fa-solid fa-users-slash" style={{ fontSize: '24px', display: 'block', marginBottom: '8px' }}></i>
                           {busquedaUsuario ? 'No se encontraron usuarios con ese criterio.' : 'No hay usuarios registrados.'}
                         </td>
@@ -1191,41 +1193,43 @@ export default function Configuracion() {
                                 {isActivo ? 'Activo' : 'Inactivo'}
                               </span>
                             </td>
-                            <td>
-                              <div className="action-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap' }}>
-                                <div className="switch-container" title={esUsuarioAdmin(usr) ? 'Protegido' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (isActivo ? 'Desactivar' : 'Activar'))}>
-                                  <label className="switch" style={isProtected ? { opacity: 0.4, cursor: 'not-allowed', margin: 0 } : { margin: 0 }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={isActivo}
-                                      onChange={() => handleToggleUsuario(usr)}
-                                      disabled={isProtected}
-                                    />
-                                    <span className="slider round"></span>
-                                  </label>
+                            {hasPermission('usr_gestionar') && (
+                              <td>
+                                <div className="action-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap' }}>
+                                  <div className="switch-container" title={esUsuarioAdmin(usr) ? 'Protegido' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : (isActivo ? 'Desactivar' : 'Activar'))}>
+                                    <label className="switch" style={isProtected ? { opacity: 0.4, cursor: 'not-allowed', margin: 0 } : { margin: 0 }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isActivo}
+                                        onChange={() => handleToggleUsuario(usr)}
+                                        disabled={isProtected}
+                                      />
+                                      <span className="slider round"></span>
+                                    </label>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="btn-table btn-action-edit"
+                                    title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario')}
+                                    onClick={() => abrirModalUsuario(usr)}
+                                    disabled={isProtected}
+                                    style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                  >
+                                    <i className="fa-solid fa-pen-to-square"></i>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-table btn-action-delete"
+                                    title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión')}
+                                    onClick={() => handleForceLogoutUsuario(usr)}
+                                    disabled={isProtected}
+                                    style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
+                                  >
+                                    <i className="fa-solid fa-right-from-bracket"></i>
+                                  </button>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="btn-table btn-action-edit"
-                                  title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Editar Usuario')}
-                                  onClick={() => abrirModalUsuario(usr)}
-                                  disabled={isProtected}
-                                  style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                                >
-                                  <i className="fa-solid fa-pen-to-square"></i>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-table btn-action-delete"
-                                  title={esUsuarioAdmin(usr) ? 'Cuenta protegida' : (usr.id === user?.id || usr.user_id === user?.id ? 'Tu propio usuario' : 'Forzar Cierre de Sesión')}
-                                  onClick={() => handleForceLogoutUsuario(usr)}
-                                  disabled={isProtected}
-                                  style={isProtected ? { opacity: 0.4, cursor: 'not-allowed' } : {}}
-                                >
-                                  <i className="fa-solid fa-right-from-bracket"></i>
-                                </button>
-                              </div>
-                            </td>
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -1680,6 +1684,13 @@ export default function Configuracion() {
                     minLength={6}
                     placeholder={editandoUsuario ? 'Dejar vacío para no cambiar' : 'Mínimo 6 caracteres'}
                   />
+                  {formUsuario.password.length > 0 && (
+                    <div style={{ textAlign: 'right', marginTop: 4 }}>
+                      <span style={{ fontSize: '0.75rem', color: formUsuario.password.length >= 6 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                        {formUsuario.password.length} / mín. 6 caracteres
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-group">

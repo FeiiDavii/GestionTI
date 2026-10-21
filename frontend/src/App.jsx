@@ -17,7 +17,7 @@ import Reportes from './pages/Reportes';
 import Perfil from './pages/Perfil';
 import Topology from './pages/Topology';
 
-function ProtectedRoute({ children, requiredPermiso }) {
+function ProtectedRoute({ children, requiredPermiso, requiredAnyPermiso }) {
   const { user, loading, hasPermission } = useAuth();
 
   if (loading) {
@@ -33,6 +33,9 @@ function ProtectedRoute({ children, requiredPermiso }) {
 
   if (!user) return <Navigate to="/login" replace />;
   if (requiredPermiso && !hasPermission(requiredPermiso)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  if (requiredAnyPermiso && !requiredAnyPermiso.some(p => hasPermission(p))) {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -70,7 +73,7 @@ export default function App() {
 
       <Route path="/dashboard" element={<ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>} />
       <Route path="/tickets" element={<ProtectedRoute><AppLayout><Tickets /></AppLayout></ProtectedRoute>} />
-      <Route path="/gestion-tickets" element={<ProtectedRoute requiredPermiso="tk_ver_global"><AppLayout><GestionTickets /></AppLayout></ProtectedRoute>} />
+      <Route path="/gestion-tickets" element={<ProtectedRoute requiredAnyPermiso={['tk_ver_global', 'tk_responder']}><AppLayout><GestionTickets /></AppLayout></ProtectedRoute>} />
       <Route path="/equipos" element={<ProtectedRoute requiredPermiso="inv_ver"><AppLayout><Equipos /></AppLayout></ProtectedRoute>} />
       <Route path="/topology" element={<ProtectedRoute requiredPermiso="inv_topology"><AppLayout><Topology /></AppLayout></ProtectedRoute>} />
       <Route path="/asignaciones" element={<ProtectedRoute requiredPermiso="inv_asignaciones"><AppLayout><Asignaciones /></AppLayout></ProtectedRoute>} />

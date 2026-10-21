@@ -1103,6 +1103,13 @@ export default function TopBar({ onToggleMobile, onOpenShortcuts }) {
                       }
                     }}
                   />
+                  {sendForm.mensaje.length > 0 && (
+                    <div style={{ textAlign: 'right', marginTop: 4 }}>
+                      <span style={{ fontSize: '0.75rem', color: sendForm.mensaje.trim().length > 0 ? 'var(--success-color)' : 'var(--gray-text)', fontWeight: 600 }}>
+                        {sendForm.mensaje.trim().length} / 1000 caracteres
+                      </span>
+                    </div>
+                  )}
                   <small className="text-muted" style={{ fontSize: '11.5px', marginTop: '6px', display: 'block' }}>
                     <i className="fa-solid fa-circle-info"></i> Presiona <strong>Enter</strong> para enviar, <strong>Shift + Enter</strong> para nueva línea.
                   </small>

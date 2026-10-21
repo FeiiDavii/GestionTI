@@ -44,14 +44,14 @@ class TicketController {
         Permission::requireAny(['tk_ver_global','tk_responder','tk_asignar_otros']);
         $this->actualizarSLAsVencidos();
         
-        // Si solo tiene permiso para asignar a otros, mostrar solo tickets asignados a él
-        if (!Permission::has('tk_ver_global') && !Permission::has('tk_responder') && Permission::has('tk_asignar_otros')) {
+        // Si no tiene 'tk_ver_global': solo ve tickets asignados a él o tickets sin asignar (para auto-asignarse)
+        if (!Permission::has('tk_ver_global')) {
             $tickets = $this->pdo->prepare(
                 "SELECT t.*, u.nombre_completo as solicitante, tec.nombre_completo as tecnico_nombre
                  FROM tickets t
                  LEFT JOIN usuarios u ON t.usuario_id=u.id
                  LEFT JOIN usuarios tec ON t.tecnico_id=tec.id
-                 WHERE t.tecnico_id=? OR t.tecnico_id IS NULL
+                 WHERE t.tecnico_id=?
                  ORDER BY t.id DESC"
             );
             $tickets->execute([$_SESSION['user_id']]);
@@ -92,8 +92,15 @@ class TicketController {
         $ticket = $stmt->fetch();
         if (!$ticket) json_error('El ticket solicitado no existe o fue eliminado del sistema.', 404);
 
-        if (!Permission::has('tk_responder') && !Permission::has('tk_ver_global') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para ver este ticket. Solo puedes ver tus propios tickets o necesitas permisos de administrador.', 403);
+        // Control de visibilidad:
+        // Creador, usuario con 'tk_ver_global', o técnico atendiendo caso asignado a él
+        $esCreador = ($ticket['usuario_id'] == $_SESSION['user_id']);
+        $esTecnicoAsignado = ($ticket['tecnico_id'] == $_SESSION['user_id']);
+        $tieneGlobal = Permission::has('tk_ver_global');
+        $esTecnico = Permission::has('tk_responder') || Permission::has('tk_asignar_otros');
+
+        if (!$esCreador && !$tieneGlobal && !($esTecnico && $esTecnicoAsignado)) {
+            json_error('No tienes permiso para ver este ticket. Solo puedes ver tickets asignados a tu cuenta.', 403);
         }
 
         $chat = $this->pdo->prepare(
@@ -217,9 +224,14 @@ class TicketController {
         if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
         if ($ticket['estado'] === 'Cerrado') json_error('Este ticket está cerrado. No se pueden agregar más respuestas. Si necesita ayuda adicional, por favor abra un nuevo ticket.', 400);
 
-        // Permitir si es técnico con permiso OR si es el creador del ticket
-        if (!Permission::has('tk_responder') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para responder a este ticket. Solo el creador del ticket o técnicos autorizados pueden responder.', 403);
+        // Permitir si es técnico con permiso y asignado (o global) OR si es el creador del ticket
+        $esCreador = ($ticket['usuario_id'] == $_SESSION['user_id']);
+        $esTecnicoAsignado = ($ticket['tecnico_id'] == $_SESSION['user_id']);
+        $tieneGlobal = Permission::has('tk_ver_global') || Permission::has('tk_asignar_otros');
+        $puedeResponder = Permission::has('tk_responder');
+
+        if (!$esCreador && !($puedeResponder && ($tieneGlobal || $esTecnicoAsignado))) {
+            json_error('No tienes permiso para responder a este ticket. Solo puedes responder a tickets asignados a ti.', 403);
         }
 
         try {
@@ -317,6 +329,16 @@ class TicketController {
         $actual = $stmt->fetch();
         if (!$actual) json_error('El ticket no existe o fue eliminado del sistema.', 404);
 
+        // Si no tiene 'tk_ver_global' ni 'tk_asignar_otros', solo puede auto-asignarse a sí mismo
+        if (!Permission::has('tk_ver_global') && !Permission::has('tk_asignar_otros')) {
+            if ($tecnico_id !== null && $tecnico_id != $_SESSION['user_id']) {
+                json_error('No tienes permisos para reasignar este ticket a otros técnicos. Solo puedes auto-asignártelo o escalarlo.', 403);
+            }
+            if (!empty($actual['tecnico_id']) && $actual['tecnico_id'] != $_SESSION['user_id']) {
+                json_error('No tienes permiso para gestionar tickets asignados a otro técnico.', 403);
+            }
+        }
+
         $updates = []; $params = [];
         if ($estado)    { $updates[] = 'estado=?';    $params[] = $estado; }
         if ($categoria) { $updates[] = 'categoria=?'; $params[] = $categoria; }
@@ -400,6 +422,13 @@ class TicketController {
         $stmt->execute([$ticket_id]);
         $ticket = $stmt->fetch();
         if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
+
+        // Si no tiene 'tk_ver_global' ni 'tk_asignar_otros', solo puede escalar tickets asignados a él o sin asignar
+        if (!Permission::has('tk_ver_global') && !Permission::has('tk_asignar_otros')) {
+            if (!empty($ticket['tecnico_id']) && $ticket['tecnico_id'] != $_SESSION['user_id']) {
+                json_error('Solo puedes escalar tickets asignados a ti.', 403);
+            }
+        }
 
         $nombreTec = $this->pdo->prepare("SELECT nombre_completo FROM usuarios WHERE id=?");
         $nombreTec->execute([$tecnico_id]);
@@ -510,13 +539,18 @@ class TicketController {
         Auth::requireLogin();
         $id   = $_GET['id'] ?? 0;
 
-        $stmt = $this->pdo->prepare("SELECT usuario_id FROM tickets WHERE id=?");
+        $stmt = $this->pdo->prepare("SELECT usuario_id, tecnico_id FROM tickets WHERE id=?");
         $stmt->execute([$id]);
         $ticket = $stmt->fetch();
         if (!$ticket) json_error('El ticket no existe o fue eliminado del sistema.', 404);
 
-        if (!Permission::has('tk_responder') && !Permission::has('tk_ver_global') && $ticket['usuario_id'] != $_SESSION['user_id']) {
-            json_error('No tienes permiso para ver el historial de este ticket. Solo el creador o técnicos autorizados pueden verlo.', 403);
+        $esCreador = ($ticket['usuario_id'] == $_SESSION['user_id']);
+        $esTecnicoAsignado = ($ticket['tecnico_id'] == $_SESSION['user_id']);
+        $tieneGlobal = Permission::has('tk_ver_global') || Permission::has('tk_asignar_otros');
+        $esTecnico = Permission::has('tk_responder');
+
+        if (!$esCreador && !($esTecnico && ($tieneGlobal || $esTecnicoAsignado))) {
+            json_error('No tienes permiso para ver el historial de este ticket.', 403);
         }
 
         $stmt = $this->pdo->prepare(
@@ -608,5 +642,154 @@ class TicketController {
              WHERE estado_resolucion='Pendiente' AND fecha_resolucion_real IS NULL
              AND fecha_limite_resolucion < NOW()"
         );
+    }
+
+    public function technicianStats() {
+        Auth::requireLogin();
+        Permission::requireAny(['tk_ver_global','tk_asignar_otros']);
+        $this->actualizarSLAsVencidos();
+
+        // Obtener métricas agrupadas por técnico activo
+        $sql = "
+            SELECT 
+                tec.id, 
+                tec.nombre_completo,
+                tec.username,
+                COUNT(t.id) as total_tickets,
+                SUM(CASE WHEN t.estado IN ('Abierto', 'En Proceso') THEN 1 ELSE 0 END) as activos,
+                SUM(CASE WHEN t.estado = 'Abierto' THEN 1 ELSE 0 END) as abiertos,
+                SUM(CASE WHEN t.estado = 'En Proceso' THEN 1 ELSE 0 END) as en_proceso,
+                SUM(CASE WHEN t.estado = 'Resuelto' THEN 1 ELSE 0 END) as resueltos,
+                SUM(CASE WHEN t.estado = 'Cerrado' THEN 1 ELSE 0 END) as cerrados,
+                SUM(CASE WHEN t.estado IN ('Abierto', 'En Proceso') AND (
+                    (t.fecha_vencimiento_resolucion IS NOT NULL AND t.fecha_vencimiento_resolucion < NOW()) OR
+                    (t.fecha_vencimiento_respuesta IS NOT NULL AND t.fecha_primera_respuesta IS NULL AND t.fecha_vencimiento_respuesta < NOW()) OR
+                    t.fecha_creacion < DATE_SUB(NOW(), INTERVAL 3 DAY)
+                ) THEN 1 ELSE 0 END) as represados,
+                ROUND(AVG(CASE WHEN t.calificacion > 0 THEN t.calificacion ELSE NULL END), 2) as rating_promedio,
+                COUNT(CASE WHEN t.calificacion > 0 THEN 1 ELSE NULL END) as total_calificados,
+                ROUND(SUM(CASE WHEN t.calificacion >= 4 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(CASE WHEN t.calificacion > 0 THEN 1 ELSE NULL END), 0), 1) as pct_satisfaccion
+            FROM usuarios tec
+            INNER JOIN roles r ON tec.id_rol = r.id
+            LEFT JOIN tickets t ON t.tecnico_id = tec.id
+            WHERE (r.tk_responder = 1 OR tec.id IN (SELECT DISTINCT tecnico_id FROM tickets WHERE tecnico_id IS NOT NULL))
+              AND tec.estado = 1
+            GROUP BY tec.id, tec.nombre_completo, tec.username
+            ORDER BY activos DESC, total_tickets DESC
+        ";
+        $tecnicos = $this->pdo->query($sql)->fetchAll();
+
+        // Tickets sin asignar
+        $sinAsignarStmt = $this->pdo->query("
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN fecha_creacion < DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 1 ELSE 0 END) as represados
+            FROM tickets 
+            WHERE tecnico_id IS NULL AND estado IN ('Abierto', 'En Proceso')
+        ");
+        $sinAsignar = $sinAsignarStmt->fetch();
+
+        // Resumen global de la mesa de ayuda
+        $resumenStmt = $this->pdo->query("
+            SELECT 
+                COUNT(*) as total_tickets,
+                SUM(CASE WHEN estado = 'Abierto' THEN 1 ELSE 0 END) as total_abiertos,
+                SUM(CASE WHEN estado = 'En Proceso' THEN 1 ELSE 0 END) as total_en_proceso,
+                SUM(CASE WHEN estado IN ('Abierto', 'En Proceso') THEN 1 ELSE 0 END) as total_activos,
+                SUM(CASE WHEN estado = 'Resuelto' THEN 1 ELSE 0 END) as total_resueltos,
+                SUM(CASE WHEN estado = 'Cerrado' THEN 1 ELSE 0 END) as total_cerrados,
+                SUM(CASE WHEN estado IN ('Abierto', 'En Proceso') AND (
+                    (fecha_vencimiento_resolucion IS NOT NULL AND fecha_vencimiento_resolucion < NOW()) OR
+                    (fecha_vencimiento_respuesta IS NOT NULL AND fecha_primera_respuesta IS NULL AND fecha_vencimiento_respuesta < NOW()) OR
+                    fecha_creacion < DATE_SUB(NOW(), INTERVAL 3 DAY)
+                ) THEN 1 ELSE 0 END) as total_represados,
+                ROUND(AVG(CASE WHEN calificacion > 0 THEN calificacion ELSE NULL END), 2) as rating_global,
+                ROUND(SUM(CASE WHEN calificacion >= 4 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(CASE WHEN calificacion > 0 THEN 1 ELSE NULL END), 0), 1) as pct_satisfaccion_global
+            FROM tickets
+        ");
+        $resumen = $resumenStmt->fetch();
+
+        // Lista de tickets represados / con alerta crítica activa
+        $represadosStmt = $this->pdo->query("
+            SELECT 
+                t.id, t.titulo, t.categoria, t.prioridad, t.estado, t.tecnico_id, t.fecha_creacion,
+                t.fecha_vencimiento_respuesta, t.fecha_vencimiento_resolucion, t.fecha_primera_respuesta,
+                tec.nombre_completo as tecnico_nombre,
+                u.nombre_completo as solicitante_nombre,
+                CASE 
+                    WHEN t.fecha_vencimiento_resolucion IS NOT NULL AND t.fecha_vencimiento_resolucion < NOW() THEN 'Resolución fuera de SLA'
+                    WHEN t.fecha_vencimiento_respuesta IS NOT NULL AND t.fecha_primera_respuesta IS NULL AND t.fecha_vencimiento_respuesta < NOW() THEN 'Primera respuesta fuera de SLA'
+                    WHEN t.fecha_creacion < DATE_SUB(NOW(), INTERVAL 3 DAY) THEN 'Sin resolver por más de 3 días'
+                    WHEN t.tecnico_id IS NULL AND t.fecha_creacion < DATE_SUB(NOW(), INTERVAL 1 DAY) THEN 'Sin asignar por más de 24 horas'
+                    ELSE 'Ticket represado'
+                END as motivo_alerta
+            FROM tickets t
+            LEFT JOIN usuarios tec ON t.tecnico_id = tec.id
+            LEFT JOIN usuarios u ON t.usuario_id = u.id
+            WHERE t.estado IN ('Abierto', 'En Proceso')
+              AND (
+                (t.fecha_vencimiento_resolucion IS NOT NULL AND t.fecha_vencimiento_resolucion < NOW()) OR
+                (t.fecha_vencimiento_respuesta IS NOT NULL AND t.fecha_primera_respuesta IS NULL AND t.fecha_vencimiento_respuesta < NOW()) OR
+                t.fecha_creacion < DATE_SUB(NOW(), INTERVAL 3 DAY) OR
+                (t.tecnico_id IS NULL AND t.fecha_creacion < DATE_SUB(NOW(), INTERVAL 1 DAY))
+              )
+            ORDER BY t.prioridad = 'Crítica' DESC, t.prioridad = 'Alta' DESC, t.fecha_creacion ASC
+        ");
+        $ticketsRepresados = $represadosStmt->fetchAll();
+
+        json_success([
+            'tecnicos'           => $tecnicos,
+            'sin_asignar'        => $sinAsignar,
+            'resumen'            => $resumen,
+            'tickets_represados' => $ticketsRepresados
+        ]);
+    }
+
+    public function sendTechnicianAlert() {
+        Auth::requireLogin();
+        Permission::requireAny(['tk_ver_global','tk_asignar_otros']);
+        $input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
+
+        $tecnicoId = (int)($input['tecnico_id'] ?? 0);
+        $ticketId  = !empty($input['ticket_id']) ? (int)$input['ticket_id'] : null;
+        $mensajePersonalizado = trim($input['mensaje'] ?? '');
+
+        if (!$tecnicoId) {
+            json_error('Debe especificar el técnico destinatario de la alerta.', 400);
+        }
+
+        // Verificar existencia del técnico
+        $st = $this->pdo->prepare("SELECT id, nombre_completo FROM usuarios WHERE id = ? AND estado = 1");
+        $st->execute([$tecnicoId]);
+        $tecnico = $st->fetch();
+        if (!$tecnico) {
+            json_error('El técnico especificado no existe o está inactivo.', 404);
+        }
+
+        $remitenteId = $_SESSION['user_id'];
+        $remitenteNombre = $_SESSION['usuario_nombre'] ?? 'Coordinación Mesa de Ayuda';
+
+        if ($ticketId) {
+            $titulo = "⚠️ ALERTA: Ticket Represado #{$ticketId}";
+            $mensaje = "Se ha emitido una alerta operativa sobre el <b>Ticket #{$ticketId}</b> asignado a tu bandeja.";
+            if ($mensajePersonalizado) {
+                $mensaje .= "<br><br><b>Observación:</b> " . htmlspecialchars($mensajePersonalizado);
+            }
+            $link = $this->linkAdmin($ticketId);
+            $this->enviarNotificacion($tecnicoId, $titulo, $mensaje, $link, $ticketId);
+        } else {
+            $titulo = "⚠️ ALERTA: Carga de Tickets Represados";
+            $mensaje = "Tienes tickets pendientes o represados en tu bandeja que requieren atención inmediata.";
+            if ($mensajePersonalizado) {
+                $mensaje .= "<br><br><b>Observación de supervisión:</b> " . htmlspecialchars($mensajePersonalizado);
+            }
+            $link = "/gestion-tickets";
+            $this->enviarNotificacion($tecnicoId, $titulo, $mensaje, $link);
+        }
+
+        // Registrar acción en auditoría
+        $this->pdo->prepare("INSERT INTO acciones (tabla, descripcion, usuario_id) VALUES ('tickets', ?, ?)")
+            ->execute(["Alerta operativa enviada al técnico {$tecnico['nombre_completo']}" . ($ticketId ? " por ticket #$ticketId" : ""), $remitenteId]);
+
+        json_success(null, "Alerta enviada correctamente a {$tecnico['nombre_completo']}.");
     }
 }

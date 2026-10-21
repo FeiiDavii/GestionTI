@@ -491,6 +491,14 @@ export default function Bajas() {
                   <textarea className="form-control" rows="3" placeholder="Ej: Daño irreparable, Obsolescencia..." value={formData.motivo}
                     onChange={(e) => setFormData(p => ({ ...p, motivo: e.target.value }))}
                     required minLength={10} style={{ resize: 'vertical' }}></textarea>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                    <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 10 caracteres.</small>
+                    {formData.motivo && formData.motivo.length > 0 && (
+                      <span style={{ fontSize: '0.78rem', color: formData.motivo.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                        {formData.motivo.trim().length} caracteres
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

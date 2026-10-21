@@ -811,6 +811,14 @@ export default function Mantenimientos() {
                               value={fichaForm.justificacion}
                               onChange={(e) => setFichaForm(prev => ({ ...prev, justificacion: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 10 caracteres.</small>
+                              {fichaForm.justificacion.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: fichaForm.justificacion.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {fichaForm.justificacion.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '6px' }}>
@@ -883,6 +891,14 @@ export default function Mantenimientos() {
                               value={mantenimientoForm.observaciones}
                               onChange={(e) => setMantenimientoForm(prev => ({ ...prev, observaciones: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 10 caracteres.</small>
+                              {mantenimientoForm.observaciones.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: mantenimientoForm.observaciones.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {mantenimientoForm.observaciones.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -930,6 +946,14 @@ export default function Mantenimientos() {
                               value={mantenimientoForm.razon}
                               onChange={(e) => setMantenimientoForm(prev => ({ ...prev, razon: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 6 caracteres.</small>
+                              {mantenimientoForm.razon.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: mantenimientoForm.razon.trim().length >= 6 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {mantenimientoForm.razon.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="form-group">
                             <label>Solución Técnica Aplicada</label>
@@ -941,6 +965,14 @@ export default function Mantenimientos() {
                               value={mantenimientoForm.observaciones}
                               onChange={(e) => setMantenimientoForm(prev => ({ ...prev, observaciones: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 10 caracteres.</small>
+                              {mantenimientoForm.observaciones.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: mantenimientoForm.observaciones.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {mantenimientoForm.observaciones.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -999,6 +1031,14 @@ export default function Mantenimientos() {
                               value={mantenimientoForm.razon}
                               onChange={(e) => setMantenimientoForm(prev => ({ ...prev, razon: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 6 caracteres.</small>
+                              {mantenimientoForm.razon.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: mantenimientoForm.razon.trim().length >= 6 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {mantenimientoForm.razon.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="form-group">
@@ -1011,6 +1051,14 @@ export default function Mantenimientos() {
                               value={mantenimientoForm.observaciones}
                               onChange={(e) => setMantenimientoForm(prev => ({ ...prev, observaciones: e.target.value }))}
                             />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                              <small style={{ color: 'var(--gray-text)', margin: 0 }}>Mínimo 10 caracteres.</small>
+                              {mantenimientoForm.observaciones.length > 0 && (
+                                <span style={{ fontSize: '0.78rem', color: mantenimientoForm.observaciones.trim().length >= 10 ? 'var(--success-color)' : 'var(--error-color)', fontWeight: 600 }}>
+                                  {mantenimientoForm.observaciones.trim().length} caracteres
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"

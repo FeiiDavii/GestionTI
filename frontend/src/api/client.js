@@ -48,7 +48,9 @@ export const ticketAPI = {
   rate: (data) => api.post('/tickets/rate', data),
   reopen: (data) => api.post('/tickets/reopen', data),
   timeline: (id) => api.get(`/tickets/timeline?id=${id}`),
-  chatUsers: () => api.get('/tickets/chat-users')
+  chatUsers: () => api.get('/tickets/chat-users'),
+  technicianStats: () => api.get('/tickets/technician-stats'),
+  sendAlert: (data) => api.post('/tickets/send-alert', data)
 };
 
 export const equipmentAPI = {
