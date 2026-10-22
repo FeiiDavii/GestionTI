@@ -9,7 +9,7 @@
 [![PHP](https://img.shields.io/badge/PHP-8.2%20%7C%208.0+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.4+-003545?style=for-the-badge&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 
 *Ecosistema web corporativo para centralizar el ciclo de vida de infraestructura tecnológica, monitoreo de SLA, línea de tiempo de casos, mesa de ayuda con distribución técnica, topología de red interactiva y seguridad basada en permisos granulares (PBAC).*
 
@@ -29,7 +29,9 @@
 8. [Módulos del Frontend](#-módulos-del-frontend)
 9. [Tiempo Real (SSE)](#-tiempo-real-con-sse)
 10. [Instalación en Entorno Local (Windows / XAMPP)](#-instalación-en-entorno-local-windows--xampp)
-11. [Guía de Despliegue en Servidor Linux Ubuntu / VPS](#-guía-de-despliegue-en-servidor-linux-ubuntu--vps)
+11. [Guía de Despliegue en Servidor Linux Ubuntu / VPS](#-guía-de-despliegue-en-servidor-linux-ubuntu-26-24-22--vps)
+    - [Escenario A: Despliegue con Dominio Público y SSL (Let's Encrypt)](#escenario-a-despliegue-con-dominio-público-y-ssl-recomendado)
+    - [Escenario B: Despliegue Local / Servidor Bare-Metal sin Dominio (Por Dirección IP)](#escenario-b-despliegue-local--servidor-en-máquina-propia-sin-dominio-por-ip)
 12. [Docker y Contenedores](#-docker-y-contenedores)
 13. [Historial de Cambios (Changelog)](#-historial-de-cambios)
 
@@ -382,29 +384,38 @@ GestionTI cuenta con un bus de eventos unidireccional vía **Server-Sent Events*
 
 ---
 
-## 🐧 Guía de Despliegue en Servidor Linux Ubuntu / VPS
+## 🐧 Guía de Despliegue en Servidor Linux (Ubuntu 26, 24, 22 / VPS)
 
-Esta guía describe el despliegue profesional para **Ubuntu 22.04 / 24.04 LTS** utilizando **Nginx**, **PHP 8.2-FPM** y **MariaDB**, con soporte de HTTPS y Server-Sent Events (SSE).
+Esta guía contempla el despliegue optimizado para **Ubuntu 26.04 LTS**, **Ubuntu 24.04 LTS** y **Ubuntu 22.04 LTS** (o cualquier VPS basado en Debian/Ubuntu como DigitalOcean, AWS EC2, Linode, Hetzner u On-Premise).
 
-### 1. Actualizar el Sistema e Instalar Paquetes Base
+Incluye dos modalidades completas:
+- **[Escenario A: Con Dominio Público y SSL Let's Encrypt](#escenario-a-despliegue-con-dominio-público-y-ssl-recomendado)**
+- **[Escenario B: Sin Dominio (Directamente por IP pública, IP local o LAN en máquina propia)](#escenario-b-despliegue-local--servidor-en-máquina-propia-sin-dominio-por-ip)**
 
+---
+
+### Paso 1: Actualizar Paquetes del Sistema Operativo
+
+Abre la terminal de tu máquina o conecta por SSH a tu servidor:
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl git unzip ufw software-properties-common
+sudo apt install -y curl git unzip ufw software-properties-common ca-certificates lsb-release
 ```
 
-### 2. Instalar MariaDB Server
+---
+
+### Paso 2: Instalar y Configurar MariaDB Server
 
 ```bash
 sudo apt install -y mariadb-server
 sudo systemctl enable mariadb
 sudo systemctl start mariadb
 
-# Asegurar la instalación
+# Securizar el servidor
 sudo mysql_secure_installation
 ```
 
-Crea la base de datos y el usuario de producción:
+Accede a la consola de MariaDB y crea la base de datos con un usuario dedicado:
 ```bash
 sudo mysql -u root -p
 ```
@@ -416,63 +427,97 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-Importa la estructura inicial:
-```bash
-# Asumiendo que clonarás en /var/www/GestionTI
-sudo mysql -u gestionti_user -p inventario_db < /var/www/GestionTI/SQL_sripts/inventario_db_set_up.sql
-```
+---
 
-### 3. Instalar PHP 8.2 y Extensiones Requeridas
+### Paso 3: Instalar PHP 8.2 o Superior y Extensiones
+
+> [!TIP]
+> En **Ubuntu 24.04** y **Ubuntu 26.04**, PHP 8.2/8.3 viene disponible en los repositorios oficiales de Ubuntu. En **Ubuntu 22.04**, agregamos el repositorio PPA canónico de Ondřej Surý.
 
 ```bash
+# Agregar repositorio si estás en Ubuntu 22.04 (o para tener siempre las últimas versiones)
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt update
+
+# Instalar PHP y módulos indispensables para GestionTI
 sudo apt install -y php8.2 php8.2-fpm php8.2-mysql php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-intl
+
 sudo systemctl enable php8.2-fpm
 sudo systemctl start php8.2-fpm
 ```
 
-### 4. Instalar Node.js y Compilar el Frontend
+Verifica la versión y el socket activo:
+```bash
+php -v
+ls -l /var/run/php/php8.2-fpm.sock
+```
+
+---
+
+### Paso 4: Clonar el Repositorio e Importar la Estructura de BD
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Clonar el proyecto
+# Clonar en /var/www/GestionTI
 cd /var/www
 sudo git clone https://github.com/FeiiDavii/GestionTI.git
 sudo chown -R $USER:$USER /var/www/GestionTI
 
-# Compilar frontend
+# Importar las 30 tablas e inicialización de BD
+mysql -u gestionti_user -p inventario_db < /var/www/GestionTI/SQL_sripts/inventario_db_set_up.sql
+```
+
+---
+
+### Paso 5: Instalar Node.js y Compilar el Frontend
+
+```bash
+# Instalar Node.js 20 LTS
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Compilar los bundles de producción de React + Vite
 cd /var/www/GestionTI/frontend
 npm install
 npm run build
 ```
+Esto genera la carpeta `/var/www/GestionTI/frontend/dist` optimizada para producción.
 
-### 5. Configurar Variables de Entorno del Backend
+---
 
-Crea el archivo `/var/www/GestionTI/backend/.env`:
+### Paso 6: Configurar Variables de Entorno y Permisos del Backend
+
+Crea el archivo `.env` del backend:
 ```bash
 nano /var/www/GestionTI/backend/.env
 ```
-Contenido:
+
+Configura tus credenciales reales:
 ```ini
+# Base de datos
 DB_HOST=localhost
 DB_NAME=inventario_db
 DB_USER=gestionti_user
 DB_PASS=TuPasswordUltraSegura_2026!
-APP_ORIGINS=https://tu-dominio.com,http://tu-dominio.com
+
+# Orígenes permitidos (CORS)
+# Si usas dominio: https://tudominio.com,http://tudominio.com
+# Si usas IP: http://192.168.1.100,http://tu_ip_publica
+APP_ORIGINS=http://localhost,http://127.0.0.1,http://TU_IP_O_DOMINIO
+
+# Avatar (Opcional, vacío usa iniciales locales)
 AVATAR_URL=
 ```
 
-Ajusta los permisos del directorio de uploads:
+Asegura los permisos del directorio de uploads para el usuario `www-data` (Nginx/PHP-FPM):
 ```bash
 sudo mkdir -p /var/www/GestionTI/backend/uploads/tickets
 sudo chown -R www-data:www-data /var/www/GestionTI/backend/uploads
 sudo chmod -R 775 /var/www/GestionTI/backend/uploads
 ```
 
-### 6. Configurar Nginx para SPA + REST API + SSE
+---
+
+### Paso 7: Configuración de Nginx
 
 Instala Nginx:
 ```bash
@@ -480,36 +525,43 @@ sudo apt install -y nginx
 sudo systemctl enable nginx
 ```
 
-Crea el archivo de configuración para el sitio:
+Elige el escenario que corresponda a tu entorno:
+
+---
+
+#### Escenario A: Despliegue con Dominio Público y SSL (Recomendado)
+
+Crea el bloque de configuración para tu dominio:
 ```bash
 sudo nano /etc/nginx/sites-available/gestionti
 ```
 
-Agrega la siguiente configuración optimizada:
+Pega la siguiente configuración (reemplaza `tu-dominio.com` por tu nombre de dominio real):
+
 ```nginx
 server {
     listen 80;
     server_name tu-dominio.com www.tu-dominio.com;
 
-    # Directorio de los archivos estáticos de React compilados
+    # Archivos estáticos de React
     root /var/www/GestionTI/frontend/dist;
     index index.html;
 
     client_max_body_size 30M;
 
-    # 1. Frontend SPA: todas las rutas del cliente van a index.html
+    # 1. Frontend SPA: todas las rutas cliente van a index.html
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # 2. Archivos adjuntos y evidencias
+    # 2. Descarga de evidencias y adjuntos de tickets
     location /uploads/ {
         alias /var/www/GestionTI/backend/uploads/;
         access_log off;
         expires 30d;
     }
 
-    # 3. Endpoint SSE (Tiempo Real sin buffering)
+    # 3. Server-Sent Events (SSE) en tiempo real
     location /api/stream {
         rewrite ^/api/stream$ /stream.php break;
         root /var/www/GestionTI/backend;
@@ -519,7 +571,7 @@ server {
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend/stream.php;
 
-        # Parámetros críticos para Server-Sent Events
+        # Parámetros críticos para streaming sin buffering
         proxy_buffering off;
         fastcgi_buffering off;
         fastcgi_read_timeout 86400s;
@@ -533,7 +585,7 @@ server {
         rewrite ^/api/(.*)$ /index.php/$1 last;
     }
 
-    # Procesar archivos PHP del backend
+    # Procesamiento de PHP
     location ~ ^/(index|stream)\.php(/|$) {
         root /var/www/GestionTI/backend;
         fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
@@ -544,35 +596,130 @@ server {
         fastcgi_read_timeout 300s;
     }
 
-    # Denegar acceso a archivos sensibles
     location ~ /\.(ht|env|git) {
         deny all;
     }
 }
 ```
 
-Habilita el sitio y valida la sintaxis:
+Habilita el sitio y aplica certificados Let's Encrypt:
 ```bash
-sudo ln -s /etc/nginx/sites-available/gestionti /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/gestionti /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t
+sudo systemctl reload nginx
+
+# Instalar Certbot y emitir HTTPS automático
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
+```
+
+---
+
+#### Escenario B: Despliegue Local / Servidor en Máquina Propia sin Dominio (Por IP)
+
+Si vas a instalar GestionTI en una máquina física propia, servidor en red local (LAN) o en un VPS al que accederás directamente por su dirección IP pública o privada (ej: `http://192.168.1.50` o `http://143.198.x.x`):
+
+1. Edita el archivo de configuración:
+```bash
+sudo nano /etc/nginx/sites-available/gestionti
+```
+
+2. Utiliza la configuración con `server_name _` (o con tu IP):
+
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Acepta cualquier dirección IP o hostname local
+    server_name _;
+
+    root /var/www/GestionTI/frontend/dist;
+    index index.html;
+
+    client_max_body_size 30M;
+
+    # 1. Frontend SPA
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Descarga de evidencias y adjuntos
+    location /uploads/ {
+        alias /var/www/GestionTI/backend/uploads/;
+        access_log off;
+        expires 30d;
+    }
+
+    # 3. Server-Sent Events (SSE) sin buffering
+    location /api/stream {
+        rewrite ^/api/stream$ /stream.php break;
+        root /var/www/GestionTI/backend;
+
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_index stream.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend/stream.php;
+
+        proxy_buffering off;
+        fastcgi_buffering off;
+        fastcgi_read_timeout 86400s;
+        fastcgi_send_timeout 86400s;
+        tcp_nodelay on;
+    }
+
+    # 4. API REST hacia index.php
+    location /api/ {
+        root /var/www/GestionTI/backend;
+        rewrite ^/api/(.*)$ /index.php/$1 last;
+    }
+
+    # Procesar peticiones PHP
+    location ~ ^/(index|stream)\.php(/|$) {
+        root /var/www/GestionTI/backend;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_split_path_info ^(.+\.php)(/.*)$;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_read_timeout 300s;
+    }
+
+    location ~ /\.(ht|env|git) {
+        deny all;
+    }
+}
+```
+
+3. Habilita el sitio y recarga:
+```bash
+sudo ln -sf /etc/nginx/sites-available/gestionti /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 7. Certificado SSL Gratuito con Let's Encrypt
+> [!NOTE]
+> En `backend/.env`, asegúrate de incluir tu IP en `APP_ORIGINS`:
+> ```ini
+> APP_ORIGINS=http://TU_IP_LOCAL_O_PUBLICA,http://localhost
+> ```
 
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d tu-dominio.com -d www.tu-dominio.com
-```
+---
 
-### 8. Configurar Firewall (UFW)
+### Paso 8: Configurar Firewall (UFW)
 
+Habilita los puertos web en el cortafuegos de Ubuntu:
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 'Nginx Full'
+# O si solo usas HTTP por IP:
+sudo ufw allow 'Nginx HTTP'
 sudo ufw enable
 ```
+
+¡Listo! Ya puedes abrir tu navegador e ingresar a `https://tu-dominio.com` o `http://TU_IP` para acceder a GestionTI.
 
 ---
 
@@ -605,7 +752,7 @@ docker run -d --name gestionti-api \
 - ⏱️ **Línea de Vida y Resolución:** Incorporación de eventos cronológicos en tickets y dictamen técnico obligatorio para resolución.
 - 🔤 **Conteo Dinámico de Caracteres:** Contadores en tiempo real con retroalimentación visual en campos obligatorios de la aplicación.
 - 🛡️ **Depuración PBAC:** Bloqueo y ocultamiento estricto de botones, columnas y formularios no permitidos según el perfil activo.
-- 🌐 **Despliegue Linux/Nginx:** Guía exhaustiva de puesta en producción para Ubuntu LTS y VPS cloud.
+- 🐧 **Despliegue Multi-Ubuntu (26, 24 y 22):** Guía con soporte para dominios públicos con SSL Let's Encrypt o acceso directo por dirección IP en máquinas propias/LAN.
 
 ---
 
