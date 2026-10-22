@@ -143,11 +143,9 @@ GestionTI/
 │   │
 │   ├── config/
 │   │   ├── env.php                    # Cargador de variables de entorno sin dependencias
-│   │   ├── db.php                     # Conexión PDO, timezone y formateador de errores
-│   │   └── ai_context.txt             # Contexto de sistema para el asistente IA
+│   │   └── db.php                     # Conexión PDO, timezone y formateador de errores
 │   │
-│   ├── controllers/                   # 16 Controladores de lógica de negocio
-│   │   ├── AIController.php           # Consultas al asistente inteligente
+│   ├── controllers/                   # 15 Controladores de lógica de negocio
 │   │   ├── AssignmentController.php   # Artículos, repuestos y asignaciones
 │   │   ├── AuthController.php         # Login, logout, perfil y cambio de contraseña
 │   │   ├── AuxiliaryController.php    # Áreas, marcas, tipos, hardware y usuarios
