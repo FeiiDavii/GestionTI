@@ -1,3 +1,4 @@
+SET FOREIGN_KEY_CHECKS = 0;
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
@@ -420,7 +421,8 @@ CREATE TABLE `roles` (
 INSERT INTO `roles` (`id`, `nombre_rol`, `descripcion`, `creado_en`, `inv_ver`, `inv_crear_editar`, `inv_eliminar`, `inv_asignaciones`, `inv_licencias`, `inv_bajas`, `tk_ver_global`, `tk_responder`, `tk_asignar_otros`, `tk_mantenimientos`, `tk_crear`, `usr_ver`, `usr_gestionar`, `rep_generar`, `conf_basica`, `conf_roles`, `conf_avanzada`, `conf_sla`, `inv_topology`) VALUES
 (1, 'Administrador', 'Acceso completo al sistema', '2026-05-25 14:27:37', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
 (2, 'Avanzado', 'Puede gestionar equipos y asignaciones', '2026-05-26 14:31:10', 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1),
-(3, 'Funcionario', 'Solo creación y consulta de tickets', '2026-06-16 15:28:49', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0);
+(3, 'Funcionario', 'Solo creación y consulta de tickets', '2026-06-16 15:28:49', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0),
+(4, 'Técnico', 'Atención y resolución operativa de tickets de soporte', '2026-06-16 15:28:49', 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -1262,8 +1264,7 @@ ALTER TABLE `tickets_chat`
 --
 ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_usuarios_funcionarios` FOREIGN KEY (`id_funcionario`) REFERENCES `funcionarios` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_usuarios_roles` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON DELETE SET NULL;
+  ADD CONSTRAINT `fk_usuarios_roles` FOREIGN KEY (`id_rol`) REFERENCES `roles` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
 -- Filtros para la tabla `topology_nodes` y `topology_edges`
@@ -1280,3 +1281,5 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+SET FOREIGN_KEY_CHECKS = 1;
