@@ -330,7 +330,7 @@ class EquipmentController {
     }
 }
 
-function crud_save_pdo($pdo, $table, $data, $id = null) {
+function crud_save_pdo($pdo, string $table, array $data, mixed $id = null): void {
     $columns = array_keys($data);
     $values = array_values($data);
     if ($id) {

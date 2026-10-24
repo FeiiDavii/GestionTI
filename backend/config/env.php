@@ -40,7 +40,7 @@ if (!function_exists('env_load')) {
 }
 
 if (!function_exists('env')) {
-    function env($key, $default = null) {
+    function env(string $key, mixed $default = null): mixed {
         env_load();
         $value = getenv($key);
         if ($value === false || $value === '') return $default;

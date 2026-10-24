@@ -936,13 +936,7 @@ export default function Tickets() {
                 )}
 
                 {/* Body: 2 columns */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '250px minmax(0, 1fr)',
-                  flexGrow: 1,
-                  overflow: 'hidden',
-                  minHeight: 0,
-                }}>
+                <div className="ticket-modal-split">
                   {/* LEFT PANEL: info */}
                   <div style={{
                     background: 'var(--surface-secondary)',

@@ -5,7 +5,7 @@ class TicketController {
 
     // ─── Helper: enviar notificación con link (idéntico al original IAV2) ──────
     // Los links apuntan a las rutas React del nuevo sistema.
-    private function enviarNotificacion($destinatarioId, $titulo, $mensaje, $link = null, $ticketId = null) {
+    private function enviarNotificacion($destinatarioId, $titulo, $mensaje, ?string $link = null, mixed $ticketId = null): void {
         $remitenteId = $_SESSION['user_id'];
         if ($link) {
             $mensaje .= "<br><br><a href='{$link}' style='display:inline-block; padding:6px 12px; background:#4e73df; color:white; text-decoration:none; border-radius:4px; font-size:12px; font-weight:bold;'>Ver Ticket <i class='fa-solid fa-arrow-right'></i></a>";

@@ -1530,7 +1530,7 @@ export default function GestionTickets() {
               <button type="button" className="btn-icon btn-ghost" onClick={cerrarModal}><FaTimes /></button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', flexGrow: 1, overflow: 'hidden', minHeight: 0 }}>
+            <div className="ticket-modal-split">
               {/* ─── SIDEBAR PANEL ──────────────────────────────────────────── */}
               <div className="sidebar-panel">
                 <div className="info-card mb-3">

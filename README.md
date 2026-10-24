@@ -6,10 +6,10 @@
 
 [![Versión](https://img.shields.io/badge/versión-3.9.0-4a6cf7?style=for-the-badge&logo=git)](.)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![PHP](https://img.shields.io/badge/PHP-8.2%20%7C%208.0+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
+[![PHP](https://img.shields.io/badge/PHP-8.4%20%7C%208.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net/)
 [![MariaDB](https://img.shields.io/badge/MariaDB-10.4+-003545?style=for-the-badge&logo=mariadb&logoColor=white)](https://mariadb.org/)
 [![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.0-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20%7C%2024.04%20%7C%2026.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-24.04%20%7C%2026.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
 
 *Ecosistema web corporativo para centralizar el ciclo de vida de infraestructura tecnológica, monitoreo de SLA, línea de tiempo de casos, mesa de ayuda con distribución técnica, topología de red interactiva y seguridad basada en permisos granulares (PBAC).*
 
@@ -29,7 +29,7 @@
 8. [Módulos del Frontend](#-módulos-del-frontend)
 9. [Tiempo Real (SSE)](#-tiempo-real-con-sse)
 10. [Instalación en Entorno Local (Windows / XAMPP)](#-instalación-en-entorno-local-windows--xampp)
-11. [Guía de Despliegue en Servidor Linux Ubuntu / VPS](#-guía-de-despliegue-en-servidor-linux-ubuntu-26-24-22--vps)
+11. [Guía de Despliegue en Servidor Linux Ubuntu 24+ / VPS](#-guía-de-despliegue-en-servidor-linux-ubuntu-2404--ubuntu-26--vps)
     - [Escenario A: Despliegue con Dominio Público y SSL (Let's Encrypt)](#escenario-a-despliegue-con-dominio-público-y-ssl-recomendado)
     - [Escenario B: Despliegue Local / Servidor Bare-Metal sin Dominio (Por Dirección IP)](#escenario-b-despliegue-local--servidor-en-máquina-propia-sin-dominio-por-ip)
 12. [Docker y Contenedores](#-docker-y-contenedores)
@@ -119,7 +119,7 @@
 ### Backend
 | Herramienta | Versión | Rol |
 |---|---|---|
-| **PHP** | 8.2 / 8.0+ | Entorno de ejecución con tipado estricto y extensiones nativas |
+| **PHP** | 8.4 (compatible 8.2+) | Entorno de ejecución con tipado estricto y extensiones nativas |
 | **PDO MySQL** | Nativo | Conexión relacional optimizada con consultas parametrizadas |
 | **Nginx / Apache** | 1.24+ / 2.4+ | Servidores HTTP de alto rendimiento y terminación TLS |
 | **SSE Engine** | Nativo | Servidor de eventos unidireccionales de baja latencia |
@@ -136,7 +136,7 @@ GestionTI/
 ├── backend/
 │   ├── .env.example                   # Plantilla de variables de entorno para backend
 │   ├── .htaccess                      # Configuración de reescritura Apache y headers SSE
-│   ├── Dockerfile                     # Imagen de contenedor PHP 8.2 Apache
+│   ├── Dockerfile                     # Imagen de contenedor PHP 8.4 Apache
 │   ├── index.php                      # Enrutador central de la API (~84 endpoints)
 │   ├── router.php                     # Enrutador para servidor de desarrollo PHP CLI
 │   ├── stream.php                     # Endpoint SSE en tiempo real
@@ -382,9 +382,9 @@ GestionTI cuenta con un bus de eventos unidireccional vía **Server-Sent Events*
 
 ---
 
-## 🐧 Guía de Despliegue en Servidor Linux (Ubuntu 26, 24, 22 / VPS)
+## 🐧 Guía de Despliegue en Servidor Linux (Ubuntu 24.04+ / Ubuntu 26 / VPS)
 
-Esta guía contempla el despliegue optimizado para **Ubuntu 26.04 LTS**, **Ubuntu 24.04 LTS** y **Ubuntu 22.04 LTS** (o cualquier VPS basado en Debian/Ubuntu como DigitalOcean, AWS EC2, Linode, Hetzner u On-Premise).
+Esta guía contempla el despliegue optimizado para sistemas modernos **Ubuntu 24.04 LTS (Noble Numbat)** y **Ubuntu 26.04 LTS** (o cualquier VPS moderno en la nube como DigitalOcean, AWS EC2, Linode, Hetzner, Proxmox o servidores On-Premise / LAN).
 
 Incluye dos modalidades completas:
 - **[Escenario A: Con Dominio Público y SSL Let's Encrypt](#escenario-a-despliegue-con-dominio-público-y-ssl-recomendado)**
@@ -427,27 +427,27 @@ EXIT;
 
 ---
 
-### Paso 3: Instalar PHP 8.2 o Superior y Extensiones
+### Paso 3: Instalar PHP 8.4 y Extensiones
 
 > [!TIP]
-> En **Ubuntu 24.04** y **Ubuntu 26.04**, PHP 8.2/8.3 viene disponible en los repositorios oficiales de Ubuntu. En **Ubuntu 22.04**, agregamos el repositorio PPA canónico de Ondřej Surý.
+> En **Ubuntu 24.04+** y **Ubuntu 26.04**, para asegurar la última versión de **PHP 8.4** con soporte de extensiones de alto rendimiento, se añade el repositorio PPA oficial de Ondřej Surý.
 
 ```bash
-# Agregar repositorio si estás en Ubuntu 22.04 (o para tener siempre las últimas versiones)
+# Agregar repositorio oficial PPA para PHP 8.4 en Ubuntu 24.04+
 sudo add-apt-repository ppa:ondrej/php -y
 sudo apt update
 
 # Instalar PHP y módulos indispensables para GestionTI
-sudo apt install -y php8.2 php8.2-fpm php8.2-mysql php8.2-mbstring php8.2-xml php8.2-curl php8.2-zip php8.2-intl
+sudo apt install -y php8.4 php8.4-fpm php8.4-mysql php8.4-mbstring php8.4-xml php8.4-curl php8.4-zip php8.4-intl
 
-sudo systemctl enable php8.2-fpm
-sudo systemctl start php8.2-fpm
+sudo systemctl enable php8.4-fpm
+sudo systemctl start php8.4-fpm
 ```
 
 Verifica la versión y el socket activo:
 ```bash
 php -v
-ls -l /var/run/php/php8.2-fpm.sock
+ls -l /var/run/php/php8.4-fpm.sock
 ```
 
 ---
@@ -564,7 +564,7 @@ server {
         rewrite ^/api/stream$ /stream.php break;
         root /var/www/GestionTI/backend;
 
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_index stream.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend/stream.php;
@@ -586,7 +586,7 @@ server {
     # Procesamiento de PHP
     location ~ ^/(index|stream)\.php(/|$) {
         root /var/www/GestionTI/backend;
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend$fastcgi_script_name;
@@ -655,7 +655,7 @@ server {
         rewrite ^/api/stream$ /stream.php break;
         root /var/www/GestionTI/backend;
 
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_index stream.php;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend/stream.php;
@@ -676,7 +676,7 @@ server {
     # Procesar peticiones PHP
     location ~ ^/(index|stream)\.php(/|$) {
         root /var/www/GestionTI/backend;
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.4-fpm.sock;
         fastcgi_split_path_info ^(.+\.php)(/.*)$;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME /var/www/GestionTI/backend$fastcgi_script_name;
@@ -750,7 +750,7 @@ docker run -d --name gestionti-api \
 - ⏱️ **Línea de Vida y Resolución:** Incorporación de eventos cronológicos en tickets y dictamen técnico obligatorio para resolución.
 - 🔤 **Conteo Dinámico de Caracteres:** Contadores en tiempo real con retroalimentación visual en campos obligatorios de la aplicación.
 - 🛡️ **Depuración PBAC:** Bloqueo y ocultamiento estricto de botones, columnas y formularios no permitidos según el perfil activo.
-- 🐧 **Despliegue Multi-Ubuntu (26, 24 y 22):** Guía con soporte para dominios públicos con SSL Let's Encrypt o acceso directo por dirección IP en máquinas propias/LAN.
+- 🐧 **Despliegue Ubuntu 24.04+ / 26:** Guía con soporte para dominios públicos con SSL Let's Encrypt o acceso directo por dirección IP en máquinas propias/LAN.
 
 ---
 

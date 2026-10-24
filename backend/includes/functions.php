@@ -100,17 +100,17 @@ function sanitize_filename($filename) {
     return time() . '_' . $filename;
 }
 
-function json_response($success, $message = '', $data = null, $extra = []) {
+function json_response(bool $success, string $message = '', mixed $data = null, array $extra = []): void {
     $res = array_merge(['success' => $success, 'message' => $message, 'data' => $data], $extra);
     echo json_encode($res);
     exit;
 }
 
-function json_success($data = null, $message = 'Operación exitosa', $extra = []) {
+function json_success(mixed $data = null, string $message = 'Operación exitosa', array $extra = []): void {
     json_response(true, $message, $data, $extra);
 }
 
-function json_error($message = 'Error', $code = 400) {
+function json_error(string $message = 'Error', int $code = 400): void {
     http_response_code($code);
     json_response(false, $message);
 }
