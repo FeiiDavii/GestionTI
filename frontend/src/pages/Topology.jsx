@@ -12,6 +12,10 @@ import {
   Position,
   useReactFlow,
   ReactFlowProvider,
+  StraightEdge,
+  SmoothStepEdge,
+  StepEdge,
+  BezierEdge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { topologyAPI, equipmentAPI, auxAPI } from '../api/client';
@@ -328,70 +332,69 @@ const ParentSearchSelector = ({ value, onChange, allNodes, currentNodeId }) => {
 // ─── CLUSTER NODE (container / group) ─────────────────────────────────────────
 const ClusterNode = ({ data, selected }) => {
   const config = NODE_TYPES_CONFIG[data.type] || { label: data.type, category: 'fisica', icon: 'fa-cube' };
-  const catConfig = NODE_CATEGORIES[config.category] || NODE_CATEGORIES.fisica;
   const childCount = data.childCount || 0;
 
   return (
     <div
       style={{
-        border: `2px solid ${catConfig.color}`,
-        borderRadius: '16px',
-        background: selected ? `${catConfig.color}18` : `${catConfig.color}0a`,
-        padding: '14px 18px',
-        minWidth: '240px',
+        background: '#ffffff',
+        borderRadius: '18px',
+        padding: '12px 18px',
+        minWidth: '220px',
         cursor: 'pointer',
-        boxShadow: selected ? `0 0 20px ${catConfig.color}55` : '0 4px 16px rgba(0,0,0,0.08)',
-        transition: 'all 0.2s ease',
+        boxShadow: selected ? '0 0 0 2px #3b82f6, 0 10px 25px rgba(59, 130, 246, 0.15)' : '0 4px 20px rgba(0, 0, 0, 0.06)',
+        border: '1px solid #e2e8f0',
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '14px',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
-      <Handle type="target" position={Position.Top} id="target-top" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="source" position={Position.Top} id="source-top" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="target" position={Position.Bottom} id="target-bottom" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="source" position={Position.Bottom} id="source-bottom" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="target" position={Position.Left} id="target-left" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="source" position={Position.Left} id="source-left" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="target" position={Position.Right} id="target-right" style={{ background: catConfig.color, width: 10, height: 10 }} />
-      <Handle type="source" position={Position.Right} id="source-right" style={{ background: catConfig.color, width: 10, height: 10 }} />
+      <Handle type="target" position={Position.Top} id="top" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 10,
-          background: `${catConfig.color}25`, color: catConfig.color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          flexShrink: 0
-        }}>
-          <i className={resolveIcon(config.icon)}></i>
+      {/* Rounded square icon container */}
+      <div style={{
+        width: 44, height: 44, borderRadius: 14,
+        background: '#eef2ff', color: '#4361ee',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+        flexShrink: 0
+      }}>
+        <i className={resolveIcon(config.icon)}></i>
+      </div>
+
+      {/* Title & subtitle */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {data.name}
         </div>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {data.name}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--gray-text)', marginTop: 1 }}>{config.label}</div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <div style={{
-            width: 10, height: 10, borderRadius: '50%',
-            background: STATUS_COLORS[data.status] || STATUS_COLORS.online,
-            boxShadow: `0 0 6px ${STATUS_COLORS[data.status] || STATUS_COLORS.online}`
-          }} />
-          {childCount > 0 && (
-            <div style={{ fontSize: 10, background: catConfig.color, color: 'white', borderRadius: 6, padding: '2px 6px', fontWeight: 700 }}>
-              <i className="fa-solid fa-layer-group" style={{ marginRight: 4 }}></i>{childCount}
-            </div>
-          )}
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
+          {config.label}
         </div>
       </div>
 
-      {data.metadata?.ip && (
-        <div style={{ marginTop: 8, fontSize: 10, fontFamily: 'monospace', color: 'var(--gray-text)', background: 'var(--input-bg)', borderRadius: 4, padding: '2px 6px', display: 'inline-block' }}>
-          {data.metadata.ip}
-        </div>
-      )}
+      {/* Status glowing dot badge */}
+      <div style={{
+        width: 14, height: 14, borderRadius: '50%',
+        background: STATUS_COLORS[data.status] || '#10b981',
+        boxShadow: `0 0 10px ${STATUS_COLORS[data.status] || '#10b981'}88`,
+        flexShrink: 0,
+        marginLeft: 4,
+      }} />
 
+      {/* Subtle indicator for children if present */}
       {childCount > 0 && (
-        <div style={{ marginTop: 8, fontSize: 11, color: catConfig.color, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <i className="fa-solid fa-arrow-right-to-bracket"></i>
-          Doble clic para expandir
+        <div style={{
+          position: 'absolute', top: -7, right: 14,
+          background: '#3b82f6', color: '#ffffff',
+          borderRadius: 10, padding: '1px 6px',
+          fontSize: 10, fontWeight: 700,
+          boxShadow: '0 2px 5px rgba(59, 130, 246, 0.4)',
+        }}>
+          <i className="fa-solid fa-layer-group" style={{ marginRight: 3 }}></i>{childCount}
         </div>
       )}
     </div>
@@ -401,63 +404,55 @@ const ClusterNode = ({ data, selected }) => {
 // ─── LEAF NODE ─────────────────────────────────────────────────────────────────
 const LeafNode = ({ data, selected }) => {
   const config = NODE_TYPES_CONFIG[data.type] || { label: data.type, category: 'fisica', icon: 'fa-cube' };
-  const catConfig = NODE_CATEGORIES[config.category] || NODE_CATEGORIES.fisica;
 
   return (
     <div style={{
-      background: 'var(--card-bg)',
-      borderRadius: 12,
-      padding: '10px 14px',
-      minWidth: 200,
-      boxShadow: selected ? `0 0 15px ${catConfig.color}55` : '0 3px 10px rgba(0,0,0,0.07)',
-      border: `1.5px solid ${selected ? catConfig.color : 'var(--border-color)'}`,
-      transition: 'all 0.2s ease',
+      background: '#ffffff',
+      borderRadius: '18px',
+      padding: '12px 18px',
+      minWidth: '220px',
+      cursor: 'pointer',
+      boxShadow: selected ? '0 0 0 2px #3b82f6, 0 10px 25px rgba(59, 130, 246, 0.15)' : '0 4px 20px rgba(0, 0, 0, 0.06)',
+      border: '1px solid #e2e8f0',
+      position: 'relative',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '14px',
+      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
     }}>
-      <Handle type="target" position={Position.Top} id="target-top" style={{ background: catConfig.color }} />
-      <Handle type="source" position={Position.Top} id="source-top" style={{ background: catConfig.color }} />
-      <Handle type="target" position={Position.Bottom} id="target-bottom" style={{ background: catConfig.color }} />
-      <Handle type="source" position={Position.Bottom} id="source-bottom" style={{ background: catConfig.color }} />
-      <Handle type="target" position={Position.Left} id="target-left" style={{ background: catConfig.color }} />
-      <Handle type="source" position={Position.Left} id="source-left" style={{ background: catConfig.color }} />
-      <Handle type="target" position={Position.Right} id="target-right" style={{ background: catConfig.color }} />
-      <Handle type="source" position={Position.Right} id="source-right" style={{ background: catConfig.color }} />
+      <Handle type="target" position={Position.Top} id="top" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="source" position={Position.Bottom} id="bottom" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ background: '#3b82f6', width: 9, height: 9, border: '2px solid #ffffff', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.2)', zIndex: 10 }} />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: `${catConfig.color}20`, color: catConfig.color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0
-        }}>
-          <i className={resolveIcon(config.icon)}></i>
-        </div>
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-color)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {data.name}
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--gray-text)' }}>{config.label}</div>
-        </div>
-        <div style={{
-          width: 9, height: 9, borderRadius: '50%',
-          background: STATUS_COLORS[data.status] || STATUS_COLORS.online,
-          boxShadow: `0 0 5px ${STATUS_COLORS[data.status] || STATUS_COLORS.online}`,
-          flexShrink: 0
-        }} />
+      {/* Rounded square icon container */}
+      <div style={{
+        width: 44, height: 44, borderRadius: 14,
+        background: '#eef2ff', color: '#4361ee',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+        flexShrink: 0
+      }}>
+        <i className={resolveIcon(config.icon)}></i>
       </div>
 
-      {(data.metadata?.ip || data.criticality === 'critical' || data.criticality === 'high') && (
-        <div style={{ display: 'flex', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
-          {data.metadata?.ip && (
-            <span style={{ fontSize: 9, fontFamily: 'monospace', background: 'var(--input-bg)', borderRadius: 3, padding: '1px 5px', color: 'var(--gray-text)' }}>
-              {data.metadata.ip}
-            </span>
-          )}
-          {(data.criticality === 'critical' || data.criticality === 'high') && (
-            <span style={{ fontSize: 9, background: `${CRITICALITY_COLORS[data.criticality]}20`, color: CRITICALITY_COLORS[data.criticality], borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>
-              {CRITICALITY_LABELS[data.criticality]}
-            </span>
-          )}
+      {/* Title & subtitle */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {data.name}
         </div>
-      )}
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, fontWeight: 500 }}>
+          {config.label}
+        </div>
+      </div>
+
+      {/* Status glowing dot badge */}
+      <div style={{
+        width: 14, height: 14, borderRadius: '50%',
+        background: STATUS_COLORS[data.status] || '#10b981',
+        boxShadow: `0 0 10px ${STATUS_COLORS[data.status] || '#10b981'}88`,
+        flexShrink: 0,
+        marginLeft: 4,
+      }} />
     </div>
   );
 };
@@ -466,16 +461,20 @@ const LeafNode = ({ data, selected }) => {
 const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: direction, ranksep: 80, nodesep: 50 });
+  g.setGraph({ rankdir: direction, ranksep: 90, nodesep: 60 });
   nodes.forEach(n => g.setNode(n.id, { width: 240, height: 90 }));
   edges.forEach(e => g.setEdge(e.source, e.target));
   dagre.layout(g);
   return {
     nodes: nodes.map(n => {
       const pos = g.node(n.id);
-      return { ...n, position: { x: pos.x - 120, y: pos.y - 45 } };
+      return { ...n, position: { x: Math.round(pos.x - 120), y: Math.round(pos.y - 45) } };
     }),
-    edges,
+    edges: edges.map(e => ({
+      ...e,
+      sourceHandle: direction === 'TB' ? 'bottom' : 'right',
+      targetHandle: direction === 'TB' ? 'top' : 'left',
+    })),
   };
 };
 
@@ -486,6 +485,7 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
   // Current cluster scope: null = root level, string = parentId being viewed
   const [currentParentId, setCurrentParentId] = useState(null);
   const [breadcrumb, setBreadcrumb] = useState([{ id: null, label: 'Raíz' }]);
+  const [defaultEdgeType, setDefaultEdgeType] = useState('bezier');
 
   // History
   const [history, setHistory] = useState([]);
@@ -519,7 +519,12 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
     const visibleIds = new Set(visibleNodes.map(n => n.id));
     const visibleEdges = edges.filter(e =>
       visibleIds.has(e.source) && visibleIds.has(e.target)
-    );
+    ).map(e => ({
+      ...e,
+      sourceHandle: e.sourceHandle || 'bottom',
+      targetHandle: e.targetHandle || 'top',
+      type: e.edgeType || e.type || 'bezier',
+    }));
 
     return { visibleNodes, visibleEdges };
   }, [childCountMap]);
@@ -580,13 +585,18 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
   // Auto layout
   const applyLayout = (dir) => {
     const { nodes: ln, edges: le } = getLayoutedElements(nodes, edges, dir);
-    const updatedAll = allNodes.map(n => {
+    const updatedAllNodes = allNodes.map(n => {
       const found = ln.find(l => l.id === n.id);
       return found ? { ...n, position: found.position } : n;
     });
-    setAllNodes(updatedAll);
-    pushHistory(updatedAll, allEdges);
-    showToast('Layout aplicado', 'success');
+    const updatedAllEdges = allEdges.map(e => {
+      const found = le.find(l => l.id === e.id);
+      return found ? { ...e, sourceHandle: found.sourceHandle, targetHandle: found.targetHandle } : e;
+    });
+    setAllNodes(updatedAllNodes);
+    setAllEdges(updatedAllEdges);
+    pushHistory(updatedAllNodes, updatedAllEdges);
+    showToast('Layout aplicado y conexiones alineadas', 'success');
   };
 
   // Save to server
@@ -607,12 +617,20 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
           id: e.id,
           source: e.source,
           target: e.target,
+          sourceHandle: e.sourceHandle || 'bottom',
+          targetHandle: e.targetHandle || 'top',
+          edgeType: e.edgeType || e.type || 'bezier',
           type: e.data?.type || 'physical',
           status: e.data?.status || 'active',
           label: e.label || '',
           color: e.data?.color || '',
           speed: e.data?.speed || '',
-          metadata: e.data?.metadata || {},
+          metadata: {
+            ...(e.data?.metadata || {}),
+            sourceHandle: e.sourceHandle || 'bottom',
+            targetHandle: e.targetHandle || 'top',
+            edgeType: e.edgeType || e.type || 'bezier',
+          },
         })),
       };
       const res = await topologyAPI.save(payload);
@@ -691,7 +709,12 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
 
   // Reconnect existing edge (change handles or targets)
   const onReconnect = useCallback((oldEdge, newConnection) => {
-    const updated = allEdges.map(e => e.id === oldEdge.id ? { ...e, ...newConnection } : e);
+    const updated = allEdges.map(e => e.id === oldEdge.id ? {
+      ...e,
+      ...newConnection,
+      sourceHandle: newConnection.sourceHandle || e.sourceHandle,
+      targetHandle: newConnection.targetHandle || e.targetHandle,
+    } : e);
     setAllEdges(updated);
     pushHistory(allNodes, updated);
     showToast('Conexión actualizada', 'info');
@@ -702,7 +725,10 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
     const newEdge = {
       ...params,
       id: `edge_${Date.now()}`,
-      type: 'default',
+      type: defaultEdgeType,
+      edgeType: defaultEdgeType,
+      sourceHandle: params.sourceHandle || 'bottom',
+      targetHandle: params.targetHandle || 'top',
       animated: true,
       reconnectable: true,
       style: { stroke: '#4a6cf7', strokeWidth: 2 },
@@ -711,7 +737,7 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
     const updated = addEdge(newEdge, allEdges);
     setAllEdges(updated);
     pushHistory(allNodes, updated);
-  }, [allNodes, allEdges, setAllEdges, pushHistory]);
+  }, [allNodes, allEdges, defaultEdgeType, setAllEdges, pushHistory]);
 
   // Node position update
   const onNodeDragStop = useCallback((_, node) => {
@@ -852,12 +878,18 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
   const handleUpdateEdge = () => {
     if (!editingEdge) return;
     const color = editingEdge.data?.color || '#4a6cf7';
+    const edgeType = editingEdge.edgeType || editingEdge.type || 'bezier';
     const updatedEdges = allEdges.map(e => e.id === editingEdge.id
       ? {
           ...e,
+          type: edgeType,
+          edgeType: edgeType,
+          sourceHandle: editingEdge.sourceHandle || e.sourceHandle,
+          targetHandle: editingEdge.targetHandle || e.targetHandle,
           animated: editingEdge.animated,
+          label: editingEdge.label || '',
           style: { stroke: color, strokeWidth: editingEdge.data?.strokeWidth || 2 },
-          data: { ...e.data, ...editingEdge.data, color },
+          data: { ...e.data, ...editingEdge.data, color, edgeType },
         }
       : e
     );
@@ -948,7 +980,7 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
         const data = JSON.parse(ev.target.result);
         if (data.nodes && data.edges) {
           const fn = data.nodes.map(n => ({ id: n.id, type: (n.childCount || 0) > 0 ? 'clusterNode' : 'leafNode', position: n.position, data: { name: n.name, type: n.type, status: n.status, criticality: n.criticality, metadata: n.metadata || {}, parentId: n.parentId, childCount: 0 } }));
-          const fe = data.edges.map(e => ({ id: e.id, source: e.source, target: e.target, type: 'default', animated: true, style: { stroke: e.color || '#4a6cf7', strokeWidth: 2 }, data: { type: e.type, status: e.status, color: e.color, speed: e.speed } }));
+          const fe = data.edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle || 'bottom', targetHandle: e.targetHandle || 'top', type: e.edgeType || e.type || 'bezier', edgeType: e.edgeType || e.type || 'bezier', label: e.label || '', animated: true, style: { stroke: e.color || '#4a6cf7', strokeWidth: 2 }, data: { type: e.type, status: e.status, color: e.color, speed: e.speed, edgeType: e.edgeType || 'bezier' } }));
           setAllNodes(fn);
           setAllEdges(fe);
           pushHistory(fn, fe);
@@ -974,16 +1006,30 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
   }, [nodes, searchQuery]);
 
   const displayEdges = useMemo(() => {
-    return edges.map(e => ({
-      ...e,
-      selected: e.id === selectedEdge?.id,
-      style: {
-        ...(e.style || {}),
-        stroke: e.id === selectedEdge?.id ? '#f59e0b' : (e.data?.color || '#4a6cf7'),
-        strokeWidth: e.id === selectedEdge?.id ? 3 : (e.data?.strokeWidth || 2),
-      },
-    }));
+    return edges.map(e => {
+      const eType = e.edgeType || e.type || 'bezier';
+      return {
+        ...e,
+        type: eType,
+        sourceHandle: e.sourceHandle || 'bottom',
+        targetHandle: e.targetHandle || 'top',
+        selected: e.id === selectedEdge?.id,
+        style: {
+          ...(e.style || {}),
+          stroke: e.id === selectedEdge?.id ? '#f59e0b' : (e.data?.color || '#4a6cf7'),
+          strokeWidth: e.id === selectedEdge?.id ? 3 : (e.data?.strokeWidth || 2),
+        },
+      };
+    });
   }, [edges, selectedEdge]);
+
+  const edgeTypes = useMemo(() => ({
+    straight: StraightEdge,
+    step: StepEdge,
+    smoothstep: SmoothStepEdge,
+    bezier: BezierEdge,
+    default: BezierEdge,
+  }), []);
 
   const nodeTypes = useMemo(() => ({ clusterNode: ClusterNode, leafNode: LeafNode }), []);
 
@@ -1159,12 +1205,35 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
 
           <div style={{ width: 1, height: 24, background: 'var(--border-color)', flexShrink: 0 }} />
 
-          <button onClick={handleSave} style={{ ...styles.tbBtn(false), background: 'var(--primary-color)', color: 'white' }}>
-            <i className="fa-solid fa-floppy-disk"></i> Guardar
-          </button>
+          {/* Selector de trazado por defecto */}
+          <div style={{ display: 'flex', alignItems: 'center', background: 'var(--input-bg)', borderRadius: 8, padding: '2px 4px', border: '1px solid var(--border-color)' }} title="Tipo de trazado de conexiones por defecto">
+            <button
+              onClick={() => { setDefaultEdgeType('bezier'); showToast('Trazado activo: Curva Bezier', 'info'); }}
+              style={{ ...styles.tbBtn(defaultEdgeType === 'bezier'), padding: '4px 8px', fontSize: 11 }}
+              title="Curva Suave (Bezier)"
+            >
+              <i className="fa-solid fa-bezier-curve"></i> Curva
+            </button>
+            <button
+              onClick={() => { setDefaultEdgeType('straight'); showToast('Trazado activo: Línea Recta', 'info'); }}
+              style={{ ...styles.tbBtn(defaultEdgeType === 'straight'), padding: '4px 8px', fontSize: 11 }}
+              title="Línea Recta"
+            >
+              <i className="fa-solid fa-minus"></i> Recta
+            </button>
+            <button
+              onClick={() => { setDefaultEdgeType('smoothstep'); showToast('Trazado activo: Ortogonal', 'info'); }}
+              style={{ ...styles.tbBtn(defaultEdgeType === 'smoothstep'), padding: '4px 8px', fontSize: 11 }}
+              title="Ortogonal (SmoothStep)"
+            >
+              <i className="fa-solid fa-share-nodes"></i> Ortogonal
+            </button>
+          </div>
 
-          <button onClick={handleExportJSON} style={styles.tbBtn(false)} title="Exportar JSON">
-            <i className="fa-solid fa-download"></i>
+          <div style={{ width: 1, height: 24, background: 'var(--border-color)', flexShrink: 0 }} />
+
+          <button onClick={handleSave} style={{ ...styles.tbBtn(false), background: 'var(--primary-color)', color: 'white' }} title="Guardar cambios">
+            <i className="fa-solid fa-floppy-disk"></i> Guardar
           </button>
 
           <label style={{ ...styles.tbBtn(false), cursor: 'pointer', margin: 0 }} title="Importar JSON">
@@ -1188,6 +1257,7 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
             onNodeDragStop={onNodeDragStop}
             onPaneClick={onPaneClick}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             fitView
             minZoom={0.1}
             maxZoom={4}
@@ -1390,6 +1460,7 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
         </div>
       )}
 
+
       {/* ══ RIGHT PANEL: edge details ══════════════════════════════════════════════════ */}
       {selectedEdge && editingEdge && !selectedNode && (
         <div style={{ width: 360, background: 'var(--card-bg)', borderLeft: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
@@ -1432,6 +1503,49 @@ function TopologyCanvas({ allNodes, allEdges, setAllNodes, setAllEdges, systemDa
                 value={editingEdge.label || ''}
                 onChange={e => setEditingEdge({ ...editingEdge, label: e.target.value })}
               />
+            </div>
+
+                        <div className="form-group">
+              <label>Estilo de Línea (Trazado)</label>
+              <select className="form-control"
+                value={editingEdge.edgeType || editingEdge.type || 'bezier'}
+                onChange={e => setEditingEdge({ ...editingEdge, edgeType: e.target.value, type: e.target.value })}
+              >
+                <option value="bezier">Curva Suave (Bezier)</option>
+                <option value="straight">Línea Recta</option>
+                <option value="smoothstep">Ortogonal Redondeada (SmoothStep)</option>
+                <option value="step">Ortogonal Escalonada (Step)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Puntos de Anclaje (Handles)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <small style={{ color: 'var(--gray-text)', fontSize: 11 }}>Origen</small>
+                  <select className="form-control" style={{ fontSize: 11, padding: '4px 6px' }}
+                    value={editingEdge.sourceHandle || 'bottom'}
+                    onChange={e => setEditingEdge({ ...editingEdge, sourceHandle: e.target.value })}
+                  >
+                    <option value="source-bottom">Inferior (Abajo)</option>
+                    <option value="source-top">Superior (Arriba)</option>
+                    <option value="source-left">Izquierda</option>
+                    <option value="source-right">Derecha</option>
+                  </select>
+                </div>
+                <div>
+                  <small style={{ color: 'var(--gray-text)', fontSize: 11 }}>Destino</small>
+                  <select className="form-control" style={{ fontSize: 11, padding: '4px 6px' }}
+                    value={editingEdge.targetHandle || 'top'}
+                    onChange={e => setEditingEdge({ ...editingEdge, targetHandle: e.target.value })}
+                  >
+                    <option value="target-top">Superior (Arriba)</option>
+                    <option value="target-bottom">Inferior (Abajo)</option>
+                    <option value="target-left">Izquierda</option>
+                    <option value="target-right">Derecha</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="form-group">
@@ -1587,11 +1701,24 @@ export default function Topology() {
           position: n.position,
           data: { name: n.name, type: n.type, status: n.status, criticality: n.criticality, metadata: n.metadata || {}, parentId: n.parentId, childCount: childMap[n.id] || 0 },
         }));
-        const fe = rawEdges.map(e => ({
-          id: e.id, source: e.source, target: e.target, type: 'default', animated: true,
-          style: { stroke: e.color || '#4a6cf7', strokeWidth: 2 },
-          data: { type: e.type, status: e.status, color: e.color, speed: e.speed },
-        }));
+        const fe = rawEdges.map(e => {
+          const eType = e.edgeType || (e.metadata?.edgeType) || 'bezier';
+          const sHandle = e.sourceHandle || (e.metadata?.sourceHandle) || 'bottom';
+          const tHandle = e.targetHandle || (e.metadata?.targetHandle) || 'top';
+          return {
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: sHandle,
+            targetHandle: tHandle,
+            type: eType,
+            edgeType: eType,
+            label: e.label || '',
+            animated: true,
+            style: { stroke: e.color || '#4a6cf7', strokeWidth: 2 },
+            data: { type: e.type, status: e.status, color: e.color, speed: e.speed, edgeType: eType, metadata: e.metadata || {} },
+          };
+        });
         setAllNodes(fn);
         setAllEdges(fe);
       }
