@@ -47,16 +47,20 @@ class TopologyController {
 
             $edges = [];
             foreach ($dbEdges as $row) {
+                $meta = $row['metadata'] ? json_decode($row['metadata'], true) : [];
                 $edges[] = [
                     'id' => $row['id'],
                     'source' => $row['source'],
                     'target' => $row['target'],
+                    'sourceHandle' => $row['source_handle'] ?? ($meta['sourceHandle'] ?? null),
+                    'targetHandle' => $row['target_handle'] ?? ($meta['targetHandle'] ?? null),
                     'type' => $row['type'],
+                    'edgeType' => $meta['edgeType'] ?? 'bezier',
                     'status' => $row['status'],
                     'label' => $row['label'],
                     'color' => $row['color'],
                     'speed' => $row['speed'],
-                    'metadata' => $row['metadata'] ? json_decode($row['metadata'], true) : new stdClass()
+                    'metadata' => $meta ?: new stdClass()
                 ];
             }
 
@@ -157,13 +161,18 @@ class TopologyController {
             // 5. Guardar/Actualizar enlaces
             $edgeUpsertSql = "INSERT INTO topology_edges (id, source, target, type, status, label, color, speed, metadata)
                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                              ON DUPLICATE KEY UPDATE type = VALUES(type), status = VALUES(status), label = VALUES(label),
+                              ON DUPLICATE KEY UPDATE source = VALUES(source), target = VALUES(target), type = VALUES(type), status = VALUES(status), label = VALUES(label),
                               color = VALUES(color), speed = VALUES(speed), metadata = VALUES(metadata)";
             
             $edgeUpsertStmt = $this->pdo->prepare($edgeUpsertSql);
 
             foreach ($edges as $e) {
-                $metadata = isset($e['metadata']) ? json_encode($e['metadata']) : null;
+                $metaArray = (isset($e['metadata']) && is_array($e['metadata'])) ? $e['metadata'] : [];
+                if (!empty($e['sourceHandle'])) $metaArray['sourceHandle'] = $e['sourceHandle'];
+                if (!empty($e['targetHandle'])) $metaArray['targetHandle'] = $e['targetHandle'];
+                if (!empty($e['edgeType'])) $metaArray['edgeType'] = $e['edgeType'];
+
+                $metadata = !empty($metaArray) ? json_encode($metaArray) : null;
                 $status = $e['status'] ?? 'active';
                 $label = $e['label'] ?? null;
                 $color = $e['color'] ?? null;
